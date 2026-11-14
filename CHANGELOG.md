@@ -2,6 +2,12 @@
 
 All notable changes to `@passflow/react` are documented in this file.
 
+## [0.25.3] - 2026-11-15
+
+### Changed
+
+- The repository moved to the `usepassflow` GitHub organization. The package's `repository` and `bugs` links now point to `github.com/usepassflow/passflow-react-sdk`, and this release is published with npm provenance from that repository. No code changed.
+
 ## [0.25.2] - 2026-11-11
 
 ### Fixed
