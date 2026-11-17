@@ -1,6 +1,6 @@
 # Email verification code step — facts for the next session
 
-Verified while building PFL-724 (0.18.0) against a local Passflow server and in Playwright.
+Verified while building 0.18.0 against a local Passflow server and in Playwright.
 
 ## Contract (server)
 

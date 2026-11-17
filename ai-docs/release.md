@@ -6,7 +6,7 @@ Judgement only. The mechanics live in `.github/workflows/publish.yml` and `packa
 
 - Publisher: CI. `publish.yml` runs on a pushed `v*` tag, checks the tag equals `package.json` `version`, runs `pnpm test:unit` and `pnpm build`, and publishes with `npm publish --provenance` over OIDC. Never publish locally: two publishers race.
 - The `release-page` job in the same workflow creates the GitHub release after a successful publish.
-- Who authorises: the ticket brief or Jack. A child session releases when its brief says so.
+- Who authorises: the task brief or the maintainer. A child session releases when its brief says so.
 
 ## Stages
 
@@ -31,6 +31,6 @@ none — one stage: npm `latest`.
 ## Unknown
 
 - Pre-release / `next` dist-tag process: unknown. TODO: settle when a pre-release is first needed.
-- Monitoring after release: none known. TODO: ask Jack whether any consumer (login-app) must be bumped as part of "done".
+- Monitoring after release: none known. TODO: ask the maintainer whether any consumer (login-app) must be bumped as part of "done".
 
-verified: 2026-11-05 @ release of 0.20.2
+verified: at release of 0.20.2
