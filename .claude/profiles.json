@@ -15,6 +15,7 @@
       },
       "plugins": {
         "dev@magus": "latest",
+        "orchestrator@magus": "latest",
         "frontend-design@claude-plugins-official": "latest",
         "mnemex@magus": "latest",
         "claudish@magus": "latest",
