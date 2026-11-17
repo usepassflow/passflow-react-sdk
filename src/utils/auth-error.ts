@@ -62,6 +62,7 @@ export const SERVER_MESSAGE_ERROR_IDS: ReadonlySet<string> = new Set([
   'error.challenge.app_mismatch',
   'error.email.verification.required',
   'error.registration.continuation.invalid',
+  'error.api.plan.upgrade_required',
 ]);
 
 const readField = (value: unknown, field: string): unknown =>
