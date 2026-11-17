@@ -1,6 +1,6 @@
 # Passwordless approval and federated landing — facts for the next session
 
-Verified while building PFL-769 (0.19.0) with `pnpm test:unit`, Playwright over Storybook and mocked responses, against `@passflow/core` 0.24.0.
+Verified while building 0.19.0 with `pnpm test:unit`, Playwright over Storybook and mocked responses, against `@passflow/core` 0.24.0.
 
 ## Where it lives here
 

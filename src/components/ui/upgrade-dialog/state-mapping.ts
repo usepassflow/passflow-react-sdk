@@ -171,20 +171,19 @@ const readRecord = (value: unknown): Record<string, unknown> | undefined =>
 /**
  * Every kind `@passflow/core` can classify, mapped to the panel the user sees.
  *
- * **This table is the fix for PFL-497's headline defect, and its totality is
- * the mechanism.** The previous version read `code` first, and since every
- * classified transport failure carries the same fixed literal
- * `code === 'upgrade_transport'`, that catch-all swallowed the kinds with their
- * own route — a mistyped code (`wrong_code`, retryable) landed on a terminal
- * panel. Routing by `kind` through a `Record<UpgradeErrorKind, …>` makes the
- * catch-all unnecessary and a missing route a TYPE error: a new kind added to
- * core cannot compile here until someone decides where it goes.
+ * **The table routes by `kind`, never by `code`, and its totality is the
+ * point.** Every classified transport failure carries the same fixed literal
+ * `code === 'upgrade_transport'`, so routing by `code` would swallow the kinds
+ * with their own route: a mistyped code (`wrong_code`, retryable) would land on
+ * a terminal panel. Routing by `kind` through a `Record<UpgradeErrorKind, …>`
+ * needs no catch-all and makes a missing route a TYPE error: a new kind added
+ * to core cannot compile here until someone decides where it goes.
  *
- * `attempts_exhausted` is terminal (H3). It is the controller's local attempt
+ * `attempts_exhausted` is terminal. It is the controller's local attempt
  * budget being spent, so the challenge the server holds will never be accepted
- * again; routing it with the retryable kinds re-prompted forever. It shares the
- * `exhausted` panel with the server's own `challenge_too_many_attempts`, which
- * is the same row of §13.3's settlement table.
+ * again; routing it with the retryable kinds would re-prompt forever. It shares
+ * the `exhausted` panel with the server's own `challenge_too_many_attempts`,
+ * which settles the challenge the same way.
  */
 const DIALOG_KIND_BY_UPGRADE_KIND: Readonly<Record<UpgradeErrorKind, UpgradeDialogErrorKind>> = Object.freeze({
   // Retryable: the user answers again, the prompt stays open (§3.3, §13.3).

@@ -1,6 +1,6 @@
 # First-time 2FA enrolment — facts for the next session
 
-Verified while building PFL-769 (0.20.0) with `pnpm test:unit` and Playwright over mocked responses, against `@passflow/core` 0.25.0. Not verified against a real server here.
+Verified while building 0.20.0 with `pnpm test:unit` and Playwright over mocked responses, against `@passflow/core` 0.25.0. Not verified against a real server here.
 
 ## Where it lives
 
