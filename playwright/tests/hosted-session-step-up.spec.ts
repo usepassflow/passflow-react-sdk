@@ -21,16 +21,31 @@ const onHostedLogin = async (
   page: Page,
   refusal: Challenge,
   retry: { status: number; json: unknown } = { status: 401, json: {} },
+  options: { settingsAfterRefusal?: boolean } = {},
 ) => {
-  await setupPasswordless(page, { pkce: false });
+  await setupPasswordless(page, { pkce: false, createTenant: options.settingsAfterRefusal });
   await page.route(`**/oidc/requests/${parent}`, (route) =>
     route.fulfill({ json: { request_id: parent, app_name: 'Acme Portal', redirect_uri: callback, state: 'rp-state' } }),
   );
+  let refused: () => void = () => undefined;
+  const refusalSent = new Promise<void>((resolve) => {
+    refused = resolve;
+  });
+  if (options.settingsAfterRefusal) {
+    // The app's settings answer after the refusal, while the step-up dialog is open, and change a field core reads.
+    await page.route('**/app/settings', async (route) => {
+      await refusalSent;
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      await route.fallback();
+    });
+  }
   let exchanges = 0;
   await page.route('**/auth/session/exchange', async (route) => {
     exchanges += 1;
-    if (exchanges === 1) await route.fulfill({ status: 403, json: { error: 'upgrade_required', ...refusal } });
-    else await route.fulfill(retry);
+    if (exchanges === 1) {
+      await route.fulfill({ status: 403, json: { error: 'upgrade_required', ...refusal } });
+      refused();
+    } else await route.fulfill(retry);
   });
   const stepUps: string[] = [];
   await page.route('**/auth/session/upgrade**', (route) => {
@@ -89,6 +104,27 @@ test('(c) a TOTP-only account at level 2 is offered its authenticator and recove
   await expect(factors.nth(1)).toHaveAttribute('data-testid', 'upgrade-dialog-factor-recovery_codes');
   await expect(dialog(page).getByTestId('upgrade-dialog-factor-passkey')).toHaveCount(0);
   await expect(signInForm(page)).toHaveCount(0);
+});
+
+test('the step-up dialog stays open when the app settings arrive after the refusal', async ({ page }) => {
+  const hosted = await onHostedLogin(
+    page,
+    { acr_values: '2', available_factors: ['totp', 'recovery_codes'], sign_in_required: false },
+    { status: 200, json: { redirect_url: `${callback}?code=rp-code&state=rp-state` } },
+    { settingsAfterRefusal: true },
+  );
+
+  await expect(dialog(page)).toBeVisible();
+  await page.waitForTimeout(500);
+  await expect(dialog(page)).toBeVisible();
+  expect(hosted.landings).toEqual([]);
+  await dialog(page).getByTestId('upgrade-dialog-code').fill('123456');
+  await dialog(page).getByTestId('upgrade-dialog-submit').click();
+
+  await expect(page.getByRole('heading', { name: 'Relying party' })).toBeVisible();
+  expect(hosted.stepUps).toEqual(['/auth/session/upgrade']);
+  expect(hosted.exchanges()).toBe(2);
+  expect(hosted.landings).toEqual([`${callback}?code=rp-code&state=rp-state`]);
 });
 
 test('(d) an older server that names no factor is sign-in required: the form, never unmet_authentication_requirements', async ({

@@ -516,7 +516,8 @@ const readBody = async (res: Response): Promise<unknown> => {
 const useSessionExchangeOnMount = (
   parentChallengeId: string | undefined,
   landedWithTwoFactorToken: boolean,
-  passflow: Passflow,
+  // Read at call time: the provider replaces its instance while the exchange runs, and only the current one steps up.
+  currentPassflow: () => Passflow,
   baseUrl: string | undefined,
   appId: string | undefined,
 ): { exchangeState: ExchangeState; parentMeta?: ParentChallengeMeta; stepUpFailure?: string } => {
@@ -524,9 +525,6 @@ const useSessionExchangeOnMount = (
   const [stepUpFailure, setStepUpFailure] = useState<string | undefined>(undefined);
   const [parentMeta, setParentMeta] = useState<ParentChallengeMeta | undefined>(undefined);
   const attemptedRef = useRef(false);
-  // Read at call time: the provider replaces its instance while the exchange runs, and only the current one steps up.
-  const passflowRef = useRef(passflow);
-  passflowRef.current = passflow;
 
   useEffect(() => {
     // A landing that owes its second factor finishes that sign-in: the 2FA screen, not an exchange of another session.
@@ -615,7 +613,7 @@ const useSessionExchangeOnMount = (
 
         setExchangeState('upgrade_required');
         try {
-          await passflowRef.current.hostedUpgrade.elevate(challenge, { kind: 'imperative' });
+          await currentPassflow().hostedUpgrade.elevate(challenge, { kind: 'imperative' });
         } catch (error) {
           const outcome = dialogOutcomeFromError(error);
           if (outcome === 'sign-in-required' || outcome === 'insufficient') {
@@ -864,45 +862,60 @@ export const PassflowProvider: FC<PassflowProviderProps> = ({
     refreshStrikes: config.refreshStrikes,
   }));
 
-  // Rebuilt only when a field core reads changes. Settings arriving, discovery ending or an equal scopes array keep
-  // the instance, and with it core's cached settings read.
-  const scopesKey = state.scopes?.join(' ');
-  const passflow = useMemo(
-    () =>
-      new Passflow({
-        ...fixedConfig,
-        url: state.url,
-        appId: state.appId,
-        scopes: state.scopes,
-        createTenantForNewUser: state.createTenantForNewUser,
-        parseQueryParams: landedWithAccessToken ? false : state.parseQueryParams,
-        deferFederatedLanding: true,
-      }),
-    [
-      fixedConfig,
-      state.url,
-      state.appId,
-      scopesKey,
-      state.createTenantForNewUser,
-      state.parseQueryParams,
-      landedWithAccessToken,
-    ],
-  );
-  useDisposeOnReplace(passflow);
-
   // OIDC AuthFlow integration: the interceptor injects
   // parent_challenge_id on outbound auth POSTs + follows
   // server-returned redirect_url; the exchange-on-mount probe decides
   // whether to render login form vs auto-exchange. See ADR-2.
   const parentChallengeId = useMemo(() => readParentChallengeIdFromURL() ?? bootParentChallengeId, []);
   useOIDCInterceptor(parentChallengeId);
+  // Assigned below in every render, before any effect reads it.
+  const passflowRef = useRef<Passflow | undefined>(undefined);
+  const currentPassflow = useCallback(() => passflowRef.current as Passflow, []);
   const { exchangeState, parentMeta, stepUpFailure } = useSessionExchangeOnMount(
     parentChallengeId,
     landedWithTwoFactorToken,
-    passflow,
+    currentPassflow,
     config.url,
     state.appId,
   );
+
+  // The fields core reads. While the step-up dialog is open they stay as they were: the dialog is the current
+  // instance's hosted step-up, and replacing the instance would cancel it. What arrived meanwhile, such as the app's
+  // settings, applies once the dialog closes.
+  const liveInstanceConfig = {
+    url: state.url,
+    appId: state.appId,
+    scopes: state.scopes,
+    createTenantForNewUser: state.createTenantForNewUser,
+    parseQueryParams: state.parseQueryParams,
+  };
+  const instanceConfigRef = useRef(liveInstanceConfig);
+  if (exchangeState !== 'upgrade_required') instanceConfigRef.current = liveInstanceConfig;
+  const instanceConfig = instanceConfigRef.current;
+
+  // Rebuilt only when a field core reads changes. Settings arriving, discovery ending or an equal scopes array keep
+  // the instance, and with it core's cached settings read.
+  const scopesKey = instanceConfig.scopes?.join(' ');
+  const passflow = useMemo(
+    () =>
+      new Passflow({
+        ...fixedConfig,
+        ...instanceConfig,
+        parseQueryParams: landedWithAccessToken ? false : instanceConfig.parseQueryParams,
+        deferFederatedLanding: true,
+      }),
+    [
+      fixedConfig,
+      instanceConfig.url,
+      instanceConfig.appId,
+      scopesKey,
+      instanceConfig.createTenantForNewUser,
+      instanceConfig.parseQueryParams,
+      landedWithAccessToken,
+    ],
+  );
+  passflowRef.current = passflow;
+  useDisposeOnReplace(passflow);
 
   // Auto-discover appId from /settings endpoint if not provided
   const discoveryAttemptedRef = useRef(false);
