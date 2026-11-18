@@ -229,9 +229,11 @@ export const SignUpForm: FC<TSignUp> = ({
     if (await emailCode.resend()) await completeRegistration({ oidcMayOwnRedirect: true });
   };
 
+  // The application name set in the admin panel's Login Appearance.
+  const appName = loginAppTheme?.application_name?.trim();
   const chrome: LoginScreenChrome = {
     title: invitationChrome?.title ?? 'Create your account',
-    subtitle: invitationChrome?.subtitle ?? 'For Passflow by Madappgang',
+    subtitle: invitationChrome?.subtitle ?? (appName ? `For ${appName}` : undefined),
     variant: 'sign-in',
     customCss: currentStyles?.custom_css,
     customLogo: currentStyles?.logo_url,

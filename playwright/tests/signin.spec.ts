@@ -37,7 +37,7 @@ test.describe('default signin flow', () => {
     await page.goto('http://localhost:5173/web/signin');
     await expect(page).toHaveTitle(/Passflow/);
     await expect(page.getByText('Sign In to your account', { exact: true })).toBeVisible();
-    await expect(page.getByText('To Passflow by Madappgang', { exact: true })).toBeVisible();
+    await expect(page.getByText('To Passflow', { exact: true })).toBeVisible();
     await page.locator('label div').click();
     await expect(page.locator('label div')).toBeVisible();
     await expect(page.locator('label div')).not.toBeChecked();

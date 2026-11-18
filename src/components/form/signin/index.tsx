@@ -266,9 +266,11 @@ export const SignInForm: FC<TSignIn> = ({
     if (await emailCode.resend()) await completeAuthentication();
   };
 
+  // The application name set in the admin panel's Login Appearance.
+  const appName = loginAppTheme?.application_name?.trim();
   const chrome: LoginScreenChrome = {
     title: invitationChrome?.title ?? 'Sign In to your account',
-    subtitle: invitationChrome?.subtitle ?? 'To Passflow by Madappgang',
+    subtitle: invitationChrome?.subtitle ?? (appName ? `To ${appName}` : undefined),
     variant: 'sign-in',
     customCss: currentStyles?.custom_css,
     customLogo: currentStyles?.logo_url,

@@ -42,7 +42,7 @@ test.describe('default signup flow', () => {
     await page.goto('http://localhost:5173/web/signup');
     await expect(page).toHaveTitle(/Passflow/);
     await expect(page.getByText('Create your account', { exact: true })).toBeVisible();
-    await expect(page.getByText('For Passflow by Madappgang', { exact: true })).toBeVisible();
+    await expect(page.getByText('For Passflow', { exact: true })).toBeVisible();
     await page.locator('label div').click();
     await expect(page.locator('label div')).toBeVisible();
     await expect(page.locator('label div')).not.toBeChecked();
