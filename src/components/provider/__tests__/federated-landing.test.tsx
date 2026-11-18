@@ -1,4 +1,4 @@
-import { act, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import { useContext } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PassflowContext, type PassflowContextType } from '@/context';
@@ -198,14 +198,16 @@ describe('SDK-mode landing (authorization code with state)', () => {
   it.each([
     ['a state that is not this sign-in', { state: 'another-sign-in' }],
     ['an expired proof key', { state: 'sign-in-state', expired: true }],
-  ])('a landing refused for %s fails, with no session', async (_case, slot) => {
+  ])('a landing refused for %s fails, with no session, and the provider says so', async (_case, slot) => {
     network = installLandingEnvironment({ search: sdkLanding });
     writeOidcSlot(slot);
     const observed = makeObserved();
     renderLanding({ observed, flow: false });
     await network.releaseSettings();
 
-    await waitFor(() => expect(observed.outcome).toBe('failed'));
+    // The failure screen takes the children's place, the probe among them.
+    await waitFor(() => expect(screen.getByTestId('sign-in-return-failed')).toBeTruthy());
+    expect(screen.getByText('Sign-in failed. Start again.')).toBeTruthy();
     expect(observed.current!.isAuthenticated()).toBe(false);
     expect(network.requests.some((request) => request.path === '/oidc/token')).toBe(false);
     expect(network.forwards).toEqual([]);

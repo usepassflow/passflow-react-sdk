@@ -13,6 +13,7 @@ import React, { type FC, type ReactNode, useCallback, useEffect, useMemo, useRed
 import { UpgradeProvider, type UpgradeProviderProps } from '@/components/provider/upgrade-provider';
 import { useDisposeOnReplace } from '@/components/provider/use-dispose-on-replace';
 import { ContinuingStatus } from '@/components/ui/continuing-status';
+import { LoginScreen } from '@/components/ui/login-screen';
 import {
   AuthProvider,
   addressBarSearch,
@@ -28,12 +29,27 @@ import {
   type RouterType,
   routes,
 } from '@/context';
+import { passwordlessSignInFailedMessage } from '@/utils/auth-error';
 import { submitFormPost } from '@/utils/form-post';
 import { signInSearch, twoFactorTokenAppId, urlCarriesAccessToken, urlCarriesTwoFactorToken } from '@/utils/second-factor';
 import { readParentChallengeIdFromURL } from '@/utils/url-params';
 import '@/styles/index.css';
 
 export { readParentChallengeIdFromURL };
+
+/** A hosted sign-in return this tab refused, such as one whose state is not its sign-in. */
+const SignInReturnFailed: FC<{ onSignInAgain: () => void }> = ({ onSignInAgain }) => (
+  <LoginScreen
+    chrome={{ title: 'We could not sign you in' }}
+    state={{
+      kind: 'status',
+      tone: 'error',
+      message: passwordlessSignInFailedMessage,
+      testId: 'sign-in-return-failed',
+      primaryAction: { label: 'Sign in again', onClick: onSignInAgain },
+    }}
+  />
+);
 
 /**
  * The assurance-upgrade options a consumer may set on `PassflowProvider`.
@@ -665,9 +681,10 @@ const useSecondFactorLanding = (
   takeTokensFromUrl: boolean,
   isDiscoveringAppId: boolean,
   parentChallengeId: string | undefined,
-): FederatedLandingOutcome | undefined => {
+): { federatedLandingOutcome?: FederatedLandingOutcome; signInReturnFailed: boolean } => {
   const [pending, setPending] = useState(false);
   const [federatedLandingOutcome, setFederatedLandingOutcome] = useState<FederatedLandingOutcome>();
+  const [signInReturnFailed, setSignInReturnFailed] = useState(false);
 
   const takenRef = useRef(false);
   const currentPassflowRef = useRef(passflow);
@@ -691,6 +708,8 @@ const useSecondFactorLanding = (
           if (operation !== 'federated.redirect' && operation !== 'oidc.redirect') return;
           passflow.unsubscribe(subscriber);
           setFederatedLandingOutcome('failed');
+          // Core reports a refused hosted sign-in return only as this event: the provider shows it.
+          if (operation === 'oidc.redirect') setSignInReturnFailed(true);
         } else if (eventType === PassflowEvent.SignIn) {
           const signIn = payload as PassflowEventPayload[PassflowEvent.SignIn] | undefined;
           if (signIn?.source !== 'federated-landing' && signIn?.source !== 'oidc-landing') return;
@@ -754,7 +773,7 @@ const useSecondFactorLanding = (
     navigate({ to: twoFactorVerifyPath, search: search.toString() || undefined, replace: true });
   }, [pending, navigate, twoFactorVerifyPath, appIdFromToken]);
 
-  return federatedLandingOutcome;
+  return { federatedLandingOutcome, signInReturnFailed };
 };
 
 export const OIDCExchangeContext = React.createContext<OIDCExchangeContextValue>({
@@ -904,7 +923,7 @@ export const PassflowProvider: FC<PassflowProviderProps> = ({
   const [flowTwoFactorVerifyPath, setFlowTwoFactorVerifyPath] = useState<string | null>(null);
   const resolvedTwoFactorVerifyPath = flowTwoFactorVerifyPath ?? twoFactorVerifyPath ?? routes.two_factor_verify.path;
   const [flowSignInPath, setFlowSignInPath] = useState<string | null>(null);
-  const federatedLandingOutcome = useSecondFactorLanding(
+  const { federatedLandingOutcome, signInReturnFailed } = useSecondFactorLanding(
     landedWithTwoFactorToken,
     passflow,
     navigate,
@@ -967,7 +986,13 @@ export const PassflowProvider: FC<PassflowProviderProps> = ({
               enabled={upgradeEnabled}
               backend={backend}
             >
-              {showContinuing ? <ContinuingStatus appName={parentMeta?.app_name} /> : children}
+              {signInReturnFailed ? (
+                <SignInReturnFailed onSignInAgain={() => void passflow.authRedirect().catch(() => undefined)} />
+              ) : showContinuing ? (
+                <ContinuingStatus appName={parentMeta?.app_name} />
+              ) : (
+                children
+              )}
             </UpgradeProvider>
           </AuthProvider>
         </OIDCExchangeContext.Provider>
