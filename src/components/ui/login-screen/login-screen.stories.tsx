@@ -1299,7 +1299,7 @@ const totpCode = (overrides: Partial<LoginTwoFactorCodeState> = {}): LoginTwoFac
 
 const recoveryCode = (overrides: Partial<LoginTwoFactorCodeState> = {}): LoginTwoFactorCodeState => ({
   ...twoFactorCommon,
-  factor: { type: 'recovery', placeholder: 'XXXX-XXXX' },
+  factor: { type: 'recovery', placeholder: 'XXXX-XXXX-XXXX' },
   label: 'Recovery Code',
   code: '',
   alternate: { prompt: 'Have your device?', label: 'Use authenticator code', onClick: handlers.onUseAuthenticator },
@@ -1415,7 +1415,7 @@ export const TwoFactorCodeRecovery: Story = {
   args: story(recoveryCode(), recoveryChrome),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole('textbox', { name: 'Recovery Code' })).toHaveAttribute('placeholder', 'XXXX-XXXX');
+    await expect(canvas.getByRole('textbox', { name: 'Recovery Code' })).toHaveAttribute('placeholder', 'XXXX-XXXX-XXXX');
     await expect(canvas.getByRole('button', { name: 'Verify' })).toBeDisabled();
   },
 };

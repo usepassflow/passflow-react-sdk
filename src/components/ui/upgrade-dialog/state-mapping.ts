@@ -111,8 +111,8 @@ const OTP_CODE_CONTRACT: UpgradeFactorCodeContract = Object.freeze({
  * about a factor the protocol guarantees.
  *
  * `recovery_codes` is the reason this table exists. The server generates them
- * at `DefaultRecoveryCodeLength` (12) from a 32-character alphanumeric charset
- * and accepts a configured length anywhere in 6..16, so the cap is the server's
+ * at `DefaultRecoveryCodeLength` (12) from a 32-character alphanumeric charset,
+ * 8 codes by default, and accepts a configured length anywhere in 10..16, so the cap is the server's
  * MAXIMUM — capping at the default would reject a valid code on a deployment
  * that raised it, and capping at six (the old single hardcoded number) rejected
  * every code on every deployment. A shorter configured code simply types

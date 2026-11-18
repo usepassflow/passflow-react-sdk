@@ -70,7 +70,7 @@ export const TwoFactorRecoveryForm: FC<TwoFactorRecoveryFormProps> = ({
       chrome={{ title, subtitle }}
       state={{
         kind: 'two-factor-code',
-        factor: { type: 'recovery', placeholder: 'XXXX-XXXX' },
+        factor: { type: 'recovery', placeholder: 'XXXX-XXXX-XXXX' },
         label: 'Recovery Code',
         code,
         trustDevice: { label: trustDeviceLabel, checked: trustDevice, onChange: setTrustDevice },

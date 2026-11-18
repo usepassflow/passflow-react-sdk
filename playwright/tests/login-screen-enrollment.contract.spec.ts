@@ -69,7 +69,7 @@ for (const story of codeStories) {
     await expect(page.getByRole('heading', { name: recovery ? 'Use Recovery Code' : 'Two-Factor Authentication', exact: true })).toBeVisible();
     await expect(code).toBeVisible();
     await expect(trust).toBeVisible();
-    if (recovery) await expect(code).toHaveAttribute('placeholder', 'XXXX-XXXX');
+    if (recovery) await expect(code).toHaveAttribute('placeholder', 'XXXX-XXXX-XXXX');
     else {
       await expect(code).toHaveAttribute('inputmode', 'numeric');
       await expect(code).toHaveAttribute('maxlength', story.endsWith('EightDigits') ? '8' : '6');

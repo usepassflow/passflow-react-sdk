@@ -35,7 +35,7 @@ export type AssuranceBar = {
  * characters for every factor, which silently truncated a recovery code: the
  * server issues those from `services/totp/recovery.go` at
  * `DefaultRecoveryCodeLength` (12) and validates a configured length anywhere
- * in 6..16 (`model/two_factor.go`), from an alphanumeric charset. A six-digit
+ * in 10..16 (`model/two_factor.go`), from an alphanumeric charset. A six-digit
  * numeric keypad is wrong for that answer on every axis — length, charset and
  * autofill — so all three travel together with the factor instead of being
  * restated at the input.
