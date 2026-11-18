@@ -1,11 +1,49 @@
 import path from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '../fixture';
+import { jwt } from './email-verification.helpers';
 
-const ACCESS_TOKEN =
-  'eyJhbGciOiJFUzI1NiIsImtpZCI6InB1VzVYY0MySkFvQnJHbjBIakxDTWtrWWwySSIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsiMndKMnVkNGxHd1lZZm82ODJnRWNrV2h6Z3pDIl0sImV4cCI6MTc0NTc1MTI2NiwiaWF0IjoxNzQ1NzQ5NDY2LCJpc3MiOiJodHRwczovL3Rlc3QucGFzc2Zsb3cuY2xvdWQiLCJqdGkiOiItb0Y4dHBESE1mMUNmOEdJMnMxZnc2aVRaY2VHeVdVdlFWd2x1dEVNQnFnIiwicGFzc2Zsb3dfdG0iOnsiMndKOTZCOHpSOVNZbVRVZENhUUY0NDRyTkNQIjp7InRlbmFudF9pZCI6IjJ3Sjk2Qjh6UjlTWW1UVWRDYVFGNDQ0ck5DUCIsInRlbmFudF9uYW1lIjoiTXkgV29ya3NwYWNlIiwidGVuYW50X3JvbGVzIjpbInVzZXIiXSwicm9vdF9ncm91cF9pZCI6IjJ3Sjk2N0hCaEIwNWpTNXZ6SGFPTDFYaE1zQSIsImdyb3VwcyI6eyIyd0o5NjdIQmhCMDVqUzV2ekhhT0wxWGhNc0EiOlsidXNlciJdfSwiZ3JvdXBfbmFtZXMiOnsiMndKOTY3SEJoQjA1alM1dnpIYU9MMVhoTXNBIjoiZGVmYXVsdCJ9fSwiMndKQW45WUV0S0R6Z1RvejMyNkZ1UEVjNlU3Ijp7InRlbmFudF9pZCI6IjJ3SkFuOVlFdEtEemdUb3ozMjZGdVBFYzZVNyIsInRlbmFudF9uYW1lIjoiTXkgV29ya3NwYWNlIiwidGVuYW50X3JvbGVzIjpbIm93bmVyIl0sInJvb3RfZ3JvdXBfaWQiOiIyd0pBbjZnM1FadnNscTRibkYyUmo0TDM3WkoiLCJncm91cHMiOnsiMndKQW42ZzNRWnZzbHE0Ym5GMlJqNEwzN1pKIjpbIm93bmVyIl19LCJncm91cF9uYW1lcyI6eyIyd0pBbjZnM1FadnNscTRibkYyUmo0TDM3WkoiOiJkZWZhdWx0In19fSwic2NvcGVzIjpbImlkIiwib2ZmbGluZSIsInRlbmFudCIsImVtYWlsIiwib2lkYyIsIm9wZW5pZCIsImFjY2Vzczp0ZW5hbnQ6YWxsIl0sInN1YiI6IjJ3SkFuOEE4eTZLYmcwa3MxYks3ZFFrZEZCdiIsInR5cGUiOiJhY2Nlc3MifQ.7yAvv-I7PSZrQdVDr5VOoOmD7zQUCBD0YRNR8gPqQp1UUlT8eJXaZJdZ-1T_t0uOL29EesmT8Sd2wReahHkJvA';
-const ID_TOKEN =
-  'eyJhbGciOiJFUzI1NiIsImtpZCI6InB1VzVYY0MySkFvQnJHbjBIakxDTWtrWWwySSIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsiMndKMnVkNGxHd1lZZm82ODJnRWNrV2h6Z3pDIl0sImVtYWlsIjoidGVzdCsxQHRlc3QuY29tIiwiZXhwIjoxNzQ1NzQ5NzY2LCJpYXQiOjE3NDU3NDk0NjYsImlkIjoiMndKQW44QTh5NktiZzBrczFiSzdkUWtkRkJ2IiwiaXNzIjoiaHR0cHM6Ly90ZXN0LnBhc3NmbG93LmNsb3VkIiwianRpIjoiSzhjWmU1dklLUjM4ZGxBTmFkUjQ0akdBeTM5NzJ6ZWpDRTR1ckJ0dTM5NCIsInN1YiI6IjJ3SkFuOEE4eTZLYmcwa3MxYks3ZFFrZEZCdiIsInR5cGUiOiJpZF90b2tlbiJ9.qJYb18qOZ87lRxHyK8PjTwFpUVO7CYb0xVuK4RZ9NJDIib39jK56HUL4TSstf0cYalKcffdYdmGXsWzr6Cf1Lw';
+// The demo app's id (src/app.tsx): core keeps only stored tokens whose `aud` names the app.
+const DEV_APP_ID = 'test_app_id';
+const ACCESS_TOKEN = jwt({
+  aud: [DEV_APP_ID],
+  exp: 1745751266,
+  iat: 1745749466,
+  iss: 'https://test.passflow.cloud',
+  jti: '-oF8tpDHMf1Cf8GI2s1fw6iTZceGyWUvQVwlutEMBqg',
+  passflow_tm: {
+    '2wJ96B8zR9SYmTUdCaQF444rNCP': {
+      tenant_id: '2wJ96B8zR9SYmTUdCaQF444rNCP',
+      tenant_name: 'My Workspace',
+      tenant_roles: ['user'],
+      root_group_id: '2wJ967HBhB05jS5vzHaOL1XhMsA',
+      groups: { '2wJ967HBhB05jS5vzHaOL1XhMsA': ['user'] },
+      group_names: { '2wJ967HBhB05jS5vzHaOL1XhMsA': 'default' },
+    },
+    '2wJAn9YEtKDzgToz326FuPEc6U7': {
+      tenant_id: '2wJAn9YEtKDzgToz326FuPEc6U7',
+      tenant_name: 'My Workspace',
+      tenant_roles: ['owner'],
+      root_group_id: '2wJAn6g3QZvslq4bnF2Rj4L37ZJ',
+      groups: { '2wJAn6g3QZvslq4bnF2Rj4L37ZJ': ['owner'] },
+      group_names: { '2wJAn6g3QZvslq4bnF2Rj4L37ZJ': 'default' },
+    },
+  },
+  scopes: ['id', 'offline', 'tenant', 'email', 'oidc', 'openid', 'access:tenant:all'],
+  sub: '2wJAn8A8y6Kbg0ks1bK7dQkdFBv',
+  type: 'access',
+});
+const ID_TOKEN = jwt({
+  aud: [DEV_APP_ID],
+  email: 'test+1@test.com',
+  exp: 1745749766,
+  iat: 1745749466,
+  id: '2wJAn8A8y6Kbg0ks1bK7dQkdFBv',
+  iss: 'https://test.passflow.cloud',
+  jti: 'K8cZe5vIKR38dlANadR44jGAy3972zejCE4urBtu394',
+  sub: '2wJAn8A8y6Kbg0ks1bK7dQkdFBv',
+  type: 'id_token',
+});
 const VALID_INVITE_TOKEN =
   'eyJhbGciOiJFUzI1NiIsImtpZCI6InB1VzVYY0MySkFvQnJHbjBIakxDTWtrWWwySSIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsiMndKMnVkNGxHd1lZZm82ODJnRWNrV2h6Z3pDIl0sImVtYWlsIjoidGVzdCsxQHRlc3QuY29tIiwiZXhwIjoxNzQ1ODM1MTgyLCJpYXQiOjE3NDU3NDg3ODIsImludml0ZV9pZCI6IjJ3SjlQOFRxdWhnTVdiRGtVQmZrSndXYmZwYSIsImludml0ZXJfaWQiOiIyd0o5NkNHTmF0RVRUWmRmMzJkWWtFcmJpM24iLCJpbnZpdGVyX25hbWUiOiIiLCJpc3MiOiJodHRwczovL3Rlc3QucGFzc2Zsb3cuY2xvdWQiLCJqdGkiOiJ6S3NXNkpEeXFvNmVBdmNqcEg1b2RWM2NxTWg3anVibXZRTk1iTFVrbm5RIiwicGFzc2Zsb3dfdG0iOnsiMndKOTZCOHpSOVNZbVRVZENhUUY0NDRyTkNQIjp7InRlbmFudF9pZCI6IjJ3Sjk2Qjh6UjlTWW1UVWRDYVFGNDQ0ck5DUCIsImdyb3VwcyI6eyIyd0o5NjdIQmhCMDVqUzV2ekhhT0wxWGhNc0EiOlsidXNlciJdfX19LCJwYXlsb2FkIjp7ImRhdGExIjoiSSBhbSBhZGRpdGlvbmFsIGRhdGEgdG8gaW5jbHVkZSIsImRhdGEyIjpmYWxzZX0sInJlZGlyZWN0X3VybCI6Imh0dHBzOi8vand0LmlvIiwic3ViIjoiMndKOTZDR05hdEVUVFpkZjMyZFlrRXJiaTNuIiwidGVuYW50X25hbWUiOiJNeSBXb3Jrc3BhY2UiLCJ0eXBlIjoiaW52aXRlIn0.edUr0dVGw473LOTc9DFs-K0SKeRCUO1ev7czK8_hs8PiAFLwaXrpAhnpmi0t9VPjP2Zooi8a6lCw_oUGFbqjuA';
 const APP_ID = '2uocaf41S7tOXb14wrhGTFiSErt';
@@ -116,16 +154,20 @@ test.describe('invitation join flow', () => {
 
   test('REQ-13 invitation join displays its localized domain policy message', async ({ page }) => {
     const message = 'Votre adresse ne peut pas rejoindre ce domaine.';
-    await page.route('**/user/tenant/join', (route) => route.fulfill({
-      status: 403,
-      json: { error: {
-        id: 'error.invite.email.domain_not_allowed',
-        message,
+    await page.route('**/user/tenant/join', (route) =>
+      route.fulfill({
         status: 403,
-        location: '/user/tenant/join',
-        time: '2026-11-03T18:00:00Z',
-      } },
-    }));
+        json: {
+          error: {
+            id: 'error.invite.email.domain_not_allowed',
+            message,
+            status: 403,
+            location: '/user/tenant/join',
+            time: '2026-11-03T18:00:00Z',
+          },
+        },
+      }),
+    );
     await page.goto(`http://localhost:5173/web/invitation?appId=${APP_ID}&invite_token=${VALID_INVITE_TOKEN}`);
     await page.getByRole('button', { name: 'Accept invitation' }).click();
     await expect(page.getByRole('alert')).toHaveText(message);
