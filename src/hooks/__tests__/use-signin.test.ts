@@ -1,4 +1,4 @@
-import type { PassflowPasswordlessResponse, PassflowSignInPayload } from '@passflow/core';
+import { PassflowError, type PassflowPasswordlessResponse, type PassflowSignInPayload } from '@passflow/core';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { authErrorFor } from '@/utils';
@@ -16,10 +16,12 @@ describe('useSignIn', () => {
     signIn: vi.fn(),
     passkeyAuthenticate: vi.fn(),
     passwordlessSignIn: vi.fn(),
+    isTwoFactorVerificationRequired: vi.fn(),
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPassflow.isTwoFactorVerificationRequired.mockReturnValue(false);
     (usePassflow as any).mockReturnValue(mockPassflow);
   });
 
@@ -43,7 +45,7 @@ describe('useSignIn', () => {
         signInResult = await result.current.fetch(payload, 'password');
       });
 
-      expect(signInResult).toBe(true);
+      expect(signInResult).toBe('signed-in');
       expect(mockPassflow.signIn).toHaveBeenCalledWith(payload);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.isError).toBe(false);
@@ -127,7 +129,7 @@ describe('useSignIn', () => {
         authResult = await result.current.fetch(payload, 'passkey');
       });
 
-      expect(authResult).toBe(true);
+      expect(authResult).toBe('signed-in');
       expect(mockPassflow.passkeyAuthenticate).toHaveBeenCalledWith(payload);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.isError).toBe(false);
@@ -280,6 +282,88 @@ describe('useSignIn', () => {
       expect(outcome).toBe(false);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toEqual(cancelledError);
+    });
+  });
+
+  describe('sign-in outcome', () => {
+    const passwordPayload: PassflowSignInPayload = { email: 'test@example.com', password: 'password123' };
+    const passkeyPayload = { email: 'test@example.com' } as any;
+
+    for (const [type, payload, call] of [
+      ['password', passwordPayload, 'signIn'],
+      ['passkey', passkeyPayload, 'passkeyAuthenticate'],
+    ] as const) {
+      it(`resolves 'two-factor-required' when a ${type} sign-in still owes a second factor`, async () => {
+        mockPassflow[call].mockResolvedValue(undefined);
+        mockPassflow.isTwoFactorVerificationRequired.mockReturnValue(true);
+        const { result } = renderHook(() => useSignIn());
+
+        let outcome: unknown;
+        await act(async () => {
+          outcome = await result.current.fetch(payload, type);
+        });
+
+        expect(outcome).toBe('two-factor-required');
+        expect(result.current.isError).toBe(false);
+      });
+
+      it(`resolves 'signed-in' when a ${type} sign-in owes nothing more`, async () => {
+        mockPassflow[call].mockResolvedValue(undefined);
+        mockPassflow.isTwoFactorVerificationRequired.mockReturnValue(false);
+        const { result } = renderHook(() => useSignIn());
+
+        let outcome: unknown;
+        await act(async () => {
+          outcome = await result.current.fetch(payload, type);
+        });
+
+        expect(outcome).toBe('signed-in');
+      });
+    }
+  });
+
+  describe('forced password change', () => {
+    const serverMessage = 'You must change your password before you can sign in. Reset your password to continue.';
+    const passwordChangeRequired = () =>
+      new PassflowError({
+        id: 'error.api.password.change.required',
+        message: serverMessage,
+        status: 403,
+        location: '',
+        time: '',
+      });
+    const payload: PassflowSignInPayload = { email: 'test@example.com', password: 'password123' };
+
+    it('calls onPasswordChangeRequired and resolves false without a form error', async () => {
+      mockPassflow.signIn.mockRejectedValue(passwordChangeRequired());
+      const onPasswordChangeRequired = vi.fn();
+      const { result } = renderHook(() => useSignIn({ onPasswordChangeRequired }));
+
+      let outcome: unknown = true;
+      await act(async () => {
+        outcome = await result.current.fetch(payload, 'password');
+      });
+
+      expect(onPasswordChangeRequired).toHaveBeenCalledTimes(1);
+      expect(onPasswordChangeRequired).toHaveBeenCalledWith(expect.any(String));
+      expect(outcome).toBe(false);
+      expect(result.current.isError).toBe(false);
+      expect(result.current.error).toBeNull();
+    });
+
+    it("shows the server's message, not generic copy, when no handler is given", async () => {
+      mockPassflow.signIn.mockRejectedValue(passwordChangeRequired());
+      const { result } = renderHook(() => useSignIn());
+
+      let outcome: unknown = true;
+      await act(async () => {
+        outcome = await result.current.fetch(payload, 'password');
+      });
+
+      expect(outcome).toBe(false);
+      expect(result.current.isError).toBe(true);
+      expect(result.current.error?.message).toBe(serverMessage);
+      expect(result.current.error).not.toEqual(authErrorFor('sign-in', 'password'));
     });
   });
 });

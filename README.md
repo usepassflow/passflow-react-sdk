@@ -764,6 +764,20 @@ if (outcome === 'two-factor-required') navigate('/2fa');
 else if (outcome === 'signed-in') navigate('/');
 ```
 
+**Options:**
+
+| Option | Type | Description |
+|--------|------|-------------|
+| onPasswordChangeRequired | `(notice: string) => void` (optional) | Called when the server refuses the sign-in until the user changes their password. `fetch` resolves `false` and `error` stays empty; send the user to your password reset. `notice` is the server's message for the user. Without this option, that message becomes the form `error`. |
+
+```typescript
+const { fetch } = useSignIn({
+  onPasswordChangeRequired: () => navigate('/forgot-password?default_method=email_or_username&reason=password_change_required'),
+});
+```
+
+The bundled `SignIn` form does this for you: it opens `ForgotPassword` with the identifier filled in and a fixed notice. `ForgotPassword` shows that notice only for `reason=password_change_required` and never displays text from the URL.
+
 **Returns:**
 
 | Property | Type | Description |
@@ -780,7 +794,7 @@ else if (outcome === 'signed-in') navigate('/');
 | `'signed-in'` | A password or passkey sign-in finished; the session is ready. |
 | `'two-factor-required'` | The credentials were accepted but a second factor is still owed. There is no session yet; send the user to your 2FA screen. |
 | `PassflowPasswordlessResponse` | The server's answer to a passwordless request. |
-| `false` | The request failed (see `error`), was superseded, or entered the emailed-code step. |
+| `false` | The request failed (see `error`), was superseded, entered the emailed-code step, or was handed to `onPasswordChangeRequired`. |
 
 Both outcome strings are truthy, so `if (await fetch(...))` also passes for `'two-factor-required'`, when there is no session yet. Check for `'two-factor-required'` before treating the user as signed in. Code that compared the result with `=== true` must check the outcome instead.
 

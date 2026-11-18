@@ -6,7 +6,14 @@ import type {
 } from '@passflow/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AuthOperation, AuthUiError } from '@/types';
-import { authErrorFor, authErrorFrom } from '@/utils';
+import {
+  authErrorFor,
+  authErrorFrom,
+  passwordChangeRequiredErrorId,
+  passwordChangeRequiredMessage,
+  serverErrorIdFrom,
+  serverMessageFor,
+} from '@/utils';
 import { type UseEmailCodeStep, useEmailCodeStep } from './use-email-code-step';
 import { usePassflow } from './use-passflow';
 
@@ -16,7 +23,16 @@ import { usePassflow } from './use-passflow';
  */
 export type SignInOutcome = 'signed-in' | 'two-factor-required';
 
-export type UseSignInProps = () => {
+export type UseSignInOptions = {
+  /**
+   * Called when the server refuses the sign-in until the password is changed. `fetch` then resolves `false` and sets
+   * no form error; send the user to the password reset. `notice` is the server's message for the user. Without this
+   * option, the same message shows as the form error.
+   */
+  onPasswordChangeRequired?: (notice: string) => void;
+};
+
+export type UseSignInProps = (options?: UseSignInOptions) => {
   /**
    * Resolves a {@link SignInOutcome} for a password or passkey sign-in, the server's answer for a passwordless one,
    * and `false` when the request failed, was superseded, or entered the emailed-code step.
@@ -40,8 +56,10 @@ export type UseSignInProps = () => {
   emailCode: UseEmailCodeStep;
 };
 
-export const useSignIn: UseSignInProps = () => {
+export const useSignIn: UseSignInProps = ({ onPasswordChangeRequired } = {}) => {
   const passflow = usePassflow();
+  const onPasswordChangeRequiredRef = useRef(onPasswordChangeRequired);
+  onPasswordChangeRequiredRef.current = onPasswordChangeRequired;
   // The password request is kept only to repeat it for "Resend code"; never rendered, logged or stored.
   const lastPasswordPayloadRef = useRef<PassflowSignInPayload | null>(null);
   const resendPasswordRequest = useCallback(async () => {
@@ -99,6 +117,11 @@ export const useSignIn: UseSignInProps = () => {
         return passflow.isTwoFactorVerificationRequired() ? 'two-factor-required' : 'signed-in';
       } catch (error) {
         if (!isCurrent()) return false;
+        const handlePasswordChange = onPasswordChangeRequiredRef.current;
+        if (handlePasswordChange && serverErrorIdFrom(error) === passwordChangeRequiredErrorId) {
+          handlePasswordChange(serverMessageFor(error) ?? passwordChangeRequiredMessage);
+          return false;
+        }
         console.error(`[passflow] ${type} sign-in failed`, error);
         setIsError(true);
         setError(authErrorFrom(error, 'sign-in', type));
