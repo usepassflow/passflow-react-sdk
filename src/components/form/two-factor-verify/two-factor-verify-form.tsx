@@ -18,6 +18,8 @@ type TwoFactorVerifyFormProps = {
   shouldAutoFocus?: boolean;
   /** Label of the "trust this device" option, unticked by default. */
   trustDeviceLabel?: string;
+  /** The server's `device_trust_available` for this sign-in. Only `false` hides the option; absent shows it. */
+  deviceTrustAvailable?: boolean;
 };
 
 /** Only a ticked box asks for trust; an unticked one sends no option at all. */
@@ -33,6 +35,7 @@ export const TwoFactorVerifyForm: FC<TwoFactorVerifyFormProps> = ({
   numInputs,
   shouldAutoFocus = true,
   trustDeviceLabel = 'Trust this device',
+  deviceTrustAvailable,
 }) => {
   const [code, setCode] = useState('');
   const [trustDevice, setTrustDevice] = useState(false);
@@ -75,7 +78,10 @@ export const TwoFactorVerifyForm: FC<TwoFactorVerifyFormProps> = ({
         factor: { type: 'totp', digits: totpDigits },
         label: 'Verification code',
         code,
-        trustDevice: { label: trustDeviceLabel, checked: trustDevice, onChange: setTrustDevice },
+        trustDevice:
+          deviceTrustAvailable === false
+            ? undefined
+            : { label: trustDeviceLabel, checked: trustDevice, onChange: setTrustDevice },
         busy: isLoading,
         canSubmit: code.length === totpDigits,
         locked,

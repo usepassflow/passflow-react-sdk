@@ -67,11 +67,13 @@ export const TwoFactorVerifyFlow: FC<TwoFactorVerifyFlowProps> = ({ successAuthR
   if (screenProps) return <LoginScreen {...screenProps} />;
 
   const { screen } = enrollment;
+  const deviceTrustAvailable = screen.kind === 'verify' ? screen.deviceTrustAvailable : undefined;
 
   return mode === 'verify' ? (
     <TwoFactorVerifyForm
       subtitle={screen.kind === 'verify' ? screen.notice : undefined}
       numInputs={screen.kind === 'verify' ? screen.digits : undefined}
+      deviceTrustAvailable={deviceTrustAvailable}
       onSuccess={enrollment.complete}
       onUseRecovery={() => setMode('recovery')}
       onEnded={enrollment.end}
@@ -79,6 +81,7 @@ export const TwoFactorVerifyFlow: FC<TwoFactorVerifyFlowProps> = ({ successAuthR
     />
   ) : (
     <TwoFactorRecoveryForm
+      deviceTrustAvailable={deviceTrustAvailable}
       onSuccess={enrollment.complete}
       onBack={() => setMode('verify')}
       onEnded={enrollment.end}

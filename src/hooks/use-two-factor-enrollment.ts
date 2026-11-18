@@ -1,4 +1,4 @@
-import type { TwoFactorEnrollment, TwoFactorSetupResponse } from '@passflow/core';
+import type { TwoFactorEnrollmentResponse, TwoFactorSetupResponse } from '@passflow/core';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { PassflowContext } from '@/context';
 import {
@@ -20,7 +20,7 @@ export const TWO_FACTOR_LINK_MAX_SENDS = 3;
 
 export type TwoFactorEnrollmentScreen =
   | { kind: 'loading' }
-  | { kind: 'verify'; notice?: string; digits?: number }
+  | { kind: 'verify'; notice?: string; digits?: number; deviceTrustAvailable?: boolean }
   | { kind: 'email_link'; sent: boolean; sends: number; busy: boolean; error?: string }
   | {
       kind: 'direct';
@@ -57,10 +57,14 @@ export type UseTwoFactorEnrollmentReturn = {
   complete: () => void;
 };
 
-const screenFor = (enrollment: TwoFactorEnrollment): TwoFactorEnrollmentScreen => {
+const screenFor = ({
+  enrollment,
+  totp_digits: digits,
+  device_trust_available: deviceTrustAvailable,
+}: TwoFactorEnrollmentResponse): TwoFactorEnrollmentScreen => {
   switch (enrollment) {
     case 'verify':
-      return { kind: 'verify' };
+      return { kind: 'verify', digits, deviceTrustAvailable };
     case 'email_link':
       return { kind: 'email_link', sent: false, sends: 0, busy: false };
     case 'direct':
@@ -87,6 +91,8 @@ export const useTwoFactorEnrollment = ({ onFinished }: UseTwoFactorEnrollmentPro
   // The code that confirmed. Verify cannot run before the codes show: the OIDC interceptor follows `redirect_url`
   // on `/auth/2fa/*` immediately, and the codes would vanish.
   const heldCode = useRef<string | null>(null);
+  // The state read's `device_trust_available`, for the code screen that follows an enrolment here.
+  const deviceTrustAvailable = useRef<boolean | undefined>(undefined);
 
   const updateDirect = (patch: Partial<Extract<TwoFactorEnrollmentScreen, { kind: 'direct' }>>) =>
     setScreen((current) => (current.kind === 'direct' ? { ...current, ...patch } : current));
@@ -118,7 +124,9 @@ export const useTwoFactorEnrollment = ({ onFinished }: UseTwoFactorEnrollmentPro
   const read = async () => {
     setScreen({ kind: 'loading' });
     try {
-      setScreen(screenFor(await passflow.getTwoFactorEnrollment()));
+      const response = await passflow.getTwoFactorEnrollment();
+      deviceTrustAvailable.current = response.device_trust_available;
+      setScreen(screenFor(response));
     } catch (error) {
       if (serverErrorStatusFrom(error) === 401) endSignIn();
       else handleFailure(error, () => setScreen({ kind: 'read_failed' }));
@@ -200,7 +208,12 @@ export const useTwoFactorEnrollment = ({ onFinished }: UseTwoFactorEnrollmentPro
     } catch (error) {
       // The held code goes stale after about 30-60 seconds on the codes: a common case, so it gets its own screen.
       if (enrollmentFailureFrom(error) === 'wrong_code') {
-        setScreen({ kind: 'verify', notice: twoFactorSetupSavedNewCodeMessage, digits });
+        setScreen({
+          kind: 'verify',
+          notice: twoFactorSetupSavedNewCodeMessage,
+          digits,
+          deviceTrustAvailable: deviceTrustAvailable.current,
+        });
       } else {
         handleFailure(error, (message) => updateDirect({ busy: false, error: message }));
       }

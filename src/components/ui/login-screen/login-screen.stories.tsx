@@ -1341,6 +1341,11 @@ export const TwoFactorCodeTotpEightDigits: Story = {
   }),
 };
 
+/** The server says this sign-in may not ask to trust the device, so the switch is gone. */
+export const TwoFactorCodeTotpNoTrustDevice: Story = {
+  args: story(totpCode({ trustDevice: undefined }), totpChrome),
+};
+
 /** A whole code, with the device trusted. */
 export const TwoFactorCodeTotpReady: Story = {
   args: story(
