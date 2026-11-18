@@ -65,6 +65,21 @@ test.describe('default signup flow', () => {
     await expect(page.getByRole('button', { name: 'Sign Up with a Passkey' })).toBeVisible();
   });
 
+  test('checks the email once the user leaves the field, not while typing', async ({ page }) => {
+    const email = page.locator('input#email_or_username');
+    await email.pressSequentially('jack');
+    await expect(email).toHaveValue('jack');
+    await expect(page.getByText('Invalid email', { exact: true })).toHaveCount(0);
+    await expect(email).not.toHaveAttribute('aria-invalid', 'true');
+
+    await email.blur();
+    await expect(page.getByText('Invalid email', { exact: true })).toBeVisible();
+    await expect(email).toHaveAttribute('aria-invalid', 'true');
+
+    await email.pressSequentially('@example.com');
+    await expect(page.getByText('Invalid email', { exact: true })).toHaveCount(0);
+  });
+
   test('has all element of default signup settings with phone + password', async ({ page }) => {
     await expect(page.getByRole('button', { name: 'Use phone' })).toBeVisible();
     await page.getByRole('button', { name: 'Use phone' }).click();

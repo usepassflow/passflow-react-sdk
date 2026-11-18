@@ -346,7 +346,20 @@ export const ValidationError: Story = {
     const email = canvas.getByLabelText('Email');
     await userEvent.type(email, 'a');
     await userEvent.clear(email);
+    await userEvent.tab();
     await expect(canvas.getByText('Email is required')).toBeVisible();
+  },
+};
+
+/** A half-typed address while the field still has focus: no error until the user leaves it. */
+export const EmailBeingTyped: Story = {
+  args: story(credentials(methods({ emailPassword: true }))),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const email = canvas.getByLabelText('Email');
+    await userEvent.type(email, 'jack');
+    await expect(email).toHaveFocus();
+    await expect(canvas.queryByText('Invalid email')).toBeNull();
   },
 };
 

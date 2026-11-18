@@ -47,7 +47,7 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
     reset,
     trigger,
     watch,
-    formState: { errors, isDirty, isValid },
+    formState: { errors, isDirty, isValid, isSubmitted, touchedFields },
     handleSubmit,
   } = useForm<LoginFormValues>({
     defaultValues: initialValues,
@@ -81,6 +81,9 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
   const hasIdentityError = errorScope === 'identity' || errorScope === 'credentials';
   const hasPasswordError = errorScope === 'password' || errorScope === 'credentials';
   const isNewPassword = state.credentialPurpose === 'sign-up';
+  // The identity is checked on every keystroke so the submit button can enable, but a half-typed address is not an
+  // error yet: its message waits until the user leaves the field or submits.
+  const identityError = touchedFields.email_or_username || isSubmitted ? errors.email_or_username : undefined;
 
   const validatePassword = (value: string) => {
     if (!isNewPassword) return true;
@@ -173,7 +176,7 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
                     <label
                       htmlFor='email_or_username'
                       className={cn('passflow-field-label', {
-                        'passflow-field-label--error': hasIdentityError || Boolean(errors.email_or_username),
+                        'passflow-field-label--error': hasIdentityError || Boolean(identityError),
                       })}
                     >
                       {currentIdentity?.label}
@@ -206,16 +209,14 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
                         id='email_or_username'
                         type={currentIdentity?.format === 'email' ? 'email' : 'text'}
                         autoComplete={currentIdentity?.format === 'email' ? 'email' : 'username'}
-                        aria-invalid={Boolean(errors.email_or_username)}
-                        aria-describedby={errors.email_or_username ? 'email_or_username-error' : undefined}
-                        isError={hasIdentityError || Boolean(errors.email_or_username)}
+                        aria-invalid={Boolean(identityError)}
+                        aria-describedby={identityError ? 'email_or_username-error' : undefined}
+                        isError={hasIdentityError || Boolean(identityError)}
                         disabled={controlsDisabled}
                       />
                     )}
                   />
-                  {errors.email_or_username?.message ? (
-                    <LoginAlert id='email_or_username-error' message={errors.email_or_username.message} />
-                  ) : null}
+                  {identityError?.message ? <LoginAlert id='email_or_username-error' message={identityError.message} /> : null}
                 </div>
               ) : null}
 
