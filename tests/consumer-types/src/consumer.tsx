@@ -5,6 +5,7 @@
 import {
   FieldOtp,
   type FieldOtpProps,
+  type LogOutOptions,
   PassflowFlow,
   type PassflowFlowLocation,
   type PassflowFlowNavigate,
@@ -16,6 +17,7 @@ import {
   TwoFactorSetupMagicLinkFlow,
   TwoFactorVerifyFlow,
   useAuth,
+  useLogout,
   usePassflowStore,
   type PassflowUser,
   useUser,
@@ -42,6 +44,8 @@ export type Canaries = [
   ExpectFalse<IsAny<PassflowProps>>,
   ExpectFalse<IsAny<PassflowFlowLocation>>,
   ExpectFalse<IsAny<PassflowFlowNavigate>>,
+  ExpectFalse<IsAny<LogOutOptions>>,
+  ExpectFalse<IsAny<typeof useLogout>>,
 ];
 
 const flowProps: PassflowProps = { pathPrefix: '/web', routerType: 'memory' };
@@ -89,6 +93,19 @@ export function App(): ReactElement {
 export function useSignOut(): () => Promise<void> {
   const { logout } = useAuth();
   return logout;
+}
+
+// Both sign-out calls take where the hosted login sends the browser after a hosted sign-in.
+export function useSignOutTo(): () => Promise<void> {
+  const { logout } = useAuth();
+  const { fetch } = useLogout();
+  const options: LogOutOptions = { postLogoutRedirectUri: 'https://app.example.com/signed-out' };
+  // @ts-expect-error postLogoutRedirectUri is a string
+  void logout({ postLogoutRedirectUri: 1 });
+  return async () => {
+    await logout(options);
+    await fetch(options);
+  };
 }
 
 export function useAccessToken(): string | undefined {

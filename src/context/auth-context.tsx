@@ -1,4 +1,5 @@
 import {
+  type LogOutOptions,
   type ParsedTokens,
   PassflowEvent,
   type PassflowSubscriber,
@@ -14,7 +15,11 @@ export type AuthContextValue = {
   isAuthenticated: () => boolean;
   /** Whether a user is signed in. Updates on sign-in, sign-up, sign-out and session expiry, so a component can render on it. */
   isSignedIn: boolean;
-  logout: () => Promise<void>;
+  /**
+   * Signs the user out. After a hosted sign-in core then leaves the page for the hosted login's sign-out, which ends
+   * at `postLogoutRedirectUri`, so code after `await logout()` may not run.
+   */
+  logout: (options?: LogOutOptions) => Promise<void>;
   isLoading: boolean;
   isSessionExpired: boolean;
   getTokens: (doRefresh: boolean) => Promise<{ tokens: Tokens | undefined; parsedTokens: ParsedTokens | undefined }>;
@@ -92,13 +97,16 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children, onSessionExpired
     [passflow],
   );
 
-  const logout = useCallback(async () => {
-    try {
-      await passflow.logOut();
-    } finally {
-      setIsSignedIn(passflow.isAuthenticated());
-    }
-  }, [passflow]);
+  const logout = useCallback(
+    async (options?: LogOutOptions) => {
+      try {
+        await passflow.logOut(options);
+      } finally {
+        setIsSignedIn(passflow.isAuthenticated());
+      }
+    },
+    [passflow],
+  );
 
   const value = {
     isAuthenticated,

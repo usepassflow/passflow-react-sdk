@@ -735,7 +735,7 @@ const { isSignedIn, isAuthenticated, getTokens, logout, isLoading } = useAuth();
 | isAuthenticated | `() => boolean` | Checks the session at the moment you call it |
 | isSessionExpired | `boolean` | `true` after the session has ended on its own, until the next sign-in |
 | getTokens | `(doRefresh: boolean) => Promise<{ tokens: Tokens \| undefined; parsedTokens: ParsedTokens \| undefined; }>` | Function to get authentication tokens |
-| logout | `() => Promise<void>` | Function to log out user; resolves once the sign-out finishes |
+| logout | `(options?: LogOutOptions) => Promise<void>` | Signs the user out; resolves once the sign-out finishes. See [Signing out after a hosted sign-in](#signing-out-after-a-hosted-sign-in) |
 | isLoading | `boolean` | Loading state indicator |
 
 Render on `isSignedIn`:
@@ -747,6 +747,19 @@ const AccountMenu = () => {
   return <button onClick={() => void logout()}>Sign out</button>;
 };
 ```
+
+#### Signing out after a hosted sign-in
+
+When the user signed in through the hosted login (`authRedirect()`), `logout()` also ends the hosted login's own session: once the app is signed out, the browser leaves the page for the hosted login's sign-out and comes back to `postLogoutRedirectUri`. Code after `await logout()` may then not run, so don't put anything you need after it. A sign-in made in the app itself (`PassflowFlow`) never leaves the page.
+
+```tsx
+const { logout } = useAuth();
+
+// Must match one of the app's registered redirect URLs. Default: the address the hosted sign-in landed on.
+await logout({ postLogoutRedirectUri: 'https://app.example.com/signed-out' });
+```
+
+`useLogout().fetch` takes the same options. `LogOutOptions` is exported from `@passflow/react`.
 
 ### useUser
 Hook for the signed-in user's id, email and phone, read from the tokens. It re-renders on sign-in, sign-up, token refresh, sign-out and session expiry.
@@ -1013,7 +1026,7 @@ const { fetch, isLoading, isError, error } = useLogout();
 
 | Property | Type | Description |
 |----------|------|-------------|
-| fetch | `() => Promise<boolean>` | Logout function |
+| fetch | `(options?: LogOutOptions) => Promise<boolean>` | Signs the user out, with the same `postLogoutRedirectUri` option as `useAuth().logout`. After a hosted sign-in the page may leave before it resolves |
 | isLoading | `boolean` | Loading state |
 | isError | `boolean` | Error state |
 | error | `string` | Error message |
