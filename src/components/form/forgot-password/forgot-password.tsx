@@ -68,8 +68,7 @@ export const ForgotPassword: FC<TForgotPassword> = ({
   const params = {
     defaultMethod: get('default_method'),
   };
-  // Read undecoded: HTML-entity decoding turns a following `&not…` or `&reg…` key into text glued onto this value.
-  const showPasswordChangeNotice = new URLSearchParams(searchSource.read()).get('reason') === passwordChangeRequiredReason;
+  const showPasswordChangeNotice = get('reason') === passwordChangeRequiredReason;
 
   try {
     searchParamsForgotPasswordSchema.validateSync(params, { abortEarly: false });

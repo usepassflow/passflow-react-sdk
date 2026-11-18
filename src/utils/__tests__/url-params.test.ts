@@ -31,6 +31,27 @@ describe('useUrlParams inside PassflowFlow', () => {
     expect(writes.at(-1)).toEqual({ search: '?c=3', replace: false });
     expect(window.location.pathname + window.location.search).toBe('/elsewhere');
   });
+
+  it('reads an `&amp;`-escaped separator as `&`', () => {
+    const { wrapper } = sourceFor('?email=a%40b.c&amp;token=t');
+    const params = renderHook(() => useUrlParams(), { wrapper }).result.current;
+    expect(params.get('email')).toBe('a@b.c');
+    expect(params.get('token')).toBe('t');
+  });
+
+  it('keeps keys that start like an HTML entity name', () => {
+    const { wrapper } = sourceFor('?a=1&notice=x&reg=y');
+    const params = renderHook(() => useUrlParams(), { wrapper }).result.current;
+    expect(params.get('a')).toBe('1');
+    expect(params.get('notice')).toBe('x');
+    expect(params.get('reg')).toBe('y');
+  });
+
+  it('writes defaults back without merging entity-like keys', () => {
+    const { wrapper, writes } = sourceFor('?a=1&notice=x');
+    renderHook(() => useUrlParams({ b: '2' }), { wrapper });
+    expect(writes[0]).toEqual({ search: '?a=1&notice=x&b=2', replace: true });
+  });
 });
 
 describe('useUrlParams', () => {
@@ -55,17 +76,6 @@ describe('useUrlParams', () => {
       writable: true,
       configurable: true,
     });
-
-    // Mock DOMParser
-    global.DOMParser = class DOMParser {
-      parseFromString(input: string) {
-        return {
-          documentElement: {
-            textContent: input,
-          },
-        };
-      }
-    } as any;
   });
 
   afterEach(() => {
@@ -248,25 +258,14 @@ describe('useUrlParams', () => {
     });
   });
 
-  describe('HTML entity decoding', () => {
-    it('should decode HTML entities in URL search', () => {
-      window.location.search = '?message=Hello%20World';
-
-      // Mock DOMParser to return decoded text
-      global.DOMParser = class DOMParser {
-        parseFromString(input: string) {
-          return {
-            documentElement: {
-              textContent: decodeURIComponent(input),
-            },
-          };
-        }
-      } as any;
+  describe('escaped ampersands', () => {
+    it('reads `&amp;` as a separator', () => {
+      window.location.search = '?email=a%40b.c&amp;token=t';
 
       const params = callUrlParams();
-      const result = params.get('message');
 
-      expect(result).toBe('Hello World');
+      expect(params.get('email')).toBe('a@b.c');
+      expect(params.get('token')).toBe('t');
     });
   });
 });
