@@ -95,9 +95,12 @@ export const DEFAULT_FACTOR_LABELS: Record<UpgradeFactorType, { label: string; h
 
 const CHALLENGE_REASON = 'This action needs extra verification';
 
-/** A six-digit numeric one-time code — TOTP and the two OTP transports. */
+/**
+ * A numeric one-time code of up to eight digits — TOTP (six or eight) and the two
+ * OTP transports. A shorter code simply types shorter.
+ */
 const OTP_CODE_CONTRACT: UpgradeFactorCodeContract = Object.freeze({
-  maxLength: 6,
+  maxLength: 8,
   inputMode: 'numeric',
   autoComplete: 'one-time-code',
   autoCapitalize: 'off',

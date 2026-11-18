@@ -1,6 +1,6 @@
 import { type FC, useEffect, useRef, useState } from 'react';
 import { LoginScreen } from '@/components/ui';
-import { useTwoFactorVerify } from '@/hooks';
+import { usePassflow, useTwoFactorVerify } from '@/hooks';
 import { getUserFriendlyErrorMessage, isTerminalTwoFactorError, twoFactorBackToSignInLabel } from '@/utils';
 
 import '@/styles/index.css';
@@ -36,11 +36,12 @@ export const TwoFactorVerifyForm: FC<TwoFactorVerifyFormProps> = ({
 }) => {
   const [code, setCode] = useState('');
   const [trustDevice, setTrustDevice] = useState(false);
+  const passflow = usePassflow();
   const { verify, isLoading, isError, errorDetails, reset } = useTwoFactorVerify();
   const errorType = errorDetails?.type;
 
-  // Get TOTP digits (defaults to 6 if not provided)
-  const totpDigits = numInputs ?? 6;
+  // An explicit numInputs wins; otherwise core's digit count for the pending sign-in.
+  const totpDigits = numInputs ?? passflow.getTotpDigits();
 
   // Compute subtitle dynamically based on totpDigits
   const computedSubtitle = subtitle ?? `Enter the ${totpDigits}-digit code from your authenticator app`;

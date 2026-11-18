@@ -2,6 +2,7 @@ import type { TwoFactorMethod } from '@passflow/core';
 import type { FC } from 'react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { FieldOtp } from '@/components/ui';
+import { usePassflow } from '@/hooks/use-passflow';
 import { useTwoFactorChallenge } from '@/hooks/use-two-factor-challenge';
 import { MethodSelector } from './method-selector';
 
@@ -18,6 +19,7 @@ export const TwoFactorChallenge: FC<TwoFactorChallengeProps> = ({
   onError,
   trustDevice = false,
 }) => {
+  const passflow = usePassflow();
   const { challenge, isLoading, error, requestChallenge, verify, switchMethod, selectedMethod } = useTwoFactorChallenge();
 
   const [otpValue, setOtpValue] = useState('');
@@ -58,12 +60,19 @@ export const TwoFactorChallenge: FC<TwoFactorChallengeProps> = ({
     await switchMethod(method);
   };
 
+  // Email and SMS codes carry no length in the challenge, so they stay at six.
+  const codeLength = (selectedMethod || challenge?.method) === 'totp' ? passflow.getTotpDigits() : 6;
+
+  // A form that is gone must not submit a code typed just before it left.
+  const autoSubmitTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(autoSubmitTimer.current), []);
+
   const handleOtpChange = (value: string) => {
     setOtpValue(value);
 
-    // Auto-submit when OTP is complete (6 digits)
-    if (value.length === 6) {
-      setTimeout(() => {
+    // Auto-submit when the code is complete
+    if (value.length === codeLength) {
+      autoSubmitTimer.current = setTimeout(() => {
         verify(value, trustDevice).then((result) => {
           if (result) {
             onSuccess?.();
@@ -94,7 +103,7 @@ export const TwoFactorChallenge: FC<TwoFactorChallengeProps> = ({
             <FieldOtp
               id={otpId}
               name='code'
-              length={6}
+              length={codeLength}
               value={otpValue}
               onChange={handleOtpChange}
               state={isLoading ? 'disabled' : error ? 'error' : 'default'}
@@ -116,7 +125,7 @@ export const TwoFactorChallenge: FC<TwoFactorChallengeProps> = ({
             <button
               type='button'
               onClick={handleVerify}
-              disabled={isLoading || otpValue.length !== 6}
+              disabled={isLoading || otpValue.length !== codeLength}
               className='pf-button pf-button-primary'
             >
               {isLoading ? 'Verifying...' : 'Verify'}
