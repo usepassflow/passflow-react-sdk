@@ -6,6 +6,7 @@ import { getTwoFactorEnrollmentScreenProps } from '@/components/flow/two-factor-
 import {
   getTwoFactorRecoveryCodesScreen,
   getTwoFactorSetupCodeScreen,
+  getTwoFactorSetupEnrolledScreen,
   getTwoFactorSetupStartScreen,
 } from '@/components/form/two-factor-setup/setup-screen';
 import type { TwoFactorEnrollmentScreen } from '@/hooks/use-two-factor-enrollment';
@@ -1546,6 +1547,16 @@ export const TwoFactorSetupStartError: Story = {
 /** `TwoFactorSetupForm` given `onCancel`: Cancel, not a way back to sign in. */
 export const TwoFactorSetupStartCancel: Story = {
   args: setupStart({ secondaryAction: { label: 'Cancel', onClick: handlers.onBackToSignIn } }),
+};
+
+/** `TwoFactorSetupForm` for a signed-in user who already has two-factor authentication on: no Get Started. */
+export const TwoFactorSetupEnrolled: Story = {
+  args: getTwoFactorSetupEnrolledScreen(),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Two-factor authentication is on for your account.')).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Get Started' })).toBeNull();
+  },
 };
 
 /** QR, the secret behind a toggle, and a code to confirm. A whole code does not submit by itself. */

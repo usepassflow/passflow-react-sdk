@@ -16,6 +16,7 @@ This is a SDK for react application.
   - [Integration](#integration)
     - [Passflow Cloud](#passflow-cloud)
     - [PassflowFlow](#passflowflow)
+    - [Two-factor setup for a signed-in user](#two-factor-setup-for-a-signed-in-user)
     - [React Router](#react-router)
     - [Wouter](#wouter)
     - [TanStack Router](#tanstack-router)
@@ -301,6 +302,21 @@ function AuthPage() {
 ```
 
 `TwoFactorSetupMagicLinkFlow` can also be mounted on its own page. It reads the token from the URL (the segment after `/two-factor-setup-magic-link/`), or takes it as a `token` prop.
+
+### Two-factor setup for a signed-in user
+
+When the app's two-factor policy is **Optional**, sign-in does not ask the user to set up an authenticator. Let a signed-in user turn it on from your own page with one component:
+
+```tsx
+import '@passflow/react/dist/style.css';
+import { TwoFactorSetupForm, useAuth } from '@passflow/react';
+
+const Security = () => (useAuth().isSignedIn ? <TwoFactorSetupForm /> : null);
+```
+
+In the admin panel, on the app's two-factor settings, set the policy to **Optional** and turn **TOTP** on.
+
+The form reads the user's two-factor status when it mounts. A user who has it on sees that it is on. Anyone else gets **Get Started**, then the QR code (with the key to type in by hand), then a field for the code from the authenticator app, then the recovery codes to save, and then the same "it is on" state. When the confirm answer carries no recovery codes, the codes screen is skipped.
 
 The sections below wire the app's router into the **standalone form components** (`SignIn`, `SignUp`, …) through `PassflowProvider`'s `navigate` and `router` props. `PassflowFlow` does not need them.
 

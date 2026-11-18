@@ -52,6 +52,18 @@ export const getTwoFactorSetupStartScreen = ({
   },
 });
 
+/** A user with two-factor authentication on: shown instead of the start step. */
+export const getTwoFactorSetupEnrolledScreen = (): LoginScreenProps => ({
+  chrome: { title: 'Two-Factor Authentication' },
+  state: {
+    kind: 'status',
+    tone: 'success',
+    message: 'Two-factor authentication is on for your account.',
+    detail: 'You will be asked for a code from your authenticator app when you sign in.',
+    testId: 'two-factor-setup-enrolled',
+  },
+});
+
 export const getTwoFactorSetupCodeScreen = ({
   data,
   fallbackDigits = DEFAULT_DIGITS,

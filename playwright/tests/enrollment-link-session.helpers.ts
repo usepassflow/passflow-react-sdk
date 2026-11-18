@@ -46,6 +46,7 @@ export async function linkBoundary(page: Page, options: {
   validation?: Reply;
   cookieStatus?: 200 | 401;
   holdValidation?: Promise<void>;
+  confirm?: Reply;
 } = {}) {
   const requests: LinkRequest[] = [];
   page.on('request', (request) => {
@@ -76,7 +77,7 @@ export async function linkBoundary(page: Page, options: {
     } else if (path === linkBeginPath && request.method() === 'POST') {
       await respond(route, ok(setupData()));
     } else if (path === linkConfirmPath && request.method() === 'POST') {
-      await respond(route, ok(confirmData));
+      await respond(route, options.confirm ?? ok(confirmData));
     } else if (path === statusPath && request.method() === 'GET') {
       await respond(route, ok({ enabled: false }));
     } else if (path === '/user/me' && options.cookieStatus) {
