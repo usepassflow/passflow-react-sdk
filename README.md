@@ -720,7 +720,7 @@ const { isAuthenticated, getTokens, logout, isLoading } = useAuth();
 |----------|------|-------------|
 | isAuthenticated | `() => boolean` | Current authentication status |
 | getTokens | `(doRefresh: boolean) => Promise<{ tokens: Tokens \| undefined; parsedTokens: ParsedTokens \| undefined; }>` | Function to get authentication tokens |
-| logout | `() => void` | Function to log out user |
+| logout | `() => Promise<void>` | Function to log out user; resolves once the sign-out finishes |
 | isLoading | `boolean` | Loading state indicator |
 
 ### usePassflow

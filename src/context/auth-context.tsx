@@ -12,7 +12,7 @@ export type SessionExpiredHandler = (reason: SessionExpiredReason) => void;
 
 export type AuthContextValue = {
   isAuthenticated: () => boolean;
-  logout: () => void;
+  logout: () => Promise<void>;
   isLoading: boolean;
   isSessionExpired: boolean;
   getTokens: (doRefresh: boolean) => Promise<{ tokens: Tokens | undefined; parsedTokens: ParsedTokens | undefined }>;

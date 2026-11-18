@@ -70,6 +70,12 @@ export function App(): ReactElement {
   );
 }
 
+// logout returns the sign-out promise, so a consumer can await it or chain .catch().
+export function useSignOut(): () => Promise<void> {
+  const { logout } = useAuth();
+  return logout;
+}
+
 export function useIsSignedIn(): boolean {
   const auth = useAuth();
   // @ts-expect-error isAuthenticated is a function
