@@ -24,6 +24,24 @@ describe('passwordValidation', () => {
     });
   });
 
+  describe('letter case', () => {
+    const upperOnly = policy({ require_uppercase: true, min_password_length: 1 });
+    const lowerOnly = policy({ require_lowercase: true, min_password_length: 1 });
+
+    it("accepts 'Ä' as an uppercase letter", () => {
+      expect(accepts(upperOnly, 'äbcdefgÄ')).toBe(true);
+    });
+
+    it("accepts 'ä' as a lowercase letter", () => {
+      expect(accepts(lowerOnly, 'ÄBCDEFGä')).toBe(true);
+    });
+
+    it('still refuses a password with no letter of the required case', () => {
+      expect(accepts(upperOnly, 'äbcdefg1')).toBe(false);
+      expect(accepts(lowerOnly, 'ÄBCDEFG1')).toBe(false);
+    });
+  });
+
   describe('require_symbol', () => {
     const symbolOnly = policy({ require_symbol: true, min_password_length: 1 });
 
