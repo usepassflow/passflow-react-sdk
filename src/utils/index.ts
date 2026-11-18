@@ -19,6 +19,8 @@ export {
   isApprovalMatchError,
   isPasswordSavedRateLimit,
   newPasswordErrorMessage,
+  passwordChangeRequiredMessage,
+  passwordChangeRequiredReason,
   passwordlessCompleteErrorMessage,
   passwordlessLinkExpiredMessage,
   passwordlessSignInFailedMessage,

@@ -42,6 +42,13 @@ export const invitationLinkErrorMessage = 'This invitation link is invalid or ha
 export const verificationRequestErrorMessage =
   'This verification request is no longer available. Start again to request a new link or code.';
 
+/** The `reason` value that sends a user whose password must change to forgot-password. */
+export const passwordChangeRequiredReason = 'password_change_required';
+
+/** Shown on forgot-password for that reason. Fixed SDK copy: text from the URL is never displayed. */
+export const passwordChangeRequiredMessage =
+  'You must change your password before you can sign in. Reset your password to continue.';
+
 export const authErrorFor = (flow: AuthFlow, operation: AuthOperation): AuthUiError => AUTH_ERROR_COPY[flow][operation];
 
 /**
