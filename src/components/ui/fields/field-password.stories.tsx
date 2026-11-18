@@ -108,3 +108,15 @@ export const NoRequirements: Story = {
     await expect(canvas.queryByText(/Must contain/)).toBeNull();
   },
 };
+
+/** A restricted minimum of zero asks for nothing beyond a non-empty password: no length line. */
+export const RestrictedZeroMinimum: Story = {
+  args: {
+    passwordPolicy: policy({ min_password_length: 0 }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Must contain a number, lowercase letter, and uppercase letter')).toBeVisible();
+    await expect(canvas.queryByText(/At least \d+ characters/)).toBeNull();
+  },
+};

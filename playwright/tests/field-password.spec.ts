@@ -39,6 +39,12 @@ test.describe('FieldPassword rules follow the policy', () => {
     await expect(page.locator('.passflow-password-validation')).toHaveCount(0);
   });
 
+  test('a restricted minimum of zero shows no length line', async ({ page }) => {
+    await openStory(page, 'restricted-zero-minimum');
+    await expect(page.getByText('Must contain a number, lowercase letter, and uppercase letter', { exact: true })).toBeVisible();
+    await expect(page.getByText(lengthRule)).toHaveCount(0);
+  });
+
   test('typing still marks a met rule', async ({ page }) => {
     await openStory(page, 'length-only');
     await page.getByLabel('Password', { exact: true }).fill('longenough');

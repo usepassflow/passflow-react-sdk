@@ -69,8 +69,9 @@ export const FieldPassword = forwardRef<HTMLInputElement, TFieldPassword>(
 
     const handleShowPassword = () => setIsShowPassword((prev) => !prev);
 
-    const restrictMinPasswordLength = passwordPolicy?.restrict_min_password_length ?? false;
     const minPasswordLength = passwordPolicy?.min_password_length ?? 0;
+    // A minimum of zero asks for nothing beyond the non-empty password every field requires.
+    const restrictMinPasswordLength = (passwordPolicy?.restrict_min_password_length ?? false) && minPasswordLength > 0;
     const requireLowerCase = passwordPolicy?.require_lowercase ?? false;
     const requireNumber = passwordPolicy?.require_number ?? false;
     const requireSymbol = passwordPolicy?.require_symbol ?? false;
