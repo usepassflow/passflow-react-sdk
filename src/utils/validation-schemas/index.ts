@@ -30,7 +30,8 @@ export const passwordValidation = (passwordPolicy: PassflowPasswordPolicySetting
           if (requireUpperCase && !/[A-Z]/.test(value)) errors.push('uppercase');
           if (requireLowerCase && !/[a-z]/.test(value)) errors.push('lowercase');
           if (requireNumber && !/\d/.test(value)) errors.push('number');
-          if (requireSymbol && !/[!@#$%^&*()_+{}[\]:;<>,.?~\\-]/.test(value)) errors.push('symbol');
+          // Exactly the symbols the server's password check counts; `~` and backslash are not among them.
+          if (requireSymbol && !/[!$%^&*()_+{}:@[\];'#<>?,./|\-=]/.test(value)) errors.push('symbol');
         }
 
         if (errors.length > 0) {
