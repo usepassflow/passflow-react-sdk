@@ -17,6 +17,8 @@ import {
   TwoFactorVerifyFlow,
   useAuth,
   usePassflowStore,
+  type PassflowUser,
+  useUser,
 } from '@passflow/react';
 import type { ReactElement } from 'react';
 
@@ -33,6 +35,8 @@ export type Canaries = [
   ExpectFalse<IsAny<ReturnType<typeof usePassflowStore>>>,
   ExpectFalse<IsAny<typeof useAuth>>,
   ExpectFalse<IsAny<ReturnType<typeof useAuth>>>,
+  ExpectFalse<IsAny<typeof useUser>>,
+  ExpectFalse<IsAny<PassflowUser>>,
   ExpectFalse<IsAny<typeof FieldOtp>>,
   ExpectFalse<IsAny<FieldOtpProps>>,
   ExpectFalse<IsAny<PassflowProps>>,
@@ -102,4 +106,12 @@ export function useIsSignedIn(): boolean {
 
 export function useSignedInFlag(): boolean {
   return useAuth().isSignedIn;
+}
+
+export function useSignedInEmail(): string | undefined {
+  const user: PassflowUser = useUser();
+  // @ts-expect-error email is a string or absent, never a number
+  const notANumber: number = user.email;
+  void notANumber;
+  return user.email;
 }

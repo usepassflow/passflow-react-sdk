@@ -32,6 +32,7 @@ This is a SDK for react application.
     - [InvitationJoin](#invitationjoin)
   - [Hooks](#hooks)
     - [useAuth](#useauth)
+    - [useUser](#useuser)
     - [usePassflow](#usepassflow)
     - [usePassflowStore](#usepassflowstore)
     - [useSignIn](#usesignin)
@@ -728,6 +729,34 @@ const AccountMenu = () => {
   const { isSignedIn, logout } = useAuth();
   if (!isSignedIn) return <a href='/web/signin'>Sign in</a>;
   return <button onClick={() => void logout()}>Sign out</button>;
+};
+```
+
+### useUser
+Hook for the signed-in user's id, email and phone, read from the tokens. It re-renders on sign-in, sign-up, token refresh, sign-out and session expiry.
+
+```typescript
+const { id, email, phone } = useUser();
+```
+
+The claim is read from the id token first and from the access token when the id token lacks it. A hosted sign-in (`authRedirect()`) puts `email` in the access token and the embedded screens put it in the id token, so `email` is filled either way.
+
+**Returns:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| id | `string \| undefined` | The user id (`sub`) |
+| email | `string \| undefined` | The user's email |
+| phone | `string \| undefined` | The user's phone number |
+
+Every field is `undefined` when no one is signed in.
+
+```tsx
+const AccountMenu = () => {
+  const { isSignedIn, logout } = useAuth();
+  const { email } = useUser();
+  if (!isSignedIn) return null;
+  return <button onClick={() => void logout()}>Sign out {email}</button>;
 };
 ```
 

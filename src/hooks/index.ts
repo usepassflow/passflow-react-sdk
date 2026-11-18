@@ -55,4 +55,5 @@ export { type UseTwoFactorStatusProps, useTwoFactorStatus } from './use-two-fact
 export { type UseTwoFactorVerifyProps, useTwoFactorVerify } from './use-two-factor-verify';
 // Assurance upgrade (step-up) — reads UpgradeContext, installs nothing
 export { type UseUpgradeResult, useUpgrade } from './use-upgrade';
+export { type PassflowUser, useUser } from './use-user';
 export { type UseUserPasskeysProps, useUserPasskeys } from './use-user-passkeys';
