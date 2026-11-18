@@ -22,6 +22,20 @@ test.describe('LoginAlert', () => {
     await expect(page.getByRole('alert')).toHaveCount(0);
   });
 
+  test('info is styled by the login screen stylesheet', async ({ page }) => {
+    await openStory(page, 'info');
+    const note = page.getByRole('status');
+    await expect(note).toBeVisible();
+
+    const style = await note.evaluate((element) => {
+      const computed = getComputedStyle(element);
+      return { background: computed.backgroundColor, textAlign: computed.textAlign, padding: computed.paddingTop };
+    });
+    expect(style.background).not.toBe('rgba(0, 0, 0, 0)');
+    expect(style.textAlign).toBe('center');
+    expect(style.padding).not.toBe('0px');
+  });
+
   test('error is announced as an alert with its warning icon', async ({ page }) => {
     await openStory(page, 'error-tone');
     const alert = page.getByRole('alert');
