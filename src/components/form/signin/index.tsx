@@ -183,6 +183,7 @@ export const SignInForm: FC<TSignIn> = ({
       ...(inviteToken && { invite_token: inviteToken }),
     } as PassflowPasskeyAuthenticateStartPayload;
 
+    passwordIdentityRef.current = {};
     const response = await fetch(payload, 'passkey');
     if (response) await completeAuthentication();
   };
@@ -200,6 +201,7 @@ export const SignInForm: FC<TSignIn> = ({
       ...(inviteToken && { invite_token: inviteToken }),
     } as PassflowPasswordlessSignInPayload;
 
+    passwordIdentityRef.current = {};
     const response = await fetch(payload, 'passwordless');
     if (!response) return;
 
