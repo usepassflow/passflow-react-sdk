@@ -10,11 +10,21 @@ import { authErrorFor, authErrorFrom } from '@/utils';
 import { type UseEmailCodeStep, useEmailCodeStep } from './use-email-code-step';
 import { usePassflow } from './use-passflow';
 
+/**
+ * How a password or passkey sign-in ended. `'two-factor-required'` means core holds a pending sign-in that still owes
+ * a second factor: there is no session yet.
+ */
+export type SignInOutcome = 'signed-in' | 'two-factor-required';
+
 export type UseSignInProps = () => {
+  /**
+   * Resolves a {@link SignInOutcome} for a password or passkey sign-in, the server's answer for a passwordless one,
+   * and `false` when the request failed, was superseded, or entered the emailed-code step.
+   */
   fetch: (
     payload: PassflowPasskeyAuthenticateStartPayload | PassflowSignInPayload | PassflowPasswordlessSignInPayload,
     type: AuthOperation,
-  ) => Promise<boolean | string | PassflowPasswordlessResponse>;
+  ) => Promise<false | SignInOutcome | PassflowPasswordlessResponse>;
   isLoading: boolean;
   isError: boolean;
   error: AuthUiError | null;
@@ -62,7 +72,7 @@ export const useSignIn: UseSignInProps = () => {
     async (
       payload: PassflowPasskeyAuthenticateStartPayload | PassflowSignInPayload | PassflowPasswordlessSignInPayload,
       type: AuthOperation,
-    ): Promise<boolean | string | PassflowPasswordlessResponse> => {
+    ): Promise<false | SignInOutcome | PassflowPasswordlessResponse> => {
       attemptRef.current += 1;
       const attempt = attemptRef.current;
       const isCurrent = () => attempt === attemptRef.current;
@@ -85,7 +95,8 @@ export const useSignIn: UseSignInProps = () => {
           const answer = await passflow.passwordlessSignIn(payload as PassflowPasswordlessSignInPayload);
           return isCurrent() ? answer : false;
         }
-        return isCurrent();
+        if (!isCurrent()) return false;
+        return passflow.isTwoFactorVerificationRequired() ? 'two-factor-required' : 'signed-in';
       } catch (error) {
         if (!isCurrent()) return false;
         console.error(`[passflow] ${type} sign-in failed`, error);
@@ -99,7 +110,13 @@ export const useSignIn: UseSignInProps = () => {
         }
       }
     },
-    [passflow.passkeyAuthenticate, passflow.passwordlessSignIn, passflow.signIn, emailCode.enter],
+    [
+      passflow.passkeyAuthenticate,
+      passflow.passwordlessSignIn,
+      passflow.signIn,
+      passflow.isTwoFactorVerificationRequired,
+      emailCode.enter,
+    ],
   );
 
   const reset = () => {

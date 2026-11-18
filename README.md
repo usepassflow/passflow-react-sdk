@@ -758,16 +758,31 @@ Hook for implementing sign-in functionality. Supports password, passkey, and pas
 
 ```typescript
 const { fetch, isLoading, isError, error } = useSignIn();
+
+const outcome = await fetch({ email, password }, 'password');
+if (outcome === 'two-factor-required') navigate('/2fa');
+else if (outcome === 'signed-in') navigate('/');
 ```
 
 **Returns:**
 
 | Property | Type | Description |
 |----------|------|-------------|
-| fetch | `(payload: PassflowPasskeyAuthenticateStartPayload \| PassflowSignInPayload \| PassflowPasswordlessSignInPayload, type: 'passkey' \| 'password' \| 'passwordless') => Promise<boolean \| string \| PassflowPasswordlessResponse>` | Sign in function |
+| fetch | `(payload: PassflowPasskeyAuthenticateStartPayload \| PassflowSignInPayload \| PassflowPasswordlessSignInPayload, type: 'passkey' \| 'password' \| 'passwordless') => Promise<false \| SignInOutcome \| PassflowPasswordlessResponse>` | Sign in function |
 | isLoading | `boolean` | Loading state |
 | isError | `boolean` | Error state |
 | error | `string` | Error message |
+
+`fetch` resolves one of:
+
+| Value | Meaning |
+|-------|---------|
+| `'signed-in'` | A password or passkey sign-in finished; the session is ready. |
+| `'two-factor-required'` | The credentials were accepted but a second factor is still owed. There is no session yet; send the user to your 2FA screen. |
+| `PassflowPasswordlessResponse` | The server's answer to a passwordless request. |
+| `false` | The request failed (see `error`), was superseded, or entered the emailed-code step. |
+
+Both outcome strings are truthy, so `if (await fetch(...))` also passes for `'two-factor-required'`, when there is no session yet. Check for `'two-factor-required'` before treating the user as signed in. Code that compared the result with `=== true` must check the outcome instead.
 
 ### useSignUp
 Hook for implementing registration functionality. Supports password, passkey, and passwordless registration.
@@ -780,10 +795,12 @@ const { fetch, isLoading, isError, error } = useSignUp();
 
 | Property | Type | Description |
 |----------|------|-------------|
-| fetch | `(payload: PassflowPasskeyRegisterStartPayload \| PassflowSignUpPayload \| PassflowPasswordlessSignInPayload, type: 'passkey' \| 'password' \| 'passwordless') => Promise<boolean \| PassflowPasswordlessResponse>` | Sign up function |
+| fetch | `(payload: PassflowPasskeyRegisterStartPayload \| PassflowSignUpPayload \| PassflowPasswordlessSignInPayload, type: 'passkey' \| 'password' \| 'passwordless') => Promise<false \| SignInOutcome \| PassflowPasswordlessResponse>` | Sign up function |
 | isLoading | `boolean` | Loading state |
 | isError | `boolean` | Error state |
 | error | `string` | Error message |
+
+`fetch` resolves the same outcomes as `useSignIn().fetch`.
 
 ### useNavigation
 Hook for navigation between pages. Supports various routers (react-router, wouter, tanstack-router).

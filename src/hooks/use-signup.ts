@@ -9,12 +9,17 @@ import type { AuthOperation, AuthUiError } from '@/types';
 import { authErrorFrom } from '@/utils';
 import { type UseEmailCodeStep, useEmailCodeStep } from './use-email-code-step';
 import { usePassflow } from './use-passflow';
+import type { SignInOutcome } from './use-signin';
 
 export type UseSignUpProps = () => {
+  /**
+   * Resolves a {@link SignInOutcome} for a password or passkey sign-up, the server's answer for a passwordless one,
+   * and `false` when the request failed or entered the emailed-code step.
+   */
   fetch: (
     payload: PassflowPasskeyRegisterStartPayload | PassflowSignUpPayload | PassflowPasswordlessSignInPayload,
     type: AuthOperation,
-  ) => Promise<boolean | string | PassflowPasswordlessResponse>;
+  ) => Promise<false | SignInOutcome | PassflowPasswordlessResponse>;
   isLoading: boolean;
   isError: boolean;
   error: AuthUiError | null;
@@ -56,7 +61,7 @@ export const useSignUp: UseSignUpProps = () => {
     async (
       payload: PassflowPasskeyRegisterStartPayload | PassflowSignUpPayload | PassflowPasswordlessSignInPayload,
       type: AuthOperation,
-    ): Promise<boolean | PassflowPasswordlessResponse> => {
+    ): Promise<false | SignInOutcome | PassflowPasswordlessResponse> => {
       setIsLoading(true);
       setIsError(false);
       setError(null);
@@ -77,7 +82,7 @@ export const useSignUp: UseSignUpProps = () => {
           return passwordlessResponse;
         }
         cleanup();
-        return true;
+        return passflow.isTwoFactorVerificationRequired() ? 'two-factor-required' : 'signed-in';
       } catch (error) {
         console.error(`[passflow] ${type} sign-up failed`, error);
         setIsError(true);
@@ -88,7 +93,13 @@ export const useSignUp: UseSignUpProps = () => {
         cleanup();
       }
     },
-    [passflow.signUp, passflow.passkeyRegister, passflow.passwordlessSignIn, emailCode.enter],
+    [
+      passflow.signUp,
+      passflow.passkeyRegister,
+      passflow.passwordlessSignIn,
+      passflow.isTwoFactorVerificationRequired,
+      emailCode.enter,
+    ],
   );
 
   const reset = () => {
