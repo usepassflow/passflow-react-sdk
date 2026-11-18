@@ -55,12 +55,22 @@ export const FieldPhone: FC<TFieldPhone> = ({
 
   const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const userCountry = getCountryForTimezone(userTZ);
+  // Set while a country switch is in flight: the hook resets the number to the new dial code, and the form must hear
+  // about it. Typed changes already reach the form through the input's own change event.
+  const countrySwitchRef = useRef(false);
   const { inputValue, country, setCountry, handlePhoneValueChange, inputRef } = usePhoneInput({
     defaultCountry: userCountry?.id.toLocaleLowerCase() || 'us',
     value: startingValue,
+    onChange: ({ inputValue: nextValue }) => {
+      if (!countrySwitchRef.current) return;
+      countrySwitchRef.current = false;
+      // The tel input is not mounted while the country list is open, so the change is reported without it.
+      onChange({ target: { name, value: nextValue } } as ChangeEvent<HTMLInputElement>);
+    },
   });
 
   const handlePhoneChange = (event: ChangeEvent<HTMLInputElement>) => {
+    countrySwitchRef.current = false;
     handlePhoneValueChange(event);
     onChange(event);
   };
@@ -102,6 +112,7 @@ export const FieldPhone: FC<TFieldPhone> = ({
   };
 
   const handleChangeCountry = (iso2: CountryIso2) => {
+    countrySwitchRef.current = true;
     setCountry(iso2);
     handleClose(true);
   };

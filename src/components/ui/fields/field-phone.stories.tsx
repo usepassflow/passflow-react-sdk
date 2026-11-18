@@ -3,9 +3,14 @@ import { type ComponentProps, useState } from 'react';
 import { expect, fn, within } from 'storybook/test';
 import { FieldPhone } from './field-phone';
 
-/** Owns the value, so each story can be typed into. */
+/**
+ * Owns the value, so each story can be typed into. Below the field it shows what
+ * the form last received and how many changes were reported, so a test can check
+ * the form agrees with what the field shows.
+ */
 const Controlled = (props: ComponentProps<typeof FieldPhone>) => {
   const [value, setValue] = useState(props.value);
+  const [changes, setChanges] = useState(0);
   return (
     <div className='passflow-field-container'>
       <label htmlFor={props.id} className='passflow-field-label'>
@@ -16,9 +21,12 @@ const Controlled = (props: ComponentProps<typeof FieldPhone>) => {
         value={value}
         onChange={(event) => {
           setValue(event.target.value);
+          setChanges((count) => count + 1);
           props.onChange(event);
         }}
       />
+      <p data-testid='field-phone-story-value'>{value}</p>
+      <p data-testid='field-phone-story-changes'>{changes}</p>
     </div>
   );
 };

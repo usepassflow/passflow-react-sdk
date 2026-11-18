@@ -29,3 +29,29 @@ test.describe('FieldPhone starting value', () => {
     await expect(page.getByRole('button', { name: 'Select country, current US' })).toBeVisible();
   });
 });
+
+const digits = (text: string) => text.replace(/\D/g, '');
+
+test.describe('FieldPhone country switch', () => {
+  test('reports the new number to the form once, and each keystroke once', async ({ page }) => {
+    const input = await openStory(page, 'prefilled');
+    const received = page.getByTestId('field-phone-story-value');
+    const changes = page.getByTestId('field-phone-story-changes');
+    await expect(received).toHaveText('+447700900123');
+    await expect(changes).toHaveText('0');
+
+    await page.getByRole('button', { name: 'Select country, current GB' }).click();
+    await page.locator('[role="option"][title="Germany"]').click();
+
+    await expect(page.getByRole('button', { name: 'Select country, current DE' })).toBeVisible();
+    await expect(input).toHaveValue(/^\+49\s?$/);
+    await expect(received).toHaveText(await input.inputValue());
+    await expect(changes).toHaveText('1');
+
+    await input.press('End');
+    await input.pressSequentially('3');
+    expect(digits(await input.inputValue())).toBe('493');
+    await expect(received).toHaveText(await input.inputValue());
+    await expect(changes).toHaveText('2');
+  });
+});
