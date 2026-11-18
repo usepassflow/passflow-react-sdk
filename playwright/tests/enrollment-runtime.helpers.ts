@@ -34,7 +34,7 @@ export const failure = (id: string, status: number): Reply => ({
   status, json: errorBody(id, 'Private translated server diagnostic', status, ''),
 });
 export const rawRateLimit: Reply = {
-  status: 429, json: { error: 'Too many requests. Try again in 15 minutes.' },
+  status: 429, json: { error: 'Too many attempts. Please try again later.' },
 };
 export const ok = (json: unknown): Reply => ({ json });
 export const respond = (route: Route, reply: Reply) =>

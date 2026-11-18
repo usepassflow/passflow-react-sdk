@@ -17,7 +17,7 @@ describe('TEST-U1 REQ-6–REQ-12 enrollmentFailureFrom public contract', () => {
       'REQ-12 raw axios string error body',
       {
         isAxiosError: true,
-        response: { status: 429, data: { error: 'Too many requests. Try again in 15 minutes.' } },
+        response: { status: 429, data: { error: 'Too many attempts. Please try again later.' } },
       },
       'rate_limited',
     ],
