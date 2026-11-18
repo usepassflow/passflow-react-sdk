@@ -95,16 +95,16 @@ export const DEFAULT_FACTOR_LABELS: Record<UpgradeFactorType, { label: string; h
 
 const CHALLENGE_REASON = 'This action needs extra verification';
 
-/**
- * A numeric one-time code of up to eight digits — TOTP (six or eight) and the two
- * OTP transports. A shorter code simply types shorter.
- */
+/** A six-digit numeric one-time code — the two OTP transports. */
 const OTP_CODE_CONTRACT: UpgradeFactorCodeContract = Object.freeze({
-  maxLength: 8,
+  maxLength: 6,
   inputMode: 'numeric',
   autoComplete: 'one-time-code',
   autoCapitalize: 'off',
 });
+
+/** An authenticator code: six or eight digits, so the cap is eight and a six-digit code simply types shorter. */
+const TOTP_CODE_CONTRACT: UpgradeFactorCodeContract = Object.freeze({ ...OTP_CODE_CONTRACT, maxLength: 8 });
 
 /**
  * Per-factor code contracts, keyed by the factor type, which is the only thing
@@ -128,7 +128,7 @@ export const UPGRADE_FACTOR_CODE_CONTRACTS: Readonly<{
   recovery_codes: UpgradeFactorCodeContract;
   passkey: null;
 }> = Object.freeze({
-  totp: OTP_CODE_CONTRACT,
+  totp: TOTP_CODE_CONTRACT,
   email_otp: OTP_CODE_CONTRACT,
   sms_otp: OTP_CODE_CONTRACT,
   recovery_codes: Object.freeze({
