@@ -7,6 +7,7 @@ import { useAuth } from '../use-auth';
 describe('useAuth', () => {
   const mockAuthValue: AuthContextValue = {
     isAuthenticated: vi.fn().mockReturnValue(true),
+    isSignedIn: true,
     logout: vi.fn(),
     isLoading: false,
     getTokens: vi.fn().mockResolvedValue({ tokens: {}, parsedTokens: {} }),

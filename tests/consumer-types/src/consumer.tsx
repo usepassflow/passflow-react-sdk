@@ -9,9 +9,14 @@ import {
   type PassflowFlowLocation,
   type PassflowFlowNavigate,
   type PassflowProps,
+  PassflowEvent,
   PassflowProvider,
+  type Tokens,
+  TwoFactorSetupFlow,
   TwoFactorSetupMagicLinkFlow,
+  TwoFactorVerifyFlow,
   useAuth,
+  usePassflowStore,
 } from '@passflow/react';
 import type { ReactElement } from 'react';
 
@@ -22,6 +27,10 @@ export type Canaries = [
   ExpectFalse<IsAny<typeof PassflowProvider>>,
   ExpectFalse<IsAny<typeof PassflowFlow>>,
   ExpectFalse<IsAny<typeof TwoFactorSetupMagicLinkFlow>>,
+  ExpectFalse<IsAny<typeof TwoFactorSetupFlow>>,
+  ExpectFalse<IsAny<typeof TwoFactorVerifyFlow>>,
+  ExpectFalse<IsAny<typeof usePassflowStore>>,
+  ExpectFalse<IsAny<ReturnType<typeof usePassflowStore>>>,
   ExpectFalse<IsAny<typeof useAuth>>,
   ExpectFalse<IsAny<ReturnType<typeof useAuth>>>,
   ExpectFalse<IsAny<typeof FieldOtp>>,
@@ -62,6 +71,8 @@ export function App(): ReactElement {
       <PassflowFlow {...controlledProps} />
       <TwoFactorSetupMagicLinkFlow signInPath='/auth/signin' onSuccess={() => undefined} />
       <TwoFactorSetupMagicLinkFlow token='abc' />
+      <TwoFactorSetupFlow signInPath='/auth/signin' twoFactorVerifyPath='/auth/two-factor-verify' />
+      <TwoFactorVerifyFlow signInPath='/auth/signin' />
       <FieldOtp {...otpProps} />
       <FieldOtp id='code-2' length={6} value='' onChange={() => undefined} label='Verification code' />
       {/* @ts-expect-error length is a number */}
@@ -76,10 +87,19 @@ export function useSignOut(): () => Promise<void> {
   return logout;
 }
 
+export function useAccessToken(): string | undefined {
+  const tokens: Tokens | undefined = usePassflowStore([PassflowEvent.SignIn, PassflowEvent.SignOut]);
+  return tokens?.access_token;
+}
+
 export function useIsSignedIn(): boolean {
   const auth = useAuth();
   // @ts-expect-error isAuthenticated is a function
   const notAFunction: boolean = auth.isAuthenticated;
   void notAFunction;
   return auth.isAuthenticated();
+}
+
+export function useSignedInFlag(): boolean {
+  return useAuth().isSignedIn;
 }

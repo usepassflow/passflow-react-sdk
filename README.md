@@ -227,10 +227,10 @@ the provider:
    `max_age`, `id_token_hint`) without re-prompting an
    already-authenticated user.
 
-3. **Renders a placeholder during exchange** (theme via the
-   `continuingToAppPlaceholder` prop on PassflowFlow — TODO once
-   the prop is wired through; today the default placeholder
-   appears).
+3. **Shows a status line during exchange.** While the exchange
+   runs, the provider renders "Continuing to <app name>…" in place
+   of its children, with the app name taken from the parent
+   challenge, or "Continuing…" when the challenge has none.
 
 4. **Falls through to the login form** when exchange is impossible
    or returns `403 upgrade_required`. The login form gets an
@@ -707,21 +707,29 @@ Component for accepting invitations and joining organizations.
 Hook for authentication management. Provides methods for checking authentication status, obtaining tokens, and logging out.
 
 ```typescript
-const { isAuthenticated, getTokens, logout, isLoading } = useAuth();
+const { isSignedIn, isAuthenticated, getTokens, logout, isLoading } = useAuth();
 ```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| initialRefresh | `boolean` (optional) | Whether to refresh tokens on mount |
 
 **Returns:**
 
 | Property | Type | Description |
 |----------|------|-------------|
-| isAuthenticated | `() => boolean` | Current authentication status |
+| isSignedIn | `boolean` | Whether a user is signed in. Updates after a sign-in or sign-up, after `logout()` or `useLogout().fetch()`, and when the session expires, so the component re-renders with the new value |
+| isAuthenticated | `() => boolean` | Checks the session at the moment you call it |
+| isSessionExpired | `boolean` | `true` after the session has ended on its own, until the next sign-in |
 | getTokens | `(doRefresh: boolean) => Promise<{ tokens: Tokens \| undefined; parsedTokens: ParsedTokens \| undefined; }>` | Function to get authentication tokens |
 | logout | `() => Promise<void>` | Function to log out user; resolves once the sign-out finishes |
 | isLoading | `boolean` | Loading state indicator |
+
+Render on `isSignedIn`:
+
+```tsx
+const AccountMenu = () => {
+  const { isSignedIn, logout } = useAuth();
+  if (!isSignedIn) return <a href='/web/signin'>Sign in</a>;
+  return <button onClick={() => void logout()}>Sign out</button>;
+};
+```
 
 ### usePassflow
 Hook for accessing the Passflow SDK instance. Must be used within PassflowProvider.
