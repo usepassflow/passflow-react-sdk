@@ -71,4 +71,16 @@ describe('TwoFactorChallenge TOTP code length', () => {
       expect.objectContaining({ challenge_id: 'totp-challenge', method: 'totp', response: '12345678' }),
     );
   });
+
+  it('submits only the last code when it is completed twice within the delay', async () => {
+    await renderTotpChallenge();
+
+    typeCode('12345678');
+    typeCode('1234567');
+    typeCode('12345679');
+    await pastAutoSubmitDelay();
+
+    expect(passflow.twoFactor.verifyV2).toHaveBeenCalledTimes(1);
+    expect(passflow.twoFactor.verifyV2).toHaveBeenCalledWith(expect.objectContaining({ response: '12345679' }));
+  });
 });

@@ -69,6 +69,7 @@ export const TwoFactorChallenge: FC<TwoFactorChallengeProps> = ({
 
   const handleOtpChange = (value: string) => {
     setOtpValue(value);
+    clearTimeout(autoSubmitTimer.current);
 
     // Auto-submit when the code is complete
     if (value.length === codeLength) {
