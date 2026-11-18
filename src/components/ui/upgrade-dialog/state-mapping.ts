@@ -60,6 +60,8 @@ export type UpgradeDialogHandlers = {
   onCancel: () => void;
   onDismiss: () => void;
   onRetry?: () => void;
+  /** Sends the user to sign in again, from a state that offers it. */
+  onSignIn?: () => void;
 };
 
 export type ToDialogStateInput = {
@@ -83,7 +85,9 @@ export type UpgradeDialogErrorKind =
   | 'unavailable'
   | 'transport'
   | 'insufficient'
-  | 'session-changed';
+  | 'session-changed'
+  | 'rate-limited'
+  | 'sign-in-required';
 
 export const DEFAULT_FACTOR_LABELS: Record<UpgradeFactorType, { label: string; hint?: string }> = {
   totp: { label: 'Authenticator app', hint: 'Enter the code from your authenticator app' },
@@ -94,6 +98,16 @@ export const DEFAULT_FACTOR_LABELS: Record<UpgradeFactorType, { label: string; h
 };
 
 const CHALLENGE_REASON = 'This action needs extra verification';
+
+/** No factor of this account reaches the bar. A fresh sign-in would not either, so nothing offers one. */
+export const UPGRADE_UNSATISFIABLE_DETAIL =
+  "This account can't reach the security level this app asks for. Add a passkey on this device, or contact the app.";
+
+/** What the rate limit asks for: the wait, when the server named one, else its own text. */
+export const upgradeRateLimitedMessage = (retryAfter: number | undefined, serverText: string | undefined): string =>
+  retryAfter !== undefined
+    ? `Too many attempts. Try again in ${retryAfter} second${retryAfter === 1 ? '' : 's'}.`
+    : (serverText ?? 'Too many attempts. Try again later.');
 
 /** A six-digit numeric one-time code — the two OTP transports. */
 const OTP_CODE_CONTRACT: UpgradeFactorCodeContract = Object.freeze({
@@ -197,6 +211,7 @@ const DIALOG_KIND_BY_UPGRADE_KIND: Readonly<Record<UpgradeErrorKind, UpgradeDial
   // Terminal.
   exhausted: 'exhausted',
   attempts_exhausted: 'exhausted',
+  rate_limited: 'rate-limited',
   unavailable: 'unavailable',
   session_changed: 'session-changed',
   fatal: 'transport',
@@ -258,6 +273,7 @@ export const dialogOutcomeFromError = (error: unknown): UpgradeDialogErrorKind =
   const name = readString(record.name);
 
   if (code === 'upgrade_cancelled' || name === 'UpgradeCancelledError' || record.cancelled === true) return 'cancelled';
+  if (code === 'upgrade_sign_in_required' || name === 'UpgradeSignInRequiredError') return 'sign-in-required';
   if (code === 'upgrade_unsatisfiable' || name === 'UpgradeUnsatisfiableError') return 'unsatisfiable';
   if (code === 'upgrade_unavailable' || name === 'UpgradeUnavailableError') return 'unavailable';
   if (code === 'upgrade_exhausted' || name === 'UpgradeExhaustedError') return 'exhausted';
@@ -325,8 +341,27 @@ const terminalFromError = (input: ToDialogStateInput, error: unknown): UpgradeDi
       return {
         kind: 'unsatisfiable',
         message: 'No usable verification method',
-        detail: errorMessage(error, 'None of your verification methods can answer this request.'),
+        detail: UPGRADE_UNSATISFIABLE_DETAIL,
         required: input.prompt ? challengeBar(input.prompt.challenge) : undefined,
+        testId,
+        onDismiss: handlers.onDismiss,
+      };
+    case 'rate-limited': {
+      const record = readRecord(error);
+      const retryAfter = typeof record?.retryAfter === 'number' ? record.retryAfter : undefined;
+      return {
+        kind: 'exhausted',
+        message: upgradeRateLimitedMessage(retryAfter, readString(record?.message)),
+        testId,
+        onDismiss: handlers.onDismiss,
+      };
+    }
+    case 'sign-in-required':
+      // `UpgradeProvider` shows no dialog for it: it sends the user to sign in.
+      return {
+        kind: 'cancelled',
+        message: 'Sign in again to continue',
+        detail: 'Only a fresh sign-in can verify this action.',
         testId,
         onDismiss: handlers.onDismiss,
       };
@@ -354,6 +389,7 @@ const terminalFromError = (input: ToDialogStateInput, error: unknown): UpgradeDi
         obtained: readAssuranceBar(record?.obtained) ?? {},
         required: readAssuranceBar(record?.required) ?? {},
         testId,
+        onSignIn: handlers.onSignIn,
         onDismiss: handlers.onDismiss,
       };
     }
@@ -399,6 +435,7 @@ export const toDialogState = (input: ToDialogStateInput): UpgradeDialogState => 
           required: outcome.required,
           detail: 'The elevation succeeded but the action was challenged again. Nothing was completed.',
           testId,
+          onSignIn: handlers.onSignIn,
           onDismiss: handlers.onDismiss,
         };
       case 'cancelled':
@@ -436,7 +473,7 @@ export const toDialogState = (input: ToDialogStateInput): UpgradeDialogState => 
     return {
       kind: 'unsatisfiable',
       message: 'No usable verification method',
-      detail: `This action requires ${describeAssuranceBar(required)}, and no verification method is available to answer it.`,
+      detail: UPGRADE_UNSATISFIABLE_DETAIL,
       required,
       testId,
       onDismiss: handlers.onDismiss,

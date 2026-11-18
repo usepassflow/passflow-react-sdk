@@ -105,6 +105,17 @@ export type UpgradeProviderProps = {
   labels?: UpgradeDialogLabels;
   title?: string;
   /**
+   * Where a step-up that only a fresh sign-in can meet sends the user, and the "Sign in again" action of an
+   * insufficient one. Called once, with the dialog closed; nothing is retried. Default: `passflow.authRedirect()`.
+   */
+  onSignInRequired?: () => void;
+  /**
+   * Who shows how a failed step-up ended. `'dialog'` (default): the dialog's own panels, and sign-in required calls
+   * `onSignInRequired`. `'caller'`: the dialog closes and the caller of `elevate` shows it from the rejection, as the
+   * hosted login page does.
+   */
+  failures?: 'dialog' | 'caller';
+  /**
    * FR5's render-prop override. It receives the **exact** props the built-in
    * dialog would render — a typed, constrained override with no `className` or
    * `style` leak.
@@ -140,6 +151,10 @@ const errorStateOf = (error: Error): UpgradeSettledState => {
       return { status: 'error', kind: 'unsatisfiable', error };
     case 'unavailable':
       return { status: 'error', kind: 'unavailable', error };
+    case 'rate-limited':
+      return { status: 'error', kind: 'rate_limited', error };
+    case 'sign-in-required':
+      return { status: 'error', kind: 'sign_in_required', error };
     default:
       return { status: 'error', kind: 'transport' satisfies UpgradeErrorStatusKind, error };
   }
@@ -247,6 +262,8 @@ export const UpgradeProvider: FC<UpgradeProviderProps> = ({
   relyingPartyId,
   labels,
   title,
+  onSignInRequired,
+  failures = 'dialog',
   renderDialog,
 }) => {
   const passflow = usePassflow();
@@ -293,6 +310,11 @@ export const UpgradeProvider: FC<UpgradeProviderProps> = ({
   const diagnosticRef = useRef(onUpgradeDiagnostic);
   shouldInterceptRef.current = shouldIntercept;
   diagnosticRef.current = onUpgradeDiagnostic;
+
+  const signInRef = useRef<() => void>(() => undefined);
+  signInRef.current = onSignInRequired ?? (() => void passflow.authRedirect().catch(() => undefined));
+  const failuresRef = useRef(failures);
+  failuresRef.current = failures;
 
   // H13: `factors` and `replay` are compared by VALUE in the install effect's
   // dependencies (see `factorsSignature` / `replaySignature`) and read through
@@ -374,8 +396,17 @@ export const UpgradeProvider: FC<UpgradeProviderProps> = ({
     (summary: UpgradeFlightSummary) => {
       cancelRequestedRef.current = false;
       setState(summaryToState(summary));
-      setOutcome(userCancelledRef.current ? undefined : summaryToOutcome(summary));
       clearPromptView();
+      const signInRequired =
+        summary.terminal === 'failed' && dialogOutcomeFromError(summaryError(summary)) === 'sign-in-required';
+      if (userCancelledRef.current || (failuresRef.current === 'caller' && summary.terminal !== 'success')) {
+        setOutcome(undefined);
+      } else if (signInRequired) {
+        setOutcome(undefined);
+        signInRef.current();
+      } else {
+        setOutcome(summaryToOutcome(summary));
+      }
     },
     [clearPromptView],
   );
@@ -526,6 +557,11 @@ export const UpgradeProvider: FC<UpgradeProviderProps> = ({
     setOutcome(undefined);
   }, []);
 
+  const signInAgain = useCallback(() => {
+    setOutcome(undefined);
+    signInRef.current();
+  }, []);
+
   const toggleAlternatives = useCallback(() => {
     setShowAlternatives((shown) => !shown);
   }, []);
@@ -574,6 +610,7 @@ export const UpgradeProvider: FC<UpgradeProviderProps> = ({
       onSubmit: submit,
       onCancel: cancel,
       onDismiss: dismiss,
+      onSignIn: signInAgain,
     },
   });
 

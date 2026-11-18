@@ -19,6 +19,7 @@ const stories = [
   ['Success', 'success'],
   ['SuccessManualClose', 'success-manual-close'],
   ['Insufficient', 'insufficient'],
+  ['InsufficientSignInAgain', 'insufficient-sign-in-again'],
   ['InsufficientFreshness', 'insufficient-freshness'],
   ['Cancelled', 'cancelled'],
   ['TransportFailureRetryable', 'transport-failure-retryable'],
@@ -26,6 +27,7 @@ const stories = [
   ['NoUsableFactor', 'no-usable-factor'],
   ['Unavailable', 'unavailable'],
   ['Exhausted', 'exhausted'],
+  ['RateLimited', 'rate-limited'],
   ['AttemptsExhausted', 'attempts-exhausted'],
   ['CustomTitle', 'custom-title'],
 ] as const;
@@ -113,6 +115,30 @@ test.describe('REQ-FR5 UpgradeDialog public story states', () => {
     await expect(page.getByRole('textbox')).toHaveCount(0);
     await expect(page.getByRole('spinbutton')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Verify', exact: true })).toBeVisible();
+  });
+
+  test('InsufficientSignInAgain · offers Sign in again beside Close', async ({ page }) => {
+    await openStory(page, 'insufficient-sign-in-again');
+    await expect(page.getByRole('button', { name: 'Sign in again', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeVisible();
+  });
+
+  test('RateLimited · names the wait and asks for no code', async ({ page }) => {
+    await openStory(page, 'rate-limited');
+    await expect(page.getByText('Too many attempts. Try again in 30 seconds.', { exact: true })).toBeVisible();
+    await expect(page.getByRole('textbox')).toHaveCount(0);
+  });
+
+  test('NoUsableFactor · says why, offers no factor and no sign-in', async ({ page }) => {
+    await openStory(page, 'no-usable-factor');
+    await expect(
+      page.getByText(
+        "This account can't reach the security level this app asks for. Add a passkey on this device, or contact the app.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(page.locator('[data-testid^="upgrade-dialog-factor-"]')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Sign in again', exact: true })).toHaveCount(0);
   });
 
   test('REQ-FR5 ChallengeWrongCode · keeps the rejected-code prompt open', async ({ page }) => {

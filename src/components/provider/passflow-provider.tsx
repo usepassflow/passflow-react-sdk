@@ -6,14 +6,19 @@ import {
   PassflowEvent,
   type PassflowEventPayload,
   type PassflowSubscriber,
+  parseUpgradeChallenge,
   registerFetchMiddleware,
-  requiredAcrLevel,
 } from '@passflow/core';
 import React, { type FC, type ReactNode, useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { UpgradeProvider, type UpgradeProviderProps } from '@/components/provider/upgrade-provider';
 import { useDisposeOnReplace } from '@/components/provider/use-dispose-on-replace';
 import { ContinuingStatus } from '@/components/ui/continuing-status';
 import { LoginScreen } from '@/components/ui/login-screen';
+import {
+  dialogOutcomeFromError,
+  UPGRADE_UNSATISFIABLE_DETAIL,
+  upgradeRateLimitedMessage,
+} from '@/components/ui/upgrade-dialog/state-mapping';
 import {
   AuthProvider,
   addressBarSearch,
@@ -51,6 +56,11 @@ const SignInReturnFailed: FC<{ onSignInAgain: () => void }> = ({ onSignInAgain }
   />
 );
 
+/** A hosted session the exchange could not step up, with why: the page shows it instead of the sign-in form. */
+const StepUpFailed: FC<{ message: string; testId: string }> = ({ message, testId }) => (
+  <LoginScreen chrome={{ title: 'Extra verification required' }} state={{ kind: 'status', tone: 'error', message, testId }} />
+);
+
 /**
  * The assurance-upgrade options a consumer may set on `PassflowProvider`.
  *
@@ -59,7 +69,7 @@ const SignInReturnFailed: FC<{ onSignInAgain: () => void }> = ({ onSignInAgain }
  * act, not a nested detail) and `enabled` is derived from `upgrade`/`backend`
  * below, so there is exactly one source for each.
  */
-export type PassflowUpgradeOptions = Omit<UpgradeProviderProps, 'children' | 'enabled' | 'backend'>;
+export type PassflowUpgradeOptions = Omit<UpgradeProviderProps, 'children' | 'enabled' | 'backend' | 'failures'>;
 
 type PassflowProviderProps = PassflowConfig & {
   /** See `PassflowConfig`. Read once, when the provider mounts. */
@@ -407,11 +417,10 @@ type ParentChallengeMeta = {
  *   - `upgrade_required`: the hosted session needs a step-up before it can be
  *     exchanged, and the step-up dialog is open.
  *   - `fallback_to_login`: no usable hosted session; the sign-in form renders.
+ *   - `unsatisfiable`: no factor of this account reaches the level; the page says so, with no form.
+ *   - `rate_limited`: the step-up hit the server's rate limit; the page says how long to wait, with no form.
  */
-type ExchangeState = 'idle' | 'exchanging' | 'upgrade_required' | 'fallback_to_login';
-
-/** The 403 body of /auth/session/exchange: what the hosted session falls short of. */
-type ExchangeRefusal = { acr_values?: unknown; max_age?: unknown };
+type ExchangeState = 'idle' | 'exchanging' | 'upgrade_required' | 'fallback_to_login' | 'unsatisfiable' | 'rate_limited';
 
 /** An OIDC error sent back to the relying party instead of rendering a form. */
 type RelyingPartyError = 'login_required' | 'interaction_required' | 'unmet_authentication_requirements';
@@ -457,12 +466,11 @@ const carriesAnswer = async (res: Response): Promise<boolean> => {
   }
 };
 
-const readRefusal = async (res: Response): Promise<ExchangeRefusal> => {
+const readBody = async (res: Response): Promise<unknown> => {
   try {
-    const body = (await res.json()) as ExchangeRefusal | null;
-    return body ?? {};
+    return await res.json();
   } catch {
-    return {};
+    return undefined;
   }
 };
 
@@ -481,17 +489,25 @@ const readRefusal = async (res: Response): Promise<ExchangeRefusal> => {
  *   - 401 / 400 → no usable hosted session: the form, or `login_required` to
  *     the relying party under `prompt=none`.
  *   - 403 → the session falls short. Under `prompt=none` that is
- *     `interaction_required` to the relying party. Otherwise a body naming
- *     `acr_values` or `max_age` opens the step-up dialog through
- *     `passflow.hostedUpgrade` (`upgrade_required`); a body naming neither
- *     renders the form.
+ *     `interaction_required` to the relying party. Otherwise the body is read
+ *     with core's `parseUpgradeChallenge`, `available_factors` and
+ *     `sign_in_required` included:
+ *     - `sign_in_required: true`, or a body naming neither `acr_values` nor
+ *       `max_age` → the form, with no step-up.
+ *     - Otherwise the step-up dialog opens through `passflow.hostedUpgrade`
+ *       (`upgrade_required`), offering exactly the server's factors.
  *     - Step-up succeeds → exactly one more exchange. A 200 answer completes;
  *       a 401 renders the form; anything else sends
  *       `unmet_authentication_requirements` to the relying party.
- *     - Step-up is cancelled or fails → when the refusal named `acr_values`
- *       the relying party gets `unmet_authentication_requirements`, since a
- *       fresh sign-in through the form would not meet it either; when it named
- *       only `max_age`, the form renders so the user can sign in again.
+ *     - Step-up ends in sign-in required (an older server's empty
+ *       `available_factors`) or insufficient → the form.
+ *     - Unsatisfiable (no factor of this account reaches the level) →
+ *       `unsatisfiable`: the page says why. No form, since a fresh sign-in
+ *       would not meet it either, and nothing goes to the relying party.
+ *     - Rate limited → `rate_limited`: the page says how long to wait.
+ *     - Cancelled or any other failure → when the refusal named `acr_values`
+ *       the relying party gets `unmet_authentication_requirements`; when it
+ *       named only `max_age`, the form renders so the user can sign in again.
  *   - Any other status, or a network error → the form.
  *
  * An error for the relying party needs the parent's `redirect_uri`; without
@@ -503,8 +519,9 @@ const useSessionExchangeOnMount = (
   passflow: Passflow,
   baseUrl: string | undefined,
   appId: string | undefined,
-): { exchangeState: ExchangeState; parentMeta?: ParentChallengeMeta } => {
+): { exchangeState: ExchangeState; parentMeta?: ParentChallengeMeta; stepUpFailure?: string } => {
   const [exchangeState, setExchangeState] = useState<ExchangeState>('idle');
+  const [stepUpFailure, setStepUpFailure] = useState<string | undefined>(undefined);
   const [parentMeta, setParentMeta] = useState<ParentChallengeMeta | undefined>(undefined);
   const attemptedRef = useRef(false);
   // Read at call time: the provider replaces its instance while the exchange runs, and only the current one steps up.
@@ -586,23 +603,35 @@ const useSessionExchangeOnMount = (
           return;
         }
 
-        const refusal = await readRefusal(res);
-        const acrValues = typeof refusal.acr_values === 'string' && refusal.acr_values ? refusal.acr_values : undefined;
-        const maxAge = typeof refusal.max_age === 'number' ? refusal.max_age : undefined;
-        if (acrValues === undefined && maxAge === undefined) {
+        const challenge = parseUpgradeChallenge(403, (name) => res.headers.get(name), await readBody(res));
+        if (
+          !challenge ||
+          challenge.signInRequired === true ||
+          (challenge.acrValues === undefined && challenge.maxAge === undefined)
+        ) {
           showForm();
           return;
         }
 
         setExchangeState('upgrade_required');
         try {
-          await passflowRef.current.hostedUpgrade.elevate(
-            { acrValues, maxAge, requiredLevel: requiredAcrLevel(acrValues), status: 403, channels: [] },
-            { kind: 'imperative' },
-          );
-        } catch {
-          if (acrValues !== undefined) answerOrShowForm('unmet_authentication_requirements');
-          else showForm();
+          await passflowRef.current.hostedUpgrade.elevate(challenge, { kind: 'imperative' });
+        } catch (error) {
+          const outcome = dialogOutcomeFromError(error);
+          if (outcome === 'sign-in-required' || outcome === 'insufficient') {
+            showForm();
+          } else if (outcome === 'unsatisfiable') {
+            setStepUpFailure(UPGRADE_UNSATISFIABLE_DETAIL);
+            setExchangeState('unsatisfiable');
+          } else if (outcome === 'rate-limited') {
+            const { retryAfter, message } = error as { retryAfter?: number; message?: string };
+            setStepUpFailure(upgradeRateLimitedMessage(retryAfter, message || undefined));
+            setExchangeState('rate_limited');
+          } else if (challenge.acrValues !== undefined) {
+            answerOrShowForm('unmet_authentication_requirements');
+          } else {
+            showForm();
+          }
           return;
         }
 
@@ -625,7 +654,7 @@ const useSessionExchangeOnMount = (
     void run();
   }, [parentChallengeId, baseUrl, appId]);
 
-  return { exchangeState, parentMeta };
+  return { exchangeState, parentMeta, stepUpFailure };
 };
 
 /**
@@ -867,7 +896,7 @@ export const PassflowProvider: FC<PassflowProviderProps> = ({
   // whether to render login form vs auto-exchange. See ADR-2.
   const parentChallengeId = useMemo(() => readParentChallengeIdFromURL() ?? bootParentChallengeId, []);
   useOIDCInterceptor(parentChallengeId);
-  const { exchangeState, parentMeta } = useSessionExchangeOnMount(
+  const { exchangeState, parentMeta, stepUpFailure } = useSessionExchangeOnMount(
     parentChallengeId,
     landedWithTwoFactorToken,
     passflow,
@@ -975,6 +1004,12 @@ export const PassflowProvider: FC<PassflowProviderProps> = ({
     () => (typeof upgrade === 'object' && upgrade !== null ? upgrade : {}),
     [upgrade],
   );
+  // A step-up only a fresh sign-in can meet: the app's own sign-in route when a mounted flow registered one, else the
+  // hosted login. The hosted login page itself shows its sign-in form from the exchange instead.
+  const signInForStepUp = useCallback(() => {
+    if (flowSignInPath) navigate({ to: flowSignInPath });
+    else void passflow.authRedirect().catch(() => undefined);
+  }, [flowSignInPath, navigate, passflow]);
 
   // Render the continuing status while the exchange is in flight or the
   // step-up dialog is open over it. Once it resolves (either via navigation
@@ -991,11 +1026,15 @@ export const PassflowProvider: FC<PassflowProviderProps> = ({
               {...upgradeOptions}
               facade={hosted ? passflow.hostedUpgrade : undefined}
               interceptFetch={hosted ? false : upgradeOptions.interceptFetch}
+              onSignInRequired={upgradeOptions.onSignInRequired ?? signInForStepUp}
+              failures={hosted ? 'caller' : 'dialog'}
               enabled={upgradeEnabled}
               backend={backend}
             >
               {signInReturnFailed ? (
                 <SignInReturnFailed onSignInAgain={() => void passflow.authRedirect().catch(() => undefined)} />
+              ) : (exchangeState === 'unsatisfiable' || exchangeState === 'rate_limited') && stepUpFailure ? (
+                <StepUpFailed message={stepUpFailure} testId={`exchange-${exchangeState.replace('_', '-')}`} />
               ) : showContinuing ? (
                 <ContinuingStatus appName={parentMeta?.app_name} />
               ) : (
