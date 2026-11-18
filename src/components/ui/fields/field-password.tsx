@@ -16,6 +16,7 @@ type TFieldPassword = InputHTMLAttributes<HTMLInputElement> & {
   disabled?: boolean;
 };
 
+/** The character-class line, or `null` when the policy requires no class. */
 const generateMessage = (
   requires: Record<'requireLowerCase' | 'requireUpperCase' | 'requireSymbol' | 'requireNumber', boolean>,
 ) => {
@@ -26,6 +27,7 @@ const generateMessage = (
     requireUpperCase: 'uppercase letter',
   };
   const requirements = Object.keys(requires).filter((key) => requires[key as keyof typeof requires]);
+  if (requirements.length === 0) return null;
   const requirementsString = new Intl.ListFormat('en').format(
     requirements.map((requirement) => requiresString[requirement as keyof typeof requiresString]),
   );
@@ -67,11 +69,18 @@ export const FieldPassword = forwardRef<HTMLInputElement, TFieldPassword>(
 
     const handleShowPassword = () => setIsShowPassword((prev) => !prev);
 
+    const restrictMinPasswordLength = passwordPolicy?.restrict_min_password_length ?? false;
     const minPasswordLength = passwordPolicy?.min_password_length ?? 0;
     const requireLowerCase = passwordPolicy?.require_lowercase ?? false;
     const requireNumber = passwordPolicy?.require_number ?? false;
     const requireSymbol = passwordPolicy?.require_symbol ?? false;
     const requireUpperCase = passwordPolicy?.require_uppercase ?? false;
+    const requirementsMessage = generateMessage({
+      requireNumber,
+      requireSymbol,
+      requireLowerCase,
+      requireUpperCase,
+    });
 
     return (
       <>
@@ -115,26 +124,27 @@ export const FieldPassword = forwardRef<HTMLInputElement, TFieldPassword>(
             </Button>
           )}
         </div>
-        {withMessages && passwordPolicy && (
+        {withMessages && passwordPolicy && (restrictMinPasswordLength || requirementsMessage) && (
           <div className='passflow-password-validation'>
-            <p className={cn('passflow-password-validation-item', errorStyles(['length']))}>
-              <Icon size='small' id={changeIcon(['length'])} type='general' className={cn(errorStyles(['length']))} />
-              At least {minPasswordLength} characters
-            </p>
-            <p className={cn('passflow-password-validation-item', errorStyles(['uppercase', 'lowercase', 'number', 'symbol']))}>
-              <Icon
-                size='small'
-                id={changeIcon(['uppercase', 'lowercase', 'number', 'symbol'])}
-                type='general'
-                className={cn(errorStyles(['uppercase', 'lowercase', 'number', 'symbol']))}
-              />
-              {generateMessage({
-                requireNumber,
-                requireSymbol,
-                requireLowerCase,
-                requireUpperCase,
-              })}
-            </p>
+            {restrictMinPasswordLength && (
+              <p className={cn('passflow-password-validation-item', errorStyles(['length']))}>
+                <Icon size='small' id={changeIcon(['length'])} type='general' className={cn(errorStyles(['length']))} />
+                At least {minPasswordLength} characters
+              </p>
+            )}
+            {requirementsMessage && (
+              <p
+                className={cn('passflow-password-validation-item', errorStyles(['uppercase', 'lowercase', 'number', 'symbol']))}
+              >
+                <Icon
+                  size='small'
+                  id={changeIcon(['uppercase', 'lowercase', 'number', 'symbol'])}
+                  type='general'
+                  className={cn(errorStyles(['uppercase', 'lowercase', 'number', 'symbol']))}
+                />
+                {requirementsMessage}
+              </p>
+            )}
           </div>
         )}
       </>
