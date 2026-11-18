@@ -317,7 +317,8 @@ test.describe('default signin flow with error', () => {
 });
 
 test.describe('sign-in that requires a password change', () => {
-  const serverMessage = 'You must change your password before you can sign in. Reset your password to continue.';
+  // Different from the SDK's notice, so the test can tell which one forgot-password shows.
+  const serverMessage = 'Your administrator requires a new password. Use the reset link to continue.';
   const passwordChangeNotice = 'You must change your password before you can sign in. Reset your password to continue.';
 
   test.beforeEach(async ({ page }) => {
@@ -363,7 +364,32 @@ test.describe('sign-in that requires a password change', () => {
 
       await expect(page.locator('input#email_or_username')).toHaveValue(identifier);
       await expect(page.getByRole('status').filter({ hasText: passwordChangeNotice })).toBeVisible();
+      await expect(page.getByText(serverMessage)).toHaveCount(0);
+      expect(decodeURIComponent(page.url())).not.toContain('administrator');
       await expect(page.getByRole('button', { name: 'Send reset instructions' })).toBeEnabled();
     });
   }
+
+  test('lands on forgot password with the phone filled in and the notice shown', async ({ page }) => {
+    await page.getByRole('button', { name: 'Use phone' }).click();
+    const phoneField = page.locator('input#phone');
+    await phoneField.fill('');
+    await phoneField.pressSequentially('+447700900123');
+    await page.locator('input#password').fill('Correct-horse-battery-9!');
+    await page.getByRole('button', { name: 'Sign In', exact: true }).click();
+
+    await expect(page).toHaveURL((url) => url.pathname === '/web/forgot-password');
+    const search = new URL(page.url()).searchParams;
+    expect(search.get('reason')).toBe('password_change_required');
+    expect(search.get('default_method')).toBe('phone');
+    expect(search.get('phone')).toBe('+447700900123');
+    expect(search.get('email')).toBeNull();
+    expect(search.get('username')).toBeNull();
+    expect(page.url()).not.toContain('Correct-horse');
+
+    expect((await page.locator('input#phone').inputValue()).replace(/\D/g, '')).toBe('447700900123');
+    await expect(page.getByRole('status').filter({ hasText: passwordChangeNotice })).toBeVisible();
+    await expect(page.getByText(serverMessage)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Send reset instructions' })).toBeEnabled();
+  });
 });

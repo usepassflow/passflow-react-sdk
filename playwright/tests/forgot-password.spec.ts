@@ -84,3 +84,49 @@ test.describe('forgot password identifier', () => {
     await expect(sendButton(page)).toBeEnabled();
   });
 });
+
+test.describe('forgot password empty identifier', () => {
+  test('disables the button once a prefilled identifier is cleared', async ({ page }) => {
+    await openForgotPassword(page, { default_method: 'email_or_username', email: 'jack@example.com' });
+    await expect(sendButton(page)).toBeEnabled();
+
+    await identifier(page).fill('');
+
+    await expect(sendButton(page)).toBeDisabled();
+  });
+
+  test('disables the button after typing and deleting on an empty form', async ({ page }) => {
+    await openForgotPassword(page, { default_method: 'email_or_username' });
+
+    await identifier(page).pressSequentially('j');
+    await expect(sendButton(page)).toBeEnabled();
+    await identifier(page).press('Backspace');
+
+    await expect(sendButton(page)).toBeDisabled();
+  });
+
+  test('disables the button once a prefilled phone number is cleared', async ({ page }) => {
+    await openForgotPassword(page, { default_method: 'phone', phone: '+447700900123' });
+    await expect(sendButton(page)).toBeEnabled();
+
+    await page.locator('input#phone').fill('');
+
+    await expect(sendButton(page)).toBeDisabled();
+  });
+});
+
+test.describe('forgot password phone', () => {
+  test('shows a phone number from the URL and sends it', async ({ page }) => {
+    await page.route('**/auth/password/reset', (route) => route.fulfill({ headers: corsHeaders, json: {} }));
+    await openForgotPassword(page, { default_method: 'phone', phone: '+447700900123' });
+
+    const field = page.locator('input#phone');
+    await expect(field).toHaveValue(/^\+44[\d\s]+$/);
+    expect((await field.inputValue()).replace(/\D/g, '')).toBe('447700900123');
+    await expect(sendButton(page)).toBeEnabled();
+
+    const reset = page.waitForRequest((request) => request.url().endsWith('/auth/password/reset') && request.method() === 'POST');
+    await sendButton(page).click();
+    expect((await reset).postDataJSON()).toMatchObject({ phone: '+447700900123' });
+  });
+});

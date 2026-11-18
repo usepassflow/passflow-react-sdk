@@ -49,7 +49,6 @@ export const ForgotPassword: FC<TForgotPassword> = ({
   const {
     getValues,
     control,
-    register,
     formState: { errors, isValid },
   } = useForm({
     defaultValues: {
@@ -158,7 +157,6 @@ export const ForgotPassword: FC<TForgotPassword> = ({
                   render={({ field }) => (
                     <FieldText
                       {...field}
-                      {...register('email_or_username')}
                       isError={isError || Object.hasOwn(errors, 'email_or_username')}
                       id='email_or_username'
                       type='text'
@@ -189,7 +187,6 @@ export const ForgotPassword: FC<TForgotPassword> = ({
                   render={({ field }) => (
                     <FieldPhone
                       {...field}
-                      {...register('phone')}
                       onChange={(e) => field.onChange(e)}
                       id='phone'
                       name='phone'

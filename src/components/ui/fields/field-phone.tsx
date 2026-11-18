@@ -33,8 +33,11 @@ export const FieldPhone: FC<TFieldPhone> = ({
   isError = false,
   className = '',
   disabled = false,
+  value,
   ...inputProps
 }) => {
+  // The number the field opens with; after that the input owns what is typed.
+  const [startingValue] = useState(typeof value === 'string' ? value : '');
   const [show, setShow] = useState(false);
   const [filterValue, setFilterValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -54,6 +57,7 @@ export const FieldPhone: FC<TFieldPhone> = ({
   const userCountry = getCountryForTimezone(userTZ);
   const { inputValue, country, setCountry, handlePhoneValueChange, inputRef } = usePhoneInput({
     defaultCountry: userCountry?.id.toLocaleLowerCase() || 'us',
+    value: startingValue,
   });
 
   const handlePhoneChange = (event: ChangeEvent<HTMLInputElement>) => {
