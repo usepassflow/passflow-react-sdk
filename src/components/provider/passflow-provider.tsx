@@ -806,6 +806,14 @@ export const PassflowProvider: FC<PassflowProviderProps> = ({
     isDiscoveringAppId: needsDiscovery,
   });
 
+  // A new `appId` prop is another app: the instance below is rebuilt for it and reads only that app's tokens.
+  const appIdPropRef = useRef(config.appId);
+  useEffect(() => {
+    if (!config.appId || config.appId === appIdPropRef.current) return;
+    appIdPropRef.current = config.appId;
+    dispatch({ type: 'SET_PASSFLOW_STATE', payload: { appId: config.appId } });
+  }, [config.appId]);
+
   const [navigate, setNavigate] = useState<NavigateFunction>(() => {
     if (initialNavigate) {
       return initialNavigate;
