@@ -129,4 +129,59 @@ test.describe('forgot password phone', () => {
     await sendButton(page).click();
     expect((await reset).postDataJSON()).toMatchObject({ phone: '+447700900123' });
   });
+
+  test('switching country drops the prefilled number', async ({ page }) => {
+    const sent: unknown[] = [];
+    await page.route('**/auth/password/reset', (route) => {
+      if (route.request().method() === 'POST') sent.push(route.request().postDataJSON());
+      return route.fulfill({ headers: corsHeaders, json: {} });
+    });
+    await openForgotPassword(page, { default_method: 'phone', phone: '+447700900123' });
+    await expect(sendButton(page)).toBeEnabled();
+
+    await page.getByRole('button', { name: 'Select country, current GB' }).click();
+    await page.locator('[role="option"][title="Germany"]').click();
+
+    await expect(page.locator('input#phone')).toHaveValue(/^\+49\s?$/);
+    await expect(sendButton(page)).toBeDisabled();
+    await sendButton(page).click({ force: true });
+    expect(sent).toEqual([]);
+  });
+});
+
+test.describe('forgot password sends only the shown identifier', () => {
+  const resetRequest = (page: Page) =>
+    page.waitForRequest((request) => request.url().endsWith('/auth/password/reset') && request.method() === 'POST');
+
+  test('an email form sends no phone number from the URL', async ({ page }) => {
+    await page.route('**/auth/password/reset', (route) => route.fulfill({ headers: corsHeaders, json: {} }));
+    await openForgotPassword(page, { default_method: 'email_or_username', email: 'jack@example.com', phone: '+447700900123' });
+    await expect(page.locator('input#phone')).toHaveCount(0);
+
+    const reset = resetRequest(page);
+    await sendButton(page).click();
+    const body = (await reset).postDataJSON();
+    expect(body).toMatchObject({ email: 'jack@example.com' });
+    expect(body).not.toHaveProperty('phone');
+    expect(body).not.toHaveProperty('username');
+
+    await expect(page).toHaveURL((url) => url.pathname === '/web/forgot-password/success');
+    expect(new URL(page.url()).searchParams.get('phone')).toBeNull();
+  });
+
+  test('a phone form sends no email from the URL', async ({ page }) => {
+    await page.route('**/auth/password/reset', (route) => route.fulfill({ headers: corsHeaders, json: {} }));
+    await openForgotPassword(page, { default_method: 'phone', phone: '+447700900123', email: 'jack@example.com' });
+    await expect(identifier(page)).toHaveCount(0);
+
+    const reset = resetRequest(page);
+    await sendButton(page).click();
+    const body = (await reset).postDataJSON();
+    expect(body).toMatchObject({ phone: '+447700900123' });
+    expect(body).not.toHaveProperty('email');
+    expect(body).not.toHaveProperty('username');
+
+    await expect(page).toHaveURL((url) => url.pathname === '/web/forgot-password/success');
+    expect(new URL(page.url()).searchParams.get('email')).toBeNull();
+  });
 });

@@ -83,10 +83,12 @@ export const ForgotPassword: FC<TForgotPassword> = ({
 
   const onSubmitHanlder = async () => {
     const values = getValues();
-    const isEmail = values.email_or_username.match(emailRegex);
-    const isUsername = !isEmail && values.email_or_username.length > 0;
+    // Only the field on screen is sent: the URL may prefill the other one, which the user never sees.
+    const usesPhone = defaultMethod === 'phone';
+    const isEmail = !usesPhone && values.email_or_username.match(emailRegex);
+    const isUsername = !usesPhone && !isEmail && values.email_or_username.length > 0;
     const validatedPhone = phone(values.phone);
-    const isPhone = validatedPhone.isValid;
+    const isPhone = usesPhone && validatedPhone.isValid;
 
     const payload = {
       ...(isEmail && { email: values.email_or_username }),
