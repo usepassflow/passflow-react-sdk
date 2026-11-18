@@ -33,7 +33,9 @@
  * controller on `SignIn` / `SignOut`; this provider discards its view of it in
  * the same breath, and the waiter that was mid-flight settles as
  * `session changed`, which the hook reports as `idle` — nothing that did not
- * happen is reported as though it had.
+ * happen is reported as though it had. The hosted step-up
+ * (`passflow.hostedUpgrade`) is bound to the hosted session cookie instead, so
+ * the instance's `SignIn` / `SignOut` leave its prompt open.
  */
 
 import {
@@ -53,7 +55,17 @@ import {
   type UpgradeReplayInfo,
   type Waiter,
 } from '@passflow/core';
-import { type FC, type ReactElement, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type FC,
+  type ReactElement,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { UpgradeDialogLabels, UpgradeDialogOutcome, UpgradeDialogProps } from '@/components/ui/upgrade-dialog';
 import { dialogOutcomeFromError, readAssuranceBar, toDialogState, UpgradeDialog } from '@/components/ui/upgrade-dialog';
 import {
@@ -411,7 +423,10 @@ export const UpgradeProvider: FC<UpgradeProviderProps> = ({
     [clearPromptView],
   );
 
-  useEffect(() => {
+  // A layout effect, so the facade is enabled in the commit that brings it. The hosted login elevates through the
+  // facade from an awaited network answer, which can run between a commit and its passive effects; a facade that is
+  // not enabled yet rejects that elevation as unavailable.
+  useLayoutEffect(() => {
     if (!enabled) {
       setInstalled(false);
       return;
@@ -496,8 +511,13 @@ export const UpgradeProvider: FC<UpgradeProviderProps> = ({
    * The session-change reset. The core discards its controller here; the view
    * of it must go with it, or a dialog from the old session would collect an
    * answer that can only elevate the new one.
+   *
+   * Not for the hosted step-up: it elevates the hosted session cookie, which a
+   * sign-in or sign-out of the instance's stored tokens leaves as it was.
    */
+  const elevatesHostedSession = upgradeFacade === passflow.hostedUpgrade;
   useEffect(() => {
+    if (elevatesHostedSession) return;
     const subscriber: PassflowSubscriber = {
       onAuthChange: () => {
         cancelRequestedRef.current = false;
@@ -510,7 +530,7 @@ export const UpgradeProvider: FC<UpgradeProviderProps> = ({
     const events = [PassflowEvent.SignIn, PassflowEvent.SignOut];
     passflow.subscribe(subscriber, events);
     return () => passflow.unsubscribe(subscriber, events);
-  }, [passflow, settlePrompt, clearPromptView]);
+  }, [passflow, elevatesHostedSession, settlePrompt, clearPromptView]);
 
   const selectFactor = useCallback((factor: UpgradeFactorType) => {
     setSelectedFactor(factor);
