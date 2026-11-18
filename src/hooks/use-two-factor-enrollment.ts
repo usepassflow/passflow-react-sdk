@@ -160,10 +160,11 @@ export const useTwoFactorEnrollment = ({ onFinished }: UseTwoFactorEnrollmentPro
 
   const confirm = async (code: string) => {
     updateDirect({ busy: true, error: undefined, notice: undefined });
+    let codes: string[];
     try {
-      const { recovery_codes: codes } = await passflow.confirmTwoFactorEnrollment(code);
+      // The answer may carry no codes: an empty list, null or no field.
+      codes = (await passflow.confirmTwoFactorEnrollment(code)).recovery_codes ?? [];
       heldCode.current = code;
-      updateDirect({ step: 'codes', codes, busy: false });
     } catch (error) {
       const failure = enrollmentFailureFrom(error);
       if (failure === 'wrong_code') {
@@ -174,7 +175,11 @@ export const useTwoFactorEnrollment = ({ onFinished }: UseTwoFactorEnrollmentPro
       } else {
         handleFailure(error, (message) => updateDirect({ busy: false, error: message }));
       }
+      return;
     }
+    // No codes to save: the sign-in finishes with the code that confirmed.
+    if (codes.length > 0) updateDirect({ step: 'codes', codes, busy: false });
+    else await verifyHeldCode(code, screen.kind === 'direct' ? screen.data?.totp_digits : undefined);
   };
 
   const complete = () => {
@@ -184,11 +189,13 @@ export const useTwoFactorEnrollment = ({ onFinished }: UseTwoFactorEnrollmentPro
 
   const finish = async () => {
     if (screen.kind !== 'direct' || heldCode.current === null) return;
-    const digits = screen.data?.totp_digits;
+    await verifyHeldCode(heldCode.current, screen.data?.totp_digits);
+  };
 
+  const verifyHeldCode = async (code: string, digits?: number) => {
     updateDirect({ busy: true, error: undefined });
     try {
-      await passflow.verifyTwoFactor(heldCode.current);
+      await passflow.verifyTwoFactor(code);
       complete();
     } catch (error) {
       // The held code goes stale after about 30-60 seconds on the codes: a common case, so it gets its own screen.
