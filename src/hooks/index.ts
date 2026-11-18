@@ -29,6 +29,7 @@ export { type UseLogoutProps, useLogout } from './use-logout';
 export { useNavigation } from './use-navigation';
 export { useOutsideClick } from './use-outsideclick';
 export { usePassflow } from './use-passflow';
+export { usePassflowStore } from './use-passflow-store';
 export { type UsePasswordlessCompleteProps, usePasswordlessComplete } from './use-passwordless-complete';
 export { type UseProviderProps, useProvider } from './use-provider';
 export { type UseRefreshStatusResult, useRefreshStatus } from './use-refresh-status';

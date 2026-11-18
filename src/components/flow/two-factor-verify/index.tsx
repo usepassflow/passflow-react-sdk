@@ -13,7 +13,7 @@ import { getTwoFactorEnrollmentScreenProps } from './screen';
 
 import '@/styles/index.css';
 
-type TwoFactorVerifyFlowProps = {
+export type TwoFactorVerifyFlowProps = {
   successAuthRedirect?: SuccessAuthRedirect;
   signInPath?: string;
 };
