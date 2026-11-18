@@ -140,9 +140,8 @@ export const ForgotPassword: FC<TForgotPassword> = ({
       removeBranding={loginAppTheme?.remove_passflow_logo}
     >
       <span className='passflow-form-subscriptions'>{currentSubscriptions}</span>
-      {showPasswordChangeNotice && <LoginAlert tone='info' message={passwordChangeRequiredMessage} />}
-
       <form onSubmit={(e) => e.preventDefault()} className='passflow-form'>
+        {showPasswordChangeNotice && <LoginAlert tone='info' message={passwordChangeRequiredMessage} />}
         <div className='passflow-form-container'>
           <div className='passflow-form-field'>
             {defaultMethod === 'email_or_username' && (
