@@ -73,6 +73,16 @@ test('on the hash router a full address whose route is in the fragment is left f
   await expect(page.getByRole('button', { name: /mailbox@example\.com/ })).toBeVisible();
 });
 
+test('with a location the app passes from a hash router, a full address is left for as it is', async ({ page }) => {
+  const target = `${appOrigin}/in-app?router=controlled-hash#/dashboard`;
+  await mockServer(page);
+  await page.goto(`${pageUrl}?router=controlled-hash&to=${encodeURIComponent(target)}`);
+  await signIn(page);
+
+  await expect(page).toHaveURL(target);
+  await expect(page.getByRole('button', { name: /mailbox@example\.com/ })).toBeVisible();
+});
+
 test('on the memory router a full address to another page on this origin really goes there', async ({ page }) => {
   const target = `${appOrigin}/elsewhere`;
   await mockServer(page);

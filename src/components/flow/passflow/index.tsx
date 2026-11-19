@@ -306,10 +306,10 @@ const PassflowWrapper: FC<PassflowProps> = ({
   navigate: controlledNavigate,
 }) => {
   const { error: errorUrlSuccess, message: messageUrlSuccess } = getUrlErrors(requestedRedirect);
-  // On an app's own page whose flow follows the address bar's path, a full address on this origin is a page of the
-  // same app: the sign-in moves there in the app, with no new page load. A hash or memory flow keeps its path
-  // elsewhere, and a hosted login page leaves, so for them it stays an address to load.
-  const followsAddressPath = controlledLocation !== undefined || routerType === 'browser';
+  // On an app's own page with the flow's browser router, a full address on this origin is a page of the same app: the
+  // sign-in moves there in the app, with no new page load. A hash or memory flow, a location the app passes (offered
+  // for routers in hash or memory mode) and a hosted login page keep it as an address to load.
+  const followsAddressPath = controlledLocation === undefined && routerType === 'browser';
   const successAuthRedirect =
     federatedLanding === 'app' && followsAddressPath && requestedRedirect
       ? (inAppPath(requestedRedirect) ?? requestedRedirect)
