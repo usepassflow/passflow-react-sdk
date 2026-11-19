@@ -150,3 +150,47 @@ test.describe('LoginButton appearance="shadcn"', () => {
     await expectLook(page, page.getByRole('button', { name: 'Sign in' }), expected);
   });
 });
+
+test.describe('LoginButton appearance="shadcn" follows a theme switch', () => {
+  const colours = (host: Locator) => resolveInside(host, { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' });
+
+  /** Polled: the fixture's reduced motion leaves a 0.01ms transition on every `passflow-*` element. */
+  const expectColours = async (button: Locator, expected: { backgroundColor: string; color: string }) => {
+    await expect
+      .poll(() =>
+        button.evaluate((element) => {
+          const style = getComputedStyle(element);
+          return { backgroundColor: style.backgroundColor, color: style.color };
+        }),
+      )
+      .toEqual(expected);
+  };
+
+  test('when <html> gets class="dark"', async ({ page }) => {
+    await openStory(page, 'shadcn-theme-switch');
+    const host = page.getByTestId('shadcn-host');
+    const button = page.getByRole('button', { name: 'Sign in' });
+    const light = await colours(host);
+    await expectColours(button, { backgroundColor: light.backgroundColor, color: light.color });
+
+    await page.evaluate(() => document.documentElement.classList.add('dark'));
+    const dark = await colours(host);
+    expect(dark.backgroundColor).not.toBe(light.backgroundColor);
+    expect(dark.color).not.toBe(light.color);
+    await expectColours(button, { backgroundColor: dark.backgroundColor, color: dark.color });
+  });
+
+  test('when prefers-color-scheme turns dark', async ({ page }) => {
+    await openStory(page, 'shadcn-theme-switch');
+    const host = page.getByTestId('shadcn-host');
+    const button = page.getByRole('button', { name: 'Sign in' });
+    const light = await colours(host);
+    await expectColours(button, { backgroundColor: light.backgroundColor, color: light.color });
+
+    await page.emulateMedia({ colorScheme: 'dark' });
+    const dark = await colours(host);
+    expect(dark.backgroundColor).not.toBe(light.backgroundColor);
+    expect(dark.color).not.toBe(light.color);
+    await expectColours(button, { backgroundColor: dark.backgroundColor, color: dark.color });
+  });
+});

@@ -2,6 +2,7 @@ import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import type { CSSProperties } from 'react';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { LoginButtonView } from './login-button';
+import './login-button.stories.css';
 
 /**
  * Stands in for a host app's shadcn/ui theme: the story's `shadcn` parameter is
@@ -102,4 +103,17 @@ export const ShadcnOklchHex: Story = {
 export const ShadcnMissingVariables: Story = {
   args: { appearance: 'shadcn' },
   parameters: { shadcn: {} },
+};
+
+/**
+ * A theme that switches at runtime: dark values under `html.dark` and under
+ * `prefers-color-scheme: dark`. The button follows either switch.
+ */
+export const ShadcnThemeSwitch: Story = {
+  args: { appearance: 'shadcn' },
+  render: (args) => (
+    <div data-testid='shadcn-host' className='login-button-story-theme'>
+      <LoginButtonView {...args} />
+    </div>
+  ),
 };

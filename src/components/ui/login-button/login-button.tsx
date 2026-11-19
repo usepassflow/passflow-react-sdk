@@ -1,18 +1,8 @@
-import {
-  cloneElement,
-  type FC,
-  type MouseEvent,
-  type ReactElement,
-  type ReactNode,
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useRef,
-} from 'react';
+import { cloneElement, type FC, type MouseEvent, type ReactElement, type ReactNode, useId, useRef } from 'react';
 import { cn } from '@/utils';
 import '@/styles/index.css';
 import { VisuallyHidden } from '../visually-hidden';
-import { readShadcnTheme } from './shadcn-theme';
+import { useShadcnTheme } from './use-shadcn-theme';
 import './login-button.css';
 
 /**
@@ -46,9 +36,6 @@ export type LoginButtonViewProps = {
 
 type ClickableProps = { onClick?: (event: MouseEvent<HTMLElement>) => void };
 
-// A layout effect so the host's colours are in place before the first paint; a plain effect on the server.
-const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
-
 /**
  * The sign-in / sign-out button. It renders a state and calls `onClick`; the
  * `LoginButton` runtime component decides the state and does the sign-in or
@@ -64,18 +51,7 @@ export const LoginButtonView: FC<LoginButtonViewProps> = ({
 }) => {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const descriptionId = useId();
-  const rendersButton = !children;
-
-  // The host's shadcn colours, read once and set on the button as the custom properties its stylesheet reads.
-  useIsomorphicLayoutEffect(() => {
-    const button = buttonRef.current;
-    if (appearance !== 'shadcn' || !rendersButton || !button) return;
-    const theme = readShadcnTheme(button);
-    for (const [name, value] of Object.entries(theme)) button.style.setProperty(name, value);
-    return () => {
-      for (const name of Object.keys(theme)) button.style.removeProperty(name);
-    };
-  }, [appearance, rendersButton]);
+  useShadcnTheme(buttonRef, appearance === 'shadcn' && !children);
 
   if (children) {
     const own = (children.props as ClickableProps).onClick;

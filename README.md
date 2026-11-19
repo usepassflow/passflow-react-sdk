@@ -330,7 +330,7 @@ To use your own button, wrap it. Your element becomes the button: it keeps its p
 <LoginButton>{({ isSignedIn, label, user }) => <MyButton>{label}</MyButton>}</LoginButton>
 ```
 
-In an app styled with shadcn/ui, `appearance="shadcn"` takes `--primary`, `--primary-foreground`, `--radius`, `--ring` and `--font-sans` from your theme, in either the HSL-triplet (`222.2 47.4% 11.2%`) or the complete-colour (`oklch(…)`, hex) format. A missing variable falls back to the Passflow style, and a missing `--font-sans` to the inherited font. The colours are read once, when the button mounts.
+In an app styled with shadcn/ui, `appearance="shadcn"` takes `--primary`, `--primary-foreground`, `--radius`, `--ring` and `--font-sans` from your theme, in either the HSL-triplet (`222.2 47.4% 11.2%`) or the complete-colour (`oklch(…)`, hex) format. A missing variable falls back to the Passflow style, and a missing `--font-sans` to the inherited font. The button follows a theme switch: a `dark` class, `data-theme` or style change on `<html>` or `<body>`, or a change of `prefers-color-scheme`.
 
 ```tsx
 <LoginButton appearance='shadcn' />

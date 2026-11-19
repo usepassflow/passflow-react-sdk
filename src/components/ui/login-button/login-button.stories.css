@@ -1,0 +1,26 @@
+/*
+ * A host app's shadcn theme that switches at runtime, for the ShadcnThemeSwitch
+ * story: light values by default, dark values under `html.dark` (a class
+ * toggle) and under `prefers-color-scheme: dark` (the system setting).
+ */
+
+.login-button-story-theme {
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: #fafafa;
+  --ring: oklch(0.708 0 0);
+  --radius: 0.625rem;
+}
+
+html.dark .login-button-story-theme {
+  --primary: #e4e4e7;
+  --primary-foreground: #18181b;
+  --ring: #71717a;
+}
+
+@media (prefers-color-scheme: dark) {
+  .login-button-story-theme {
+    --primary: #e4e4e7;
+    --primary-foreground: #18181b;
+    --ring: #71717a;
+  }
+}

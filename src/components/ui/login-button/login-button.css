@@ -8,8 +8,9 @@
  * `--shadcn` reads the host app's shadcn/ui variables. Radius and font are a
  * length and a family list in every shadcn theme, so they are read here
  * directly. The colours come in two formats (a bare HSL triplet or a complete
- * colour), so the component reads them once in script and passes them in as
- * `--passflow-login-button-background`, `-foreground` and `-ring`. Every
+ * colour), so the component reads them in script, again on each theme switch,
+ * and passes them in as `--passflow-login-button-background`, `-foreground`
+ * and `-ring`. Every
  * variable that is missing falls back to the Passflow token.
  */
 

@@ -5,7 +5,7 @@
  * (`--primary: 222.2 47.4% 11.2%`) that the app wraps as `hsl(var(--primary))`;
  * Tailwind v4 themes store a complete colour (`oklch(0.205 0 0)`, a hex, …)
  * used as `var(--primary)`. CSS cannot tell the two apart, so the value is read
- * once in script and handed to the stylesheet as a `--passflow-login-button-*`
+ * in script and handed to the stylesheet as a `--passflow-login-button-*`
  * custom property. A missing variable sets nothing and the stylesheet's
  * `--passflow-*` fallback applies.
  */
