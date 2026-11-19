@@ -2,6 +2,12 @@
 
 All notable changes to `@passflow/react` are documented in this file.
 
+## [0.26.2] - 2026-11-20
+
+### Fixed
+
+- A server-rendered page (Next.js, TanStack Start or any SSR framework) no longer logs "Hydration failed because the server rendered text didn't match the client" (React error 418) when a signed-in user reloads it. The server has no session, so it renders signed out; the browser now hydrates signed out too and shows the session in the render right after hydration. This covers `<LoginButton />`, `useAuth().isSignedIn`, `useUser()`, `usePassflowStore()` (which also no longer throws "Missing getServerSnapshot" on the server), the two-factor setup form and the invitation screen. A page rendered only in the browser shows the session from its first render, as before.
+
 ## [0.26.1] - 2026-11-19
 
 ### Fixed
