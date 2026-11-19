@@ -138,7 +138,7 @@ Or launch Playwright's interactive test UI:
 pnpm test:ui
 ```
 
-Both scripts automatically start the demo app and Storybook. `pnpm test` uses the economical headless configuration, while `pnpm test:ui` retains traces and a final full-page screenshot for every successful test. Select a runnable leaf test in Playwright UI to inspect its action timeline, DOM snapshots, and screenshot attachment. Tests live in `playwright/tests`; component-state tests render the real Storybook stories rather than recreating components in a test-only harness. Vitest remains for non-visual hooks, controllers, and utility logic.
+Both scripts start their own demo app on port 5173 and Storybook on port 6107, and never reuse a running server, so the run fails if either port is taken. `pnpm test` uses the economical headless configuration, while `pnpm test:ui` retains traces and a final full-page screenshot for every successful test. Select a runnable leaf test in Playwright UI to inspect its action timeline, DOM snapshots, and screenshot attachment. Tests live in `playwright/tests`; component-state tests render the real Storybook stories rather than recreating components in a test-only harness. Vitest remains for non-visual hooks, controllers, and utility logic.
 
 ## Installation
 
@@ -320,14 +320,14 @@ import { LoginButton } from '@passflow/react';
 
 Signed out, it shows **Sign in** (`signInLabel`) and a click starts the hosted sign-in, `passflow.authRedirect(authRedirectOptions)`. Signed in, it shows the user's email (`signedInLabel={(user) => …}`) and a click signs out with `useAuth().logout()`, which also ends the hosted session after a hosted sign-in; `postLogoutRedirectUri` says where the browser lands. The button is disabled and `aria-busy` while the sign-out is in flight, and it switches on sign-in and sign-out events.
 
-To use your own button, wrap it. Your element becomes the button: it keeps its props, content and look, and gets a click handler that calls its own `onClick` first, then signs in or out unless that called `event.preventDefault()`. No label is injected, so its text stays as you wrote it. For text that switches, pass a function:
+To use your own button, wrap it. Your element becomes the button: it keeps its props, content and look, and gets a click handler that calls its own `onClick` first, then signs in or out unless that called `event.preventDefault()` (a component that calls `onClick()` with no event still signs in or out). No label is injected, so its text stays as you wrote it. While the sign-out is in flight it gets `disabled` and `aria-busy`; otherwise those stay as you passed them. For text that switches, pass a function, which also receives `busy`:
 
 ```tsx
 <LoginButton>
   <MyButton>Account</MyButton>
 </LoginButton>
 
-<LoginButton>{({ isSignedIn, label, user }) => <MyButton>{label}</MyButton>}</LoginButton>
+<LoginButton>{({ isSignedIn, label, user, busy }) => <MyButton disabled={busy}>{label}</MyButton>}</LoginButton>
 ```
 
 In an app styled with shadcn/ui, `appearance="shadcn"` takes `--primary`, `--primary-foreground`, `--radius`, `--ring` and `--font-sans` from your theme, in either the HSL-triplet (`222.2 47.4% 11.2%`) or the complete-colour (`oklch(…)`, hex) format. A missing variable falls back to the Passflow style, and a missing `--font-sans` to the inherited font. The button follows a theme switch: a `dark` class, `data-theme` or style change on `<html>` or `<body>`, or a change of `prefers-color-scheme`.

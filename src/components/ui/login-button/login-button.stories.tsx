@@ -71,6 +71,22 @@ export const WrappedChild: Story = {
   },
 };
 
+/**
+ * The wrapped child while the sign-out is in flight: it gets `disabled` and
+ * `aria-busy`, and keeps every prop of its own.
+ */
+export const WrappedChildSigningOut: Story = {
+  args: {
+    state: 'signing-out',
+    label: 'jane@example.com',
+    children: (
+      <button type='button' className='app-button' data-variant='ghost'>
+        Continue with Passflow
+      </button>
+    ),
+  },
+};
+
 /** An older shadcn theme: colours are bare HSL triplets, used by the app as `hsl(var(--primary))`. */
 export const ShadcnHslTriplet: Story = {
   args: { appearance: 'shadcn' },

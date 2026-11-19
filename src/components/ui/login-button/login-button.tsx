@@ -29,12 +29,15 @@ export type LoginButtonViewProps = {
   /**
    * The app's own element to use as the button instead of the default one. It
    * is cloned with a click handler and otherwise left as it is: its props,
-   * content and look are its own, and no label is injected.
+   * content and look are its own, and no label is injected. While signing out
+   * it also gets `disabled` and `aria-busy`; when idle those stay as the app
+   * passed them.
    */
   children?: ReactElement;
 };
 
-type ClickableProps = { onClick?: (event: MouseEvent<HTMLElement>) => void };
+type ClickableProps = { onClick?: (event?: MouseEvent<HTMLElement>) => void };
+type ChildProps = ClickableProps & { disabled?: boolean; 'aria-busy'?: boolean };
 
 /**
  * The sign-in / sign-out button. It renders a state and calls `onClick`; the
@@ -53,17 +56,21 @@ export const LoginButtonView: FC<LoginButtonViewProps> = ({
   const descriptionId = useId();
   useShadcnTheme(buttonRef, appearance === 'shadcn' && !children);
 
+  const busy = state === 'signing-out';
+
   if (children) {
     const own = (children.props as ClickableProps).onClick;
-    return cloneElement(children as ReactElement<ClickableProps>, {
-      onClick: (event: MouseEvent<HTMLElement>) => {
+    return cloneElement(children as ReactElement<ChildProps>, {
+      // Some UI libraries call `onClick()` with no event; then there is nothing to have been prevented.
+      onClick: (event?: MouseEvent<HTMLElement>) => {
         own?.(event);
-        if (!event.defaultPrevented) onClick();
+        if (!event?.defaultPrevented) onClick();
       },
+      // Set only while busy, so an idle child keeps its own `disabled` and `aria-busy`.
+      ...(busy ? { disabled: true, 'aria-busy': true } : {}),
     });
   }
 
-  const busy = state === 'signing-out';
   const signedIn = state !== 'signed-out';
 
   // The description is a sibling, not a child: inside the button it would join the button's name.

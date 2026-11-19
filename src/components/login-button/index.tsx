@@ -11,6 +11,8 @@ export type LoginButtonRenderProps = {
   /** The label the default button would show now: `signInLabel`, or the signed-in label. */
   label: ReactNode;
   user: PassflowUser;
+  /** True while the sign-out is in flight; a click then does nothing. */
+  busy: boolean;
 };
 
 export type LoginButtonProps = {
@@ -29,9 +31,12 @@ export type LoginButtonProps = {
   /**
    * Your own element as the button, in place of the default one. It is cloned
    * with a click handler that first calls its own `onClick`, then signs in or
-   * out unless that called `event.preventDefault()`. Its content is kept as it
-   * is: no label is injected. For a label that switches, pass a function that
-   * returns the element.
+   * out unless that called `event.preventDefault()`. A child that calls
+   * `onClick()` with no event still signs in or out. Its content is kept as it
+   * is: no label is injected. While the sign-out is in flight it gets
+   * `disabled` and `aria-busy`; otherwise those stay as you passed them. For a
+   * label that switches, pass a function that returns the element; it also
+   * receives `busy`.
    */
   children?: ReactElement | ((props: LoginButtonRenderProps) => ReactElement);
 };
@@ -89,7 +94,7 @@ export const LoginButton: FC<LoginButtonProps> = ({
       appearance={appearance}
       onClick={handleClick}
     >
-      {typeof children === 'function' ? children({ isSignedIn, label, user }) : children}
+      {typeof children === 'function' ? children({ isSignedIn, label, user, busy: signingOut }) : children}
     </LoginButtonView>
   );
 };

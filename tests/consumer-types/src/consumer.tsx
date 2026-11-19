@@ -53,6 +53,7 @@ export type Canaries = [
   ExpectFalse<IsAny<typeof LoginButton>>,
   ExpectFalse<IsAny<LoginButtonProps>>,
   ExpectFalse<IsAny<LoginButtonRenderProps>>,
+  ExpectFalse<IsAny<LoginButtonRenderProps['busy']>>,
   ExpectFalse<IsAny<typeof LoginButtonView>>,
 ];
 
@@ -107,6 +108,13 @@ export function App(): ReactElement {
         </button>
       </LoginButton>
       <LoginButton>{({ label }: LoginButtonRenderProps) => <button type='button'>{label}</button>}</LoginButton>
+      <LoginButton>
+        {({ busy, label }) => (
+          <button type='button' disabled={busy}>
+            {label}
+          </button>
+        )}
+      </LoginButton>
       {/* @ts-expect-error appearance is a closed union */}
       <LoginButton appearance='material' />
       <LoginButtonView state='signing-out' label='jane@example.com' onClick={() => undefined} />
@@ -149,6 +157,14 @@ export function useIsSignedIn(): boolean {
 export function useSignedInFlag(): boolean {
   return useAuth().isSignedIn;
 }
+
+// A function child's busy flag is a boolean, never a string.
+export const renderBusy = ({ busy }: LoginButtonRenderProps): boolean => {
+  // @ts-expect-error busy is a boolean
+  const notAString: string = busy;
+  void notAString;
+  return busy;
+};
 
 export function useSignedInEmail(): string | undefined {
   const user: PassflowUser = useUser();

@@ -92,6 +92,15 @@ test.describe('LoginButton states', () => {
     await expect(button).toHaveText('Continue with Passflow');
   });
 
+  test('a wrapped child is disabled and busy while signing out, and keeps its own props', async ({ page }) => {
+    await openStory(page, 'wrapped-child-signing-out');
+    const button = page.getByRole('button', { name: 'Continue with Passflow', exact: true });
+    await expect(button).toBeDisabled();
+    await expect(button).toHaveAttribute('aria-busy', 'true');
+    await expect(button).toHaveClass('app-button');
+    await expect(button).toHaveAttribute('data-variant', 'ghost');
+  });
+
   for (const id of ['shadcn-hsl-triplet', 'shadcn-oklch-hex', 'shadcn-missing-variables']) {
     test(`${id} is named "Sign in"`, async ({ page }) => {
       await openStory(page, id);

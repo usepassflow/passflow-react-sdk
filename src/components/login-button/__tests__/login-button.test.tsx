@@ -216,3 +216,145 @@ describe('LoginButton', () => {
     expect(session.passflow.logOut).toHaveBeenCalledTimes(1);
   });
 });
+
+/** A component from a UI library that calls `onClick()` with no event. */
+const NoEventButton = ({ onClick, children }: { onClick?: () => void; children: string }) => (
+  <button type='button' onClick={() => onClick?.()}>
+    {children}
+  </button>
+);
+
+describe('LoginButton with a child that calls onClick() with no event', () => {
+  it('signs in when signed out', async () => {
+    const session = createSession(false);
+    renderWith(
+      session,
+      <LoginButton>
+        <NoEventButton>Continue</NoEventButton>
+      </LoginButton>,
+    );
+
+    await click('Continue');
+    expect(session.passflow.authRedirect).toHaveBeenCalledTimes(1);
+  });
+
+  it('signs out when signed in', async () => {
+    const session = createSession(true);
+    renderWith(
+      session,
+      <LoginButton>
+        <NoEventButton>Account</NoEventButton>
+      </LoginButton>,
+    );
+
+    await click('Account');
+    expect(session.passflow.logOut).toHaveBeenCalledTimes(1);
+  });
+
+  it("still runs the child's own onClick first", async () => {
+    const session = createSession(false);
+    const calls: string[] = [];
+    session.passflow.authRedirect.mockImplementation(async () => {
+      calls.push('authRedirect');
+    });
+    renderWith(
+      session,
+      <LoginButton>
+        <NoEventButton onClick={() => calls.push('own')}>Continue</NoEventButton>
+      </LoginButton>,
+    );
+
+    await click('Continue');
+    expect(calls).toEqual(['own', 'authRedirect']);
+  });
+});
+
+/** Records the props a wrapped component receives. */
+const seenProps: Record<string, unknown>[] = [];
+const Spy = (props: Record<string, unknown>) => {
+  seenProps.push(props);
+  return <button type='button'>Continue</button>;
+};
+
+describe('LoginButton busy state for children', () => {
+  it('gives a function child busy: true during the sign-out and false after', async () => {
+    const session = createSession(true);
+    renderWith(
+      session,
+      <LoginButton>
+        {({ busy, label }) => (
+          <button type='button' data-busy={String(busy)}>
+            {label}
+          </button>
+        )}
+      </LoginButton>,
+    );
+
+    expect(screen.getByRole('button', { name: 'jane@example.com' })).toHaveAttribute('data-busy', 'false');
+    await click('jane@example.com');
+    expect(screen.getByRole('button', { name: 'jane@example.com' })).toHaveAttribute('data-busy', 'true');
+
+    await act(async () => session.finishLogOut());
+    expect(screen.getByRole('button', { name: 'Sign in' })).toHaveAttribute('data-busy', 'false');
+  });
+
+  it('makes a wrapped child disabled and aria-busy during the sign-out, keeping its own props', async () => {
+    const session = createSession(true);
+    renderWith(
+      session,
+      <LoginButton>
+        <button type='button' className='app-button' data-variant='ghost'>
+          Account
+        </button>
+      </LoginButton>,
+    );
+
+    const idle = screen.getByRole('button', { name: 'Account' });
+    expect(idle).toBeEnabled();
+    expect(idle).not.toHaveAttribute('aria-busy');
+    expect(idle).not.toHaveAttribute('disabled');
+
+    await click('Account');
+    const busy = screen.getByRole('button', { name: 'Account' });
+    expect(busy).toBeDisabled();
+    expect(busy).toHaveAttribute('aria-busy', 'true');
+    expect(busy).toHaveClass('app-button');
+    expect(busy).toHaveAttribute('data-variant', 'ghost');
+
+    await act(async () => session.finishLogOut());
+    const after = screen.getByRole('button', { name: 'Account' });
+    expect(after).toBeEnabled();
+    expect(after).not.toHaveAttribute('aria-busy');
+    expect(after).toHaveClass('app-button');
+    expect(after).toHaveAttribute('data-variant', 'ghost');
+  });
+
+  it("leaves a wrapped child's own disabled and aria-busy as they are when idle", () => {
+    renderWith(
+      createSession(false),
+      <LoginButton>
+        <button type='button' disabled aria-busy='true'>
+          Continue
+        </button>
+      </LoginButton>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Continue' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-busy', 'true');
+  });
+
+  it('passes no disabled or aria-busy prop to a wrapped component when idle', () => {
+    seenProps.length = 0;
+    renderWith(
+      createSession(false),
+      <LoginButton>
+        <Spy />
+      </LoginButton>,
+    );
+
+    const last = seenProps.at(-1) ?? {};
+    expect('disabled' in last).toBe(false);
+    expect('aria-busy' in last).toBe(false);
+  });
+});
