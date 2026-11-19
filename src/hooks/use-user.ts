@@ -1,5 +1,6 @@
 import { type ParsedTokens, type Passflow, PassflowEvent, type PassflowSubscriber } from '@passflow/core';
 import { useEffect, useState } from 'react';
+import { useHydrated } from './use-hydrated';
 import { usePassflow } from './use-passflow';
 
 /** The signed-in user, from the tokens. Every field is absent when no one is signed in. */
@@ -35,11 +36,14 @@ const readUser = (passflow: Passflow): PassflowUser => {
   };
 };
 
+const signedOut: PassflowUser = {};
+
 const sameUser = (a: PassflowUser, b: PassflowUser) => a.id === b.id && a.email === b.email && a.phone === b.phone;
 
 /** The signed-in user's id, email and phone. Re-renders on sign-in, sign-up, refresh, sign-out and session expiry. */
 export const useUser = (): PassflowUser => {
   const passflow = usePassflow();
+  const hydrated = useHydrated();
   const [user, setUser] = useState<PassflowUser>(() => readUser(passflow));
 
   useEffect(() => {
@@ -54,5 +58,5 @@ export const useUser = (): PassflowUser => {
     return () => passflow.unsubscribe(subscriber, USER_EVENTS);
   }, [passflow]);
 
-  return user;
+  return hydrated ? user : signedOut;
 };
