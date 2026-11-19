@@ -14,15 +14,14 @@ export const isSameOriginPath = (target: string): boolean => {
 };
 
 /**
- * The path and query a target names on this page's origin, or `null` when it leads elsewhere. A full address on this
- * origin counts: it is the same app, so getting there needs no new page load. Its fragment is dropped, as a flow's
- * navigation carries only a path and a query.
+ * The path, query and fragment a target names on this page's origin, or `null` when it leads elsewhere. A full
+ * address on this origin counts: it is the same app, so getting there needs no new page load.
  */
 export const inAppPath = (target: string): string | null => {
   if (isSameOriginPath(target)) return target;
   if (!isValidUrl(target)) return null;
   const url = new URL(target);
-  return url.origin === window.location.origin ? `${url.pathname}${url.search}` : null;
+  return url.origin === window.location.origin ? `${url.pathname}${url.search}${url.hash}` : null;
 };
 
 /** Whether a sign-in's target is the sign-in page of this app, whatever its query or fragment. */

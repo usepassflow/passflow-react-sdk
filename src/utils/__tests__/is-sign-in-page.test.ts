@@ -24,9 +24,9 @@ describe('isSignInPage', () => {
 });
 
 describe('inAppPath', () => {
-  it('gives the path and query of a full address on this origin', () => {
+  it('gives the path, query and fragment of a full address on this origin', () => {
     expect(inAppPath(`${window.location.origin}/`)).toBe('/');
-    expect(inAppPath(`${window.location.origin}/account?tab=home#top`)).toBe('/account?tab=home');
+    expect(inAppPath(`${window.location.origin}/account?tab=home#top`)).toBe('/account?tab=home#top');
   });
 
   it('keeps a path on this origin as it is', () => {

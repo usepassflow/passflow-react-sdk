@@ -77,7 +77,7 @@ export type PassflowProps = PassflowBaseProps &
         /**
          * Full control: the app's router owns the location. Pass its current
          * `{ pathname, search }` and a `navigate` that moves it; `routerType` is then
-         * not used. Not needed for an app router in browser mode, which the default
+         * not used. A move to an address with a fragment also carries `hash`. Not needed for an app router in browser mode, which the default
          * already follows.
          */
         location: FlowLocation;
@@ -142,10 +142,13 @@ const PassflowRoutes: FC<PassflowRoutesProps> = ({
   const { setNavigate } = useContext(NavigationContext);
   useEffect(() => {
     setNavigate(({ to, search = '', replace = false }) => {
-      const queryAt = to.indexOf('?');
-      const pathname = queryAt >= 0 ? to.slice(0, queryAt) : to;
-      const query = search || (queryAt >= 0 ? to.slice(queryAt) : '');
-      navigateRef.current({ pathname, search: withQuestionMark(query) }, { replace });
+      const hashAt = to.indexOf('#');
+      const hash = hashAt >= 0 ? to.slice(hashAt) : '';
+      const target = hashAt >= 0 ? to.slice(0, hashAt) : to;
+      const queryAt = target.indexOf('?');
+      const pathname = queryAt >= 0 ? target.slice(0, queryAt) : target;
+      const query = search || (queryAt >= 0 ? target.slice(queryAt) : '');
+      navigateRef.current({ pathname, search: withQuestionMark(query), ...(hash ? { hash } : {}) }, { replace });
     });
   }, [setNavigate]);
 
@@ -303,10 +306,14 @@ const PassflowWrapper: FC<PassflowProps> = ({
   navigate: controlledNavigate,
 }) => {
   const { error: errorUrlSuccess, message: messageUrlSuccess } = getUrlErrors(requestedRedirect);
-  // On an app's own page, a full address on this origin is a page of the same app: the sign-in moves there in the
-  // app, with no new page load. A hosted login page keeps it as an address to leave for.
+  // On an app's own page whose flow follows the address bar's path, a full address on this origin is a page of the
+  // same app: the sign-in moves there in the app, with no new page load. A hash or memory flow keeps its path
+  // elsewhere, and a hosted login page leaves, so for them it stays an address to load.
+  const followsAddressPath = controlledLocation !== undefined || routerType === 'browser';
   const successAuthRedirect =
-    federatedLanding === 'app' && requestedRedirect ? (inAppPath(requestedRedirect) ?? requestedRedirect) : requestedRedirect;
+    federatedLanding === 'app' && followsAddressPath && requestedRedirect
+      ? (inAppPath(requestedRedirect) ?? requestedRedirect)
+      : requestedRedirect;
   const { location, navigate } = useFlowLocation(routerType, controlledLocation, controlledNavigate);
   const passflow = usePassflow();
   const { federatedLandingOutcome } = useContext(NavigationContext);

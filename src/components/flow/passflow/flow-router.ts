@@ -11,7 +11,7 @@
  */
 import { routes } from '@/context';
 
-export type FlowLocation = { pathname: string; search: string };
+export type FlowLocation = { pathname: string; search: string; hash?: string };
 export type FlowNavigateOptions = { replace: boolean };
 export type FlowNavigate = (location: FlowLocation, options: FlowNavigateOptions) => void;
 
@@ -135,8 +135,8 @@ const announceUrlChange = () => window.dispatchEvent(new PopStateEvent('popstate
 export const createBrowserHistory = (): FlowHistory => ({
   read: cached(() => ({ pathname: window.location.pathname, search: window.location.search })),
   subscribe: listenTo(['popstate']),
-  navigate: ({ pathname, search }, { replace }) => {
-    const url = `${pathname}${withQuestionMark(search)}`;
+  navigate: ({ pathname, search, hash = '' }, { replace }) => {
+    const url = `${pathname}${withQuestionMark(search)}${hash}`;
     // The current state is kept so a host router's own bookkeeping (its history
     // index and key) stays readable after the move.
     if (replace) window.history.replaceState(window.history.state, '', url);
