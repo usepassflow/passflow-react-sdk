@@ -306,6 +306,8 @@ function AuthPage() {
 }
 ```
 
+With a location the app passes, a sign-in whose `successAuthRedirect` is a full address loads that page, as before; only the built-in browser router moves there in the app without a reload.
+
 `TwoFactorSetupMagicLinkFlow` can also be mounted on its own page. It reads the token from the URL (the segment after `/two-factor-setup-magic-link/`), or takes it as a `token` prop.
 
 ### Login button

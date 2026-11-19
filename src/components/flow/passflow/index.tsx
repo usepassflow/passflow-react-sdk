@@ -19,7 +19,7 @@ import { SignInEndingScreen } from '@/components/form/signed-in';
 import { withError } from '@/hocs';
 import { useNavigation, usePassflow, useSignInEnding } from '@/hooks';
 import type { FederatedLanding, SuccessAuthRedirect } from '@/types';
-import { authRedirectErrorFrom, getUrlErrors, passwordlessSignInFailedMessage } from '@/utils';
+import { authRedirectErrorFrom, getUrlErrors, inAppPath, passwordlessSignInFailedMessage } from '@/utils';
 import {
   createBrowserHistory,
   createHashHistory,
@@ -77,7 +77,7 @@ export type PassflowProps = PassflowBaseProps &
         /**
          * Full control: the app's router owns the location. Pass its current
          * `{ pathname, search }` and a `navigate` that moves it; `routerType` is then
-         * not used. Not needed for an app router in browser mode, which the default
+         * not used. A move to an address with a fragment also carries `hash`. Not needed for an app router in browser mode, which the default
          * already follows.
          */
         location: FlowLocation;
@@ -142,10 +142,13 @@ const PassflowRoutes: FC<PassflowRoutesProps> = ({
   const { setNavigate } = useContext(NavigationContext);
   useEffect(() => {
     setNavigate(({ to, search = '', replace = false }) => {
-      const queryAt = to.indexOf('?');
-      const pathname = queryAt >= 0 ? to.slice(0, queryAt) : to;
-      const query = search || (queryAt >= 0 ? to.slice(queryAt) : '');
-      navigateRef.current({ pathname, search: withQuestionMark(query) }, { replace });
+      const hashAt = to.indexOf('#');
+      const hash = hashAt >= 0 ? to.slice(hashAt) : '';
+      const target = hashAt >= 0 ? to.slice(0, hashAt) : to;
+      const queryAt = target.indexOf('?');
+      const pathname = queryAt >= 0 ? target.slice(0, queryAt) : target;
+      const query = search || (queryAt >= 0 ? target.slice(queryAt) : '');
+      navigateRef.current({ pathname, search: withQuestionMark(query), ...(hash ? { hash } : {}) }, { replace });
     });
   }, [setNavigate]);
 
@@ -292,7 +295,7 @@ const FlowScreenView: FC<FlowScreenViewProps> = ({
 };
 
 const PassflowWrapper: FC<PassflowProps> = ({
-  successAuthRedirect,
+  successAuthRedirect: requestedRedirect,
   federatedDisplayMode = 'redirect',
   federatedLanding = 'app',
   error = undefined,
@@ -302,7 +305,15 @@ const PassflowWrapper: FC<PassflowProps> = ({
   location: controlledLocation,
   navigate: controlledNavigate,
 }) => {
-  const { error: errorUrlSuccess, message: messageUrlSuccess } = getUrlErrors(successAuthRedirect);
+  const { error: errorUrlSuccess, message: messageUrlSuccess } = getUrlErrors(requestedRedirect);
+  // On an app's own page with the flow's browser router, a full address on this origin is a page of the same app: the
+  // sign-in moves there in the app, with no new page load. A hash or memory flow, a location the app passes (offered
+  // for routers in hash or memory mode) and a hosted login page keep it as an address to load.
+  const followsAddressPath = controlledLocation === undefined && routerType === 'browser';
+  const successAuthRedirect =
+    federatedLanding === 'app' && followsAddressPath && requestedRedirect
+      ? (inAppPath(requestedRedirect) ?? requestedRedirect)
+      : requestedRedirect;
   const { location, navigate } = useFlowLocation(routerType, controlledLocation, controlledNavigate);
   const passflow = usePassflow();
   const { federatedLandingOutcome } = useContext(NavigationContext);

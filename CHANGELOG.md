@@ -2,6 +2,15 @@
 
 All notable changes to `@passflow/react` are documented in this file.
 
+## [0.26.1] - 2026-11-19
+
+### Fixed
+
+- A sign-in through `PassflowFlow` whose `successAuthRedirect` is a full address on the page's own origin (`"http://localhost:5173/"`) no longer loads the page again. On the flow's built-in browser router, the flow moves to that path, query and fragment in the app, so the page draws once. Hash and memory flows, a `location` and `navigate` the app passes, and the hosted login page (`federatedLanding="login-page"`) still load such an address.
+- The password length rule counts characters (code points), as the server does. An emoji counts as one, so the form no longer accepts an emoji password the server refuses.
+- The free `withAuth(fetch, options)` and `attachAuth(instance, options)` take `origins`, like `usePassflow().withAuth` and `passflow.attachAuth`. Without it, a call to another origin went without a token.
+- `dist/style.css` holds no empty `url()`. `--passflow-background-image` defaults to `none`, and a Next.js 16 app with Turbopack builds with the stylesheet imported. The build fails if any shipped stylesheet holds an empty `url()`.
+
 ## [0.26.0] - 2026-11-19
 
 ### Added
