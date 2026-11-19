@@ -36,7 +36,7 @@ body {
   --passflow-secondary-text-color: var(--passflow-grey-one);
   --passflow-button-text-color: var(--passflow-white);
   --passflow-background-color: var(--passflow-white);
-  --passflow-background-image: url("");
+  --passflow-background-image: none;
   --passflow-card-color: var(--passflow-white);
   --passflow-branding-background-color: var(--passflow-background);
   --passflow-input-background-color: var(--passflow-grey-four);
