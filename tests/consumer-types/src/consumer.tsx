@@ -6,6 +6,10 @@ import {
   FieldOtp,
   type FieldOtpProps,
   type LogOutOptions,
+  LoginButton,
+  type LoginButtonProps,
+  type LoginButtonRenderProps,
+  LoginButtonView,
   PassflowFlow,
   type PassflowFlowLocation,
   type PassflowFlowNavigate,
@@ -46,6 +50,10 @@ export type Canaries = [
   ExpectFalse<IsAny<PassflowFlowNavigate>>,
   ExpectFalse<IsAny<LogOutOptions>>,
   ExpectFalse<IsAny<typeof useLogout>>,
+  ExpectFalse<IsAny<typeof LoginButton>>,
+  ExpectFalse<IsAny<LoginButtonProps>>,
+  ExpectFalse<IsAny<LoginButtonRenderProps>>,
+  ExpectFalse<IsAny<typeof LoginButtonView>>,
 ];
 
 const flowProps: PassflowProps = { pathPrefix: '/web', routerType: 'memory' };
@@ -85,6 +93,23 @@ export function App(): ReactElement {
       <FieldOtp id='code-2' length={6} value='' onChange={() => undefined} label='Verification code' />
       {/* @ts-expect-error length is a number */}
       <FieldOtp {...otpProps} length='6' />
+      <LoginButton />
+      <LoginButton
+        signInLabel='Log in'
+        signedInLabel={(user) => user.email ?? 'Account'}
+        authRedirectOptions={{ redirectUrl: 'https://app.example.com/callback' }}
+        postLogoutRedirectUri='https://app.example.com/'
+        appearance='shadcn'
+      />
+      <LoginButton>
+        <button type='button' className='app-button'>
+          Account
+        </button>
+      </LoginButton>
+      <LoginButton>{({ label }: LoginButtonRenderProps) => <button type='button'>{label}</button>}</LoginButton>
+      {/* @ts-expect-error appearance is a closed union */}
+      <LoginButton appearance='material' />
+      <LoginButtonView state='signing-out' label='jane@example.com' onClick={() => undefined} />
     </PassflowProvider>
   );
 }

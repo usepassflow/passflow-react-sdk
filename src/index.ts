@@ -4,6 +4,7 @@ import '@/utils/get-app-version';
 export * from '@passflow/core';
 export * from './components/flow';
 export * from './components/form';
+export { LoginButton, type LoginButtonProps, type LoginButtonRenderProps } from './components/login-button';
 export type { PassflowUpgradeOptions, UpgradeProviderProps } from './components/provider';
 export { PassflowProvider, UpgradeProvider } from './components/provider';
 export * from './components/ui';
