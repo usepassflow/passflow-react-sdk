@@ -13,6 +13,10 @@ import { usePassflow } from '../hooks/use-passflow';
 export type SessionExpiredHandler = (reason: SessionExpiredReason) => void;
 
 export type AuthContextValue = {
+  /**
+   * Reads the session now. On a server-rendered page, render from `isSignedIn` instead: the server has no session, so
+   * output that calls this during render differs between the server and the browser.
+   */
   isAuthenticated: () => boolean;
   /** Whether a user is signed in. Updates on sign-in, sign-up, sign-out and session expiry, so a component can render on it. */
   isSignedIn: boolean;

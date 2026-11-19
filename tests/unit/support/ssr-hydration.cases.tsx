@@ -1,13 +1,15 @@
 import type { PassflowEvent, PassflowSubscriber } from '@passflow/core';
-import { act, type ReactNode } from 'react';
-import { hydrateRoot } from 'react-dom/client';
+import { act, type ReactNode, useLayoutEffect } from 'react';
+import { createRoot, hydrateRoot } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LoginButton } from '@/components/login-button';
 import { AuthProvider } from '@/context/auth-context';
 import { initialState, PassflowContext, type PassflowContextType } from '@/context/passflow-context';
 import { usePassflowStore } from '@/hooks/use-passflow-store';
+import { useAuth } from '@/hooks/use-auth';
 import { useTwoFactorSetup } from '@/hooks/use-two-factor-setup';
+import { useUser } from '@/hooks/use-user';
 
 // Testing Library sets this on import; this test drives hydrateRoot with React's own act.
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -100,6 +102,30 @@ export function ssrHydrationCases(engine: 'default' | '18.3.1') {
       expect(recoverable).toEqual([]);
       expect(consoleErrors).toEqual([]);
       expect(container.textContent).toBe('enrolled');
+    });
+  });
+
+  describe(`a page rendered only in the browser, React ${engine}`, () => {
+    it('commits the signed-in user in its first render', async () => {
+      const commits: string[] = [];
+      const FirstCommit = () => {
+        const { isSignedIn } = useAuth();
+        const { email } = useUser();
+        const tokens = usePassflowStore();
+        const seen = `${isSignedIn} ${email} ${Boolean(tokens)}`;
+        useLayoutEffect(() => {
+          commits.push(seen);
+        });
+        return null;
+      };
+      const container = document.createElement('div');
+      document.body.appendChild(container);
+
+      await act(async () => {
+        createRoot(container).render(withSession(createPassflow(true), <FirstCommit />));
+      });
+
+      expect(commits[0]).toBe('true ada@example.com true');
     });
   });
 }
