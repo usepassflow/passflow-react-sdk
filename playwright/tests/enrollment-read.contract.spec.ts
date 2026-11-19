@@ -98,12 +98,12 @@ test('TEST-B5 REQ-12 raw 429 ignores the server 15-minute string and ends with S
   const { requests } = await installEnrollmentBoundary(page);
   await onState(page, (route) => route.fulfill({
     status: 429, headers: { ...corsHeaders, 'retry-after': '0' },
-    json: { error: 'Too many requests. Try again in 15 minutes.' },
+    json: { error: 'Too many attempts. Please try again later.' },
   }));
   await signInToFactor(page);
   await expect(screen(page, 'ended')).toBeVisible();
   await expect(page.getByText(rateCopy, { exact: true })).toBeVisible();
-  await expect(page.getByText(/15 minutes/)).toHaveCount(0);
+  await expect(page.getByText(/Please try again later/)).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: /code/i })).toHaveCount(0);
   // GET 429 retries belong to core; the client must still spend no POST budget.
   expect(requests.filter((request) => request.method === 'GET').length).toBeGreaterThanOrEqual(1);

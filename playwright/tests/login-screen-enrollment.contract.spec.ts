@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from '../fixture';
+import { waitForStoryRendered } from './storybook.helpers';
 
 test.use({ locale: 'en-US', timezoneId: 'UTC', viewport: { width: 715, height: 900 } });
 const storybook = process.env.STORYBOOK_URL ?? 'http://localhost:6107';
@@ -17,6 +18,7 @@ const checkEmail = 'Check your email for a link to set up two-factor authenticat
 const openStory = async (page: Page, name: string) => {
   const id = name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
   await page.goto(storybook + '/iframe.html?id=components-loginscreen--' + id + '&viewMode=story');
+  await waitForStoryRendered(page);
 };
 
 // REQ-totp_digits: eight slots must fit their container and the card at both widths.
@@ -69,7 +71,7 @@ for (const story of codeStories) {
     await expect(page.getByRole('heading', { name: recovery ? 'Use Recovery Code' : 'Two-Factor Authentication', exact: true })).toBeVisible();
     await expect(code).toBeVisible();
     await expect(trust).toBeVisible();
-    if (recovery) await expect(code).toHaveAttribute('placeholder', 'XXXX-XXXX');
+    if (recovery) await expect(code).toHaveAttribute('placeholder', 'XXXX-XXXX-XXXX');
     else {
       await expect(code).toHaveAttribute('inputmode', 'numeric');
       await expect(code).toHaveAttribute('maxlength', story.endsWith('EightDigits') ? '8' : '6');

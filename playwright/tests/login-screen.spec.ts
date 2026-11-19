@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { expect, test } from '../fixture';
+import { waitForStoryRendered } from './storybook.helpers';
 
 const storybookUrl = 'http://localhost:6107';
 const storyTitle = 'Components/LoginScreen';
@@ -19,6 +20,7 @@ type StoryIndex = {
 
 const openStory = async (page: Page, id: string) => {
   await page.goto(`${storybookUrl}/iframe.html?id=${id}&viewMode=story`);
+  await waitForStoryRendered(page);
   const storyRoot = page.locator('#storybook-root');
   await expect(storyRoot).toBeVisible();
   await expect(storyRoot).not.toBeEmpty();

@@ -163,3 +163,25 @@ test('TEST-D11 REQ-3 generic finishing failure leaves every recovery code availa
   await expect(page.getByRole('button', { name: "I've Saved These Codes", exact: true })).toBeEnabled();
   expect(http.count(paths.verify)).toBe(1);
 });
+
+// An app with recovery codes off: the server answers the confirm with no codes, as an empty list, null or no field.
+for (const [name, answer] of [
+  ['an empty list', { enabled: true, recovery_codes: [] }],
+  ['null', { enabled: true, recovery_codes: null }],
+  ['no field', { enabled: true }],
+] as const) {
+  test(`TEST-D12 a confirm with ${name} for recovery codes finishes the sign-in with the confirm code`, async ({ page }) => {
+    const http = await runtime(page, 'direct');
+    const response = tokens();
+    await endpoint(page, paths.confirm, [ok(answer)]);
+    await endpoint(page, paths.verify, [ok(response)]);
+    await land(page, 'direct');
+    await begin(page);
+    await enterSetupCode(page, '654321');
+    await expectSignedIn(page, response);
+    expect(http.count(paths.confirm)).toBe(1);
+    expect(http.posts.filter((r) => r.path === paths.verify).map((r) => r.body)).toEqual([
+      expect.objectContaining({ code: '654321' }),
+    ]);
+  });
+}

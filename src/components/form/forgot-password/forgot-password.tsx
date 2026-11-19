@@ -7,19 +7,22 @@ import { phone } from 'phone';
 import { type FC, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import * as Yup from 'yup';
-import { Button, FieldPhone, FieldText, Icon, Link } from '@/components/ui';
+import { Button, FieldPhone, FieldText, Icon, Link, LoginAlert } from '@/components/ui';
 import { routes, useSearchSource } from '@/context';
 import { useAppSettings, useForgotPassword, useNavigation } from '@/hooks';
-import { cn, emailRegex, getAuthMethods, getIdentityLabel, useUrlParams } from '@/utils';
+import {
+  cn,
+  emailRegex,
+  getAuthMethods,
+  getIdentityLabel,
+  passwordChangeRequiredMessage,
+  passwordChangeRequiredReason,
+  useUrlParams,
+} from '@/utils';
 import { Wrapper } from '../wrapper';
 
 import '@/styles/index.css';
 import queryString from 'query-string';
-
-const initialValues = {
-  email_or_username: '',
-  phone: '',
-};
 
 const searchParamsForgotPasswordSchema = Yup.object().shape({
   defaultMethod: Yup.string().oneOf(['email_or_username', 'phone']).required(),
@@ -36,13 +39,22 @@ export const ForgotPassword: FC<TForgotPassword> = ({
   signInPath = routes.signin.path,
   forgotPasswordSuccessPath = routes.forgot_password_success.path,
 }) => {
+  const { get } = useUrlParams({
+    default_method: '',
+    email: '',
+    username: '',
+    phone: '',
+  });
+
   const {
     getValues,
     control,
-    register,
-    formState: { errors, isDirty, isValid },
+    formState: { errors, isValid },
   } = useForm({
-    defaultValues: initialValues,
+    defaultValues: {
+      email_or_username: get('email') || get('username') || '',
+      phone: get('phone') ?? '',
+    },
   });
 
   const { appSettings, currentStyles, isError: isErrorApp, error: errorApp, loginAppTheme } = useAppSettings();
@@ -52,13 +64,11 @@ export const ForgotPassword: FC<TForgotPassword> = ({
   const authMethods = useMemo(() => getAuthMethods(appSettings?.auth_strategies), [appSettings]);
   const { navigate } = useNavigation();
   const searchSource = useSearchSource();
-  const { get } = useUrlParams({
-    default_method: '',
-  });
 
   const params = {
     defaultMethod: get('default_method'),
   };
+  const showPasswordChangeNotice = get('reason') === passwordChangeRequiredReason;
 
   try {
     searchParamsForgotPasswordSchema.validateSync(params, { abortEarly: false });
@@ -72,10 +82,12 @@ export const ForgotPassword: FC<TForgotPassword> = ({
 
   const onSubmitHanlder = async () => {
     const values = getValues();
-    const isEmail = values.email_or_username.match(emailRegex);
-    const isUsername = !isEmail && values.email_or_username.length > 0;
+    // Only the field on screen is sent: the URL may prefill the other one, which the user never sees.
+    const usesPhone = defaultMethod === 'phone';
+    const isEmail = !usesPhone && values.email_or_username.match(emailRegex);
+    const isUsername = !usesPhone && !isEmail && values.email_or_username.length > 0;
     const validatedPhone = phone(values.phone);
-    const isPhone = validatedPhone.isValid;
+    const isPhone = usesPhone && validatedPhone.isValid;
 
     const payload = {
       ...(isEmail && { email: values.email_or_username }),
@@ -128,8 +140,8 @@ export const ForgotPassword: FC<TForgotPassword> = ({
       removeBranding={loginAppTheme?.remove_passflow_logo}
     >
       <span className='passflow-form-subscriptions'>{currentSubscriptions}</span>
-
       <form onSubmit={(e) => e.preventDefault()} className='passflow-form'>
+        {showPasswordChangeNotice && <LoginAlert tone='info' message={passwordChangeRequiredMessage} />}
         <div className='passflow-form-container'>
           <div className='passflow-form-field'>
             {defaultMethod === 'email_or_username' && (
@@ -142,17 +154,10 @@ export const ForgotPassword: FC<TForgotPassword> = ({
                 <Controller
                   name='email_or_username'
                   control={control}
-                  rules={{
-                    required: 'Email is required',
-                    pattern: {
-                      value: emailRegex,
-                      message: 'Invalid email',
-                    },
-                  }}
+                  rules={{ required: 'Email is required' }}
                   render={({ field }) => (
                     <FieldText
                       {...field}
-                      {...register('email_or_username')}
                       isError={isError || Object.hasOwn(errors, 'email_or_username')}
                       id='email_or_username'
                       type='text'
@@ -183,7 +188,6 @@ export const ForgotPassword: FC<TForgotPassword> = ({
                   render={({ field }) => (
                     <FieldPhone
                       {...field}
-                      {...register('phone')}
                       onChange={(e) => field.onChange(e)}
                       id='phone'
                       name='phone'
@@ -207,7 +211,7 @@ export const ForgotPassword: FC<TForgotPassword> = ({
             size='big'
             variant='primary'
             type='button'
-            disabled={!isDirty || !isValid || isLoading}
+            disabled={!isValid || isLoading}
             className='passflow-button-send-reset-password'
             // eslint-disable-next-line @typescript-eslint/no-misused-promises
             onClick={onSubmitHanlder}

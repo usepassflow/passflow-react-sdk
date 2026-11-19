@@ -16,6 +16,9 @@ This is a SDK for react application.
   - [Integration](#integration)
     - [Passflow Cloud](#passflow-cloud)
     - [PassflowFlow](#passflowflow)
+    - [Login button](#login-button)
+    - [Two-factor setup for a signed-in user](#two-factor-setup-for-a-signed-in-user)
+    - [Step-up](#step-up)
     - [React Router](#react-router)
     - [Wouter](#wouter)
     - [TanStack Router](#tanstack-router)
@@ -32,6 +35,7 @@ This is a SDK for react application.
     - [InvitationJoin](#invitationjoin)
   - [Hooks](#hooks)
     - [useAuth](#useauth)
+    - [useUser](#useuser)
     - [usePassflow](#usepassflow)
     - [usePassflowStore](#usepassflowstore)
     - [useSignIn](#usesignin)
@@ -134,7 +138,7 @@ Or launch Playwright's interactive test UI:
 pnpm test:ui
 ```
 
-Both scripts automatically start the demo app and Storybook. `pnpm test` uses the economical headless configuration, while `pnpm test:ui` retains traces and a final full-page screenshot for every successful test. Select a runnable leaf test in Playwright UI to inspect its action timeline, DOM snapshots, and screenshot attachment. Tests live in `playwright/tests`; component-state tests render the real Storybook stories rather than recreating components in a test-only harness. Vitest remains for non-visual hooks, controllers, and utility logic.
+Both scripts start their own demo app on port 5173 and Storybook on port 6107, and never reuse a running server, so the run fails if either port is taken. `pnpm test` uses the economical headless configuration, while `pnpm test:ui` retains traces and a final full-page screenshot for every successful test. Select a runnable leaf test in Playwright UI to inspect its action timeline, DOM snapshots, and screenshot attachment. Tests live in `playwright/tests`; component-state tests render the real Storybook stories rather than recreating components in a test-only harness. Vitest remains for non-visual hooks, controllers, and utility logic.
 
 ## Installation
 
@@ -227,14 +231,17 @@ the provider:
    `max_age`, `id_token_hint`) without re-prompting an
    already-authenticated user.
 
-3. **Renders a placeholder during exchange** (theme via the
-   `continuingToAppPlaceholder` prop on PassflowFlow — TODO once
-   the prop is wired through; today the default placeholder
-   appears).
+3. **Shows a status line during exchange.** While the exchange
+   runs, the provider renders "Continuing to <app name>…" in place
+   of its children, with the app name taken from the parent
+   challenge, or "Continuing…" when the challenge has none.
 
-4. **Falls through to the login form** when exchange is impossible
-   or returns `403 upgrade_required`. The login form gets an
-   explanatory banner (also themeable).
+4. **Falls through to the login form** when exchange is impossible,
+   or when its `403 upgrade_required` can only be met by a fresh sign-in.
+   The login form gets an explanatory banner (also themeable). A 403 the
+   hosted session can meet opens the step-up dialog instead; after a
+   successful step-up the hosted page tries the exchange once more, and a
+   second refusal goes back to the app as `unmet_authentication_requirements`.
 
 Consumer code remains a single line of plumbing — mount
 `<PassflowProvider>`, render `<PassflowFlow>` inside, done. No
@@ -300,6 +307,76 @@ function AuthPage() {
 ```
 
 `TwoFactorSetupMagicLinkFlow` can also be mounted on its own page. It reads the token from the URL (the segment after `/two-factor-setup-magic-link/`), or takes it as a `token` prop.
+
+### Login button
+
+One button that signs in and out, inside `PassflowProvider`:
+
+```tsx
+import { LoginButton } from '@passflow/react';
+
+<LoginButton />;
+```
+
+Signed out, it shows **Sign in** (`signInLabel`) and a click starts the hosted sign-in, `passflow.authRedirect(authRedirectOptions)`. Signed in, it shows the user's email (`signedInLabel={(user) => …}`) and a click signs out with `useAuth().logout()`, which also ends the hosted session after a hosted sign-in; `postLogoutRedirectUri` says where the browser lands. The button is disabled and `aria-busy` while the sign-out is in flight, and it switches on sign-in and sign-out events.
+
+To use your own button, wrap it. Your element becomes the button: it keeps its props, content and look, and gets a click handler that calls its own `onClick` first, then signs in or out unless that called `event.preventDefault()` (a component that calls `onClick()` with no event still signs in or out). No label is injected, so its text stays as you wrote it. While the sign-out is in flight it gets `disabled` and `aria-busy`; otherwise those stay as you passed them. For text that switches, pass a function, which also receives `busy`:
+
+```tsx
+<LoginButton>
+  <MyButton>Account</MyButton>
+</LoginButton>
+
+<LoginButton>{({ isSignedIn, label, user, busy }) => <MyButton disabled={busy}>{label}</MyButton>}</LoginButton>
+```
+
+In an app styled with shadcn/ui, `appearance="shadcn"` takes `--primary`, `--primary-foreground`, `--radius`, `--ring` and `--font-sans` from your theme, in either the HSL-triplet (`222.2 47.4% 11.2%`) or the complete-colour (`oklch(…)`, hex) format. A missing variable falls back to the Passflow style, and a missing `--font-sans` to the inherited font. The button follows a theme switch: a `dark` class, `data-theme` or style change on `<html>` or `<body>`, or a change of `prefers-color-scheme`.
+
+```tsx
+<LoginButton appearance='shadcn' />
+```
+
+### Two-factor setup for a signed-in user
+
+When the app's two-factor policy is **Optional**, sign-in does not ask the user to set up an authenticator. Let a signed-in user turn it on from your own page with one component:
+
+```tsx
+import '@passflow/react/dist/style.css';
+import { TwoFactorSetupForm, useAuth } from '@passflow/react';
+
+const Security = () => (useAuth().isSignedIn ? <TwoFactorSetupForm /> : null);
+```
+
+In the admin panel, on the app's two-factor settings, set the policy to **Optional** and turn **TOTP** on.
+
+The form reads the user's two-factor status when it mounts. A user who has it on sees that it is on. Anyone else gets **Get Started**, then the QR code (with the key to type in by hand), then a field for the code from the authenticator app, then the recovery codes to save, and then the same "it is on" state. When the confirm answer carries no recovery codes, the codes screen is skipped.
+
+### Step-up
+
+When your own API answers `403 upgrade_required`, the provider can ask the signed-in user to verify again and then repeat the call. Name the API in `backend` and turn the fetch interceptor on:
+
+```tsx
+<PassflowProvider url={url} appId={appId} backend='https://api.example.com' upgrade={{ interceptFetch: true }}>
+  <App />
+</PassflowProvider>
+```
+
+The dialog offers the factors the server lists in `available_factors`, in its order, with the first one selected. When the step-up cannot go ahead, it ends in one of four ways:
+
+| Outcome | What the user sees |
+|---------|--------------------|
+| Sign-in required (`sign_in_required: true`) | The dialog closes and the provider calls `upgrade.onSignInRequired`. The call is not repeated. |
+| Unsatisfiable (no factor reaches the level) | "This account can't reach the security level this app asks for. Add a passkey on this device, or contact the app.", with **Close**. Nothing navigates. |
+| Rate limited | "Too many attempts. Try again in 30 seconds.", with the wait in seconds, minutes, hours or days, rounded up ("15 minutes", "1 day"), or the server's own text when it names no wait. No new code is asked for. |
+| Insufficient (verified, but the call was challenged again) | The levels reached and required, with **Sign in again**, which calls `upgrade.onSignInRequired`. |
+
+`upgrade.onSignInRequired` is where those sign-ins go. By default it opens the app's own sign-in route when a `PassflowFlow` is mounted, and otherwise calls `passflow.authRedirect()`. Pass your own to send the user somewhere else:
+
+```tsx
+<PassflowProvider {...config} upgrade={{ interceptFetch: true, onSignInRequired: () => router.navigate('/login') }}>
+```
+
+The hosted login page never calls `onSignInRequired`. It shows the sign-in form for sign-in required and insufficient, and puts the unsatisfiable and rate-limited messages on the page in place of the form.
 
 The sections below wire the app's router into the **standalone form components** (`SignIn`, `SignUp`, …) through `PassflowProvider`'s `navigate` and `router` props. `PassflowFlow` does not need them.
 
@@ -707,21 +784,70 @@ Component for accepting invitations and joining organizations.
 Hook for authentication management. Provides methods for checking authentication status, obtaining tokens, and logging out.
 
 ```typescript
-const { isAuthenticated, getTokens, logout, isLoading } = useAuth();
+const { isSignedIn, isAuthenticated, getTokens, logout, isLoading } = useAuth();
 ```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| initialRefresh | `boolean` (optional) | Whether to refresh tokens on mount |
 
 **Returns:**
 
 | Property | Type | Description |
 |----------|------|-------------|
-| isAuthenticated | `() => boolean` | Current authentication status |
+| isSignedIn | `boolean` | Whether a user is signed in. Updates after a sign-in or sign-up, after `logout()` or `useLogout().fetch()`, and when the session expires, so the component re-renders with the new value |
+| isAuthenticated | `() => boolean` | Checks the session at the moment you call it |
+| isSessionExpired | `boolean` | `true` after the session has ended on its own, until the next sign-in |
 | getTokens | `(doRefresh: boolean) => Promise<{ tokens: Tokens \| undefined; parsedTokens: ParsedTokens \| undefined; }>` | Function to get authentication tokens |
-| logout | `() => void` | Function to log out user |
+| logout | `(options?: LogOutOptions) => Promise<void>` | Signs the user out; resolves once the sign-out finishes. See [Signing out after a hosted sign-in](#signing-out-after-a-hosted-sign-in) |
 | isLoading | `boolean` | Loading state indicator |
+
+Render on `isSignedIn`:
+
+```tsx
+const AccountMenu = () => {
+  const { isSignedIn, logout } = useAuth();
+  if (!isSignedIn) return <a href='/web/signin'>Sign in</a>;
+  return <button onClick={() => void logout()}>Sign out</button>;
+};
+```
+
+#### Signing out after a hosted sign-in
+
+When the user signed in through the hosted login (`authRedirect()`), `logout()` also ends the hosted login's own session: once the app is signed out, the browser leaves the page for the hosted login's sign-out and comes back to `postLogoutRedirectUri`. Code after `await logout()` may then not run, so don't put anything you need after it. A sign-in made in the app itself (`PassflowFlow`) never leaves the page.
+
+```tsx
+const { logout } = useAuth();
+
+// Must match one of the app's registered redirect URLs. Default: the address the hosted sign-in landed on.
+await logout({ postLogoutRedirectUri: 'https://app.example.com/signed-out' });
+```
+
+`useLogout().fetch` takes the same options. `LogOutOptions` is exported from `@passflow/react`.
+
+### useUser
+Hook for the signed-in user's id, email and phone, read from the tokens. It re-renders on sign-in, sign-up, token refresh, sign-out and session expiry.
+
+```typescript
+const { id, email, phone } = useUser();
+```
+
+The claim is read from the id token first and from the access token when the id token lacks it. A hosted sign-in (`authRedirect()`) puts `email` in the access token and the embedded screens put it in the id token, so `email` is filled either way.
+
+**Returns:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| id | `string \| undefined` | The user id (`sub`) |
+| email | `string \| undefined` | The user's email |
+| phone | `string \| undefined` | The user's phone number |
+
+Every field is `undefined` when no one is signed in.
+
+```tsx
+const AccountMenu = () => {
+  const { isSignedIn, logout } = useAuth();
+  const { email } = useUser();
+  if (!isSignedIn) return null;
+  return <button onClick={() => void logout()}>Sign out {email}</button>;
+};
+```
 
 ### usePassflow
 Hook for accessing the Passflow SDK instance. Must be used within PassflowProvider.
@@ -758,16 +884,45 @@ Hook for implementing sign-in functionality. Supports password, passkey, and pas
 
 ```typescript
 const { fetch, isLoading, isError, error } = useSignIn();
+
+const outcome = await fetch({ email, password }, 'password');
+if (outcome === 'two-factor-required') navigate('/2fa');
+else if (outcome === 'signed-in') navigate('/');
 ```
+
+**Options:**
+
+| Option | Type | Description |
+|--------|------|-------------|
+| onPasswordChangeRequired | `(notice: string) => void` (optional) | Called when the server refuses the sign-in until the user changes their password. `fetch` resolves `false` and `error` stays empty; send the user to your password reset. `notice` is the server's message for the user. Without this option, that message becomes the form `error`. |
+
+```typescript
+const { fetch } = useSignIn({
+  onPasswordChangeRequired: () => navigate('/forgot-password?default_method=email_or_username&reason=password_change_required'),
+});
+```
+
+The bundled `SignIn` form does this for you: it opens `ForgotPassword` with the identifier filled in and a fixed notice. `ForgotPassword` shows that notice only for `reason=password_change_required` and never displays text from the URL.
 
 **Returns:**
 
 | Property | Type | Description |
 |----------|------|-------------|
-| fetch | `(payload: PassflowPasskeyAuthenticateStartPayload \| PassflowSignInPayload \| PassflowPasswordlessSignInPayload, type: 'passkey' \| 'password' \| 'passwordless') => Promise<boolean \| string \| PassflowPasswordlessResponse>` | Sign in function |
+| fetch | `(payload: PassflowPasskeyAuthenticateStartPayload \| PassflowSignInPayload \| PassflowPasswordlessSignInPayload, type: 'passkey' \| 'password' \| 'passwordless') => Promise<false \| SignInOutcome \| PassflowPasswordlessResponse>` | Sign in function |
 | isLoading | `boolean` | Loading state |
 | isError | `boolean` | Error state |
 | error | `string` | Error message |
+
+`fetch` resolves one of:
+
+| Value | Meaning |
+|-------|---------|
+| `'signed-in'` | A password or passkey sign-in finished; the session is ready. |
+| `'two-factor-required'` | The credentials were accepted but a second factor is still owed. There is no session yet; send the user to your 2FA screen. |
+| `PassflowPasswordlessResponse` | The server's answer to a passwordless request. |
+| `false` | The request failed (see `error`), was superseded, entered the emailed-code step, or was handed to `onPasswordChangeRequired`. |
+
+Both outcome strings are truthy, so `if (await fetch(...))` also passes for `'two-factor-required'`, when there is no session yet. Check for `'two-factor-required'` before treating the user as signed in. Code that compared the result with `=== true` must check the outcome instead.
 
 ### useSignUp
 Hook for implementing registration functionality. Supports password, passkey, and passwordless registration.
@@ -780,10 +935,12 @@ const { fetch, isLoading, isError, error } = useSignUp();
 
 | Property | Type | Description |
 |----------|------|-------------|
-| fetch | `(payload: PassflowPasskeyRegisterStartPayload \| PassflowSignUpPayload \| PassflowPasswordlessSignInPayload, type: 'passkey' \| 'password' \| 'passwordless') => Promise<boolean \| PassflowPasswordlessResponse>` | Sign up function |
+| fetch | `(payload: PassflowPasskeyRegisterStartPayload \| PassflowSignUpPayload \| PassflowPasswordlessSignInPayload, type: 'passkey' \| 'password' \| 'passwordless') => Promise<false \| SignInOutcome \| PassflowPasswordlessResponse>` | Sign up function |
 | isLoading | `boolean` | Loading state |
 | isError | `boolean` | Error state |
 | error | `string` | Error message |
+
+`fetch` resolves the same outcomes as `useSignIn().fetch`.
 
 ### useNavigation
 Hook for navigation between pages. Supports various routers (react-router, wouter, tanstack-router).
@@ -929,7 +1086,7 @@ const { fetch, isLoading, isError, error } = useLogout();
 
 | Property | Type | Description |
 |----------|------|-------------|
-| fetch | `() => Promise<boolean>` | Logout function |
+| fetch | `(options?: LogOutOptions) => Promise<boolean>` | Signs the user out, with the same `postLogoutRedirectUri` option as `useAuth().logout`. After a hosted sign-in the page may leave before it resolves |
 | isLoading | `boolean` | Loading state |
 | isError | `boolean` | Error state |
 | error | `string` | Error message |

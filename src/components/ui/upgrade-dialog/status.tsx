@@ -90,6 +90,11 @@ export const UpgradeStatus: FC<UpgradeStatusState> = (state) => {
       ) : null}
 
       <div className='passflow-upgrade-dialog__actions'>
+        {state.kind === 'insufficient' && state.onSignIn ? (
+          <Button size='big' variant='primary' type='button' data-testid='upgrade-dialog-sign-in' onClick={state.onSignIn}>
+            {state.signInLabel ?? 'Sign in again'}
+          </Button>
+        ) : null}
         {state.kind === 'transport' && state.retryable && state.onRetry ? (
           <Button size='big' variant='primary' type='button' data-testid='upgrade-dialog-retry' onClick={state.onRetry}>
             {state.retryLabel ?? 'Try again'}

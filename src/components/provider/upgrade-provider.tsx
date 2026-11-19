@@ -33,7 +33,9 @@
  * controller on `SignIn` / `SignOut`; this provider discards its view of it in
  * the same breath, and the waiter that was mid-flight settles as
  * `session changed`, which the hook reports as `idle` — nothing that did not
- * happen is reported as though it had.
+ * happen is reported as though it had. The hosted step-up
+ * (`passflow.hostedUpgrade`) is bound to the hosted session cookie instead, so
+ * the instance's `SignIn` / `SignOut` leave its prompt open.
  */
 
 import {
@@ -53,7 +55,17 @@ import {
   type UpgradeReplayInfo,
   type Waiter,
 } from '@passflow/core';
-import { type FC, type ReactElement, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type FC,
+  type ReactElement,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { UpgradeDialogLabels, UpgradeDialogOutcome, UpgradeDialogProps } from '@/components/ui/upgrade-dialog';
 import { dialogOutcomeFromError, readAssuranceBar, toDialogState, UpgradeDialog } from '@/components/ui/upgrade-dialog';
 import {
@@ -105,6 +117,17 @@ export type UpgradeProviderProps = {
   labels?: UpgradeDialogLabels;
   title?: string;
   /**
+   * Where a step-up that only a fresh sign-in can meet sends the user, and the "Sign in again" action of an
+   * insufficient one. Called once, with the dialog closed; nothing is retried. Default: `passflow.authRedirect()`.
+   */
+  onSignInRequired?: () => void;
+  /**
+   * Who shows how a failed step-up ended. `'dialog'` (default): the dialog's own panels, and sign-in required calls
+   * `onSignInRequired`. `'caller'`: the dialog closes and the caller of `elevate` shows it from the rejection, as the
+   * hosted login page does.
+   */
+  failures?: 'dialog' | 'caller';
+  /**
    * FR5's render-prop override. It receives the **exact** props the built-in
    * dialog would render — a typed, constrained override with no `className` or
    * `style` leak.
@@ -140,6 +163,10 @@ const errorStateOf = (error: Error): UpgradeSettledState => {
       return { status: 'error', kind: 'unsatisfiable', error };
     case 'unavailable':
       return { status: 'error', kind: 'unavailable', error };
+    case 'rate-limited':
+      return { status: 'error', kind: 'rate_limited', error };
+    case 'sign-in-required':
+      return { status: 'error', kind: 'sign_in_required', error };
     default:
       return { status: 'error', kind: 'transport' satisfies UpgradeErrorStatusKind, error };
   }
@@ -247,6 +274,8 @@ export const UpgradeProvider: FC<UpgradeProviderProps> = ({
   relyingPartyId,
   labels,
   title,
+  onSignInRequired,
+  failures = 'dialog',
   renderDialog,
 }) => {
   const passflow = usePassflow();
@@ -293,6 +322,11 @@ export const UpgradeProvider: FC<UpgradeProviderProps> = ({
   const diagnosticRef = useRef(onUpgradeDiagnostic);
   shouldInterceptRef.current = shouldIntercept;
   diagnosticRef.current = onUpgradeDiagnostic;
+
+  const signInRef = useRef<() => void>(() => undefined);
+  signInRef.current = onSignInRequired ?? (() => void passflow.authRedirect().catch(() => undefined));
+  const failuresRef = useRef(failures);
+  failuresRef.current = failures;
 
   // H13: `factors` and `replay` are compared by VALUE in the install effect's
   // dependencies (see `factorsSignature` / `replaySignature`) and read through
@@ -374,13 +408,29 @@ export const UpgradeProvider: FC<UpgradeProviderProps> = ({
     (summary: UpgradeFlightSummary) => {
       cancelRequestedRef.current = false;
       setState(summaryToState(summary));
-      setOutcome(userCancelledRef.current ? undefined : summaryToOutcome(summary));
       clearPromptView();
+      const signInRequired =
+        summary.terminal === 'failed' && dialogOutcomeFromError(summaryError(summary)) === 'sign-in-required';
+      // Cleared here as well as when a prompt opens: a flight can settle without ever prompting, and a cancel from an
+      // earlier flight must not hide its outcome.
+      const userCancelled = userCancelledRef.current;
+      userCancelledRef.current = false;
+      if (userCancelled || (failuresRef.current === 'caller' && summary.terminal !== 'success')) {
+        setOutcome(undefined);
+      } else if (signInRequired) {
+        setOutcome(undefined);
+        signInRef.current();
+      } else {
+        setOutcome(summaryToOutcome(summary));
+      }
     },
     [clearPromptView],
   );
 
-  useEffect(() => {
+  // A layout effect, so the facade is enabled in the commit that brings it. The hosted login elevates through the
+  // facade from an awaited network answer, which can run between a commit and its passive effects; a facade that is
+  // not enabled yet rejects that elevation as unavailable.
+  useLayoutEffect(() => {
     if (!enabled) {
       setInstalled(false);
       return;
@@ -465,8 +515,13 @@ export const UpgradeProvider: FC<UpgradeProviderProps> = ({
    * The session-change reset. The core discards its controller here; the view
    * of it must go with it, or a dialog from the old session would collect an
    * answer that can only elevate the new one.
+   *
+   * Not for the hosted step-up: it elevates the hosted session cookie, which a
+   * sign-in or sign-out of the instance's stored tokens leaves as it was.
    */
+  const elevatesHostedSession = upgradeFacade === passflow.hostedUpgrade;
   useEffect(() => {
+    if (elevatesHostedSession) return;
     const subscriber: PassflowSubscriber = {
       onAuthChange: () => {
         cancelRequestedRef.current = false;
@@ -479,7 +534,7 @@ export const UpgradeProvider: FC<UpgradeProviderProps> = ({
     const events = [PassflowEvent.SignIn, PassflowEvent.SignOut];
     passflow.subscribe(subscriber, events);
     return () => passflow.unsubscribe(subscriber, events);
-  }, [passflow, settlePrompt, clearPromptView]);
+  }, [passflow, elevatesHostedSession, settlePrompt, clearPromptView]);
 
   const selectFactor = useCallback((factor: UpgradeFactorType) => {
     setSelectedFactor(factor);
@@ -524,6 +579,11 @@ export const UpgradeProvider: FC<UpgradeProviderProps> = ({
 
   const dismiss = useCallback(() => {
     setOutcome(undefined);
+  }, []);
+
+  const signInAgain = useCallback(() => {
+    setOutcome(undefined);
+    signInRef.current();
   }, []);
 
   const toggleAlternatives = useCallback(() => {
@@ -574,6 +634,7 @@ export const UpgradeProvider: FC<UpgradeProviderProps> = ({
       onSubmit: submit,
       onCancel: cancel,
       onDismiss: dismiss,
+      onSignIn: signInAgain,
     },
   });
 

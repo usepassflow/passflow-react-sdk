@@ -1,10 +1,12 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { expect, test } from '../fixture';
+import { waitForStoryRendered } from './storybook.helpers';
 
 const message = 'We sent a code to a***@example.com.';
 const openStory = async (page: Page, story: string) => {
   await page.goto(`http://localhost:6107/iframe.html?id=components-loginscreen--${story}&viewMode=story`);
+  await waitForStoryRendered(page);
   await expect(page.locator('#storybook-root')).not.toBeEmpty();
   await expect(page.locator('html')).toHaveClass(/storybook-passflow-(light|dark|brand)/);
   await page.waitForFunction(() =>

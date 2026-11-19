@@ -5,13 +5,26 @@
 import {
   FieldOtp,
   type FieldOtpProps,
+  type LogOutOptions,
+  LoginButton,
+  type LoginButtonProps,
+  type LoginButtonRenderProps,
+  LoginButtonView,
   PassflowFlow,
   type PassflowFlowLocation,
   type PassflowFlowNavigate,
   type PassflowProps,
+  PassflowEvent,
   PassflowProvider,
+  type Tokens,
+  TwoFactorSetupFlow,
   TwoFactorSetupMagicLinkFlow,
+  TwoFactorVerifyFlow,
   useAuth,
+  useLogout,
+  usePassflowStore,
+  type PassflowUser,
+  useUser,
 } from '@passflow/react';
 import type { ReactElement } from 'react';
 
@@ -22,13 +35,26 @@ export type Canaries = [
   ExpectFalse<IsAny<typeof PassflowProvider>>,
   ExpectFalse<IsAny<typeof PassflowFlow>>,
   ExpectFalse<IsAny<typeof TwoFactorSetupMagicLinkFlow>>,
+  ExpectFalse<IsAny<typeof TwoFactorSetupFlow>>,
+  ExpectFalse<IsAny<typeof TwoFactorVerifyFlow>>,
+  ExpectFalse<IsAny<typeof usePassflowStore>>,
+  ExpectFalse<IsAny<ReturnType<typeof usePassflowStore>>>,
   ExpectFalse<IsAny<typeof useAuth>>,
   ExpectFalse<IsAny<ReturnType<typeof useAuth>>>,
+  ExpectFalse<IsAny<typeof useUser>>,
+  ExpectFalse<IsAny<PassflowUser>>,
   ExpectFalse<IsAny<typeof FieldOtp>>,
   ExpectFalse<IsAny<FieldOtpProps>>,
   ExpectFalse<IsAny<PassflowProps>>,
   ExpectFalse<IsAny<PassflowFlowLocation>>,
   ExpectFalse<IsAny<PassflowFlowNavigate>>,
+  ExpectFalse<IsAny<LogOutOptions>>,
+  ExpectFalse<IsAny<typeof useLogout>>,
+  ExpectFalse<IsAny<typeof LoginButton>>,
+  ExpectFalse<IsAny<LoginButtonProps>>,
+  ExpectFalse<IsAny<LoginButtonRenderProps>>,
+  ExpectFalse<IsAny<LoginButtonRenderProps['busy']>>,
+  ExpectFalse<IsAny<typeof LoginButtonView>>,
 ];
 
 const flowProps: PassflowProps = { pathPrefix: '/web', routerType: 'memory' };
@@ -62,12 +88,62 @@ export function App(): ReactElement {
       <PassflowFlow {...controlledProps} />
       <TwoFactorSetupMagicLinkFlow signInPath='/auth/signin' onSuccess={() => undefined} />
       <TwoFactorSetupMagicLinkFlow token='abc' />
+      <TwoFactorSetupFlow signInPath='/auth/signin' twoFactorVerifyPath='/auth/two-factor-verify' />
+      <TwoFactorVerifyFlow signInPath='/auth/signin' />
       <FieldOtp {...otpProps} />
       <FieldOtp id='code-2' length={6} value='' onChange={() => undefined} label='Verification code' />
       {/* @ts-expect-error length is a number */}
       <FieldOtp {...otpProps} length='6' />
+      <LoginButton />
+      <LoginButton
+        signInLabel='Log in'
+        signedInLabel={(user) => user.email ?? 'Account'}
+        authRedirectOptions={{ redirectUrl: 'https://app.example.com/callback' }}
+        postLogoutRedirectUri='https://app.example.com/'
+        appearance='shadcn'
+      />
+      <LoginButton>
+        <button type='button' className='app-button'>
+          Account
+        </button>
+      </LoginButton>
+      <LoginButton>{({ label }: LoginButtonRenderProps) => <button type='button'>{label}</button>}</LoginButton>
+      <LoginButton>
+        {({ busy, label }) => (
+          <button type='button' disabled={busy}>
+            {label}
+          </button>
+        )}
+      </LoginButton>
+      {/* @ts-expect-error appearance is a closed union */}
+      <LoginButton appearance='material' />
+      <LoginButtonView state='signing-out' label='jane@example.com' onClick={() => undefined} />
     </PassflowProvider>
   );
+}
+
+// logout returns the sign-out promise, so a consumer can await it or chain .catch().
+export function useSignOut(): () => Promise<void> {
+  const { logout } = useAuth();
+  return logout;
+}
+
+// Both sign-out calls take where the hosted login sends the browser after a hosted sign-in.
+export function useSignOutTo(): () => Promise<void> {
+  const { logout } = useAuth();
+  const { fetch } = useLogout();
+  const options: LogOutOptions = { postLogoutRedirectUri: 'https://app.example.com/signed-out' };
+  // @ts-expect-error postLogoutRedirectUri is a string
+  void logout({ postLogoutRedirectUri: 1 });
+  return async () => {
+    await logout(options);
+    await fetch(options);
+  };
+}
+
+export function useAccessToken(): string | undefined {
+  const tokens: Tokens | undefined = usePassflowStore([PassflowEvent.SignIn, PassflowEvent.SignOut]);
+  return tokens?.access_token;
 }
 
 export function useIsSignedIn(): boolean {
@@ -76,4 +152,24 @@ export function useIsSignedIn(): boolean {
   const notAFunction: boolean = auth.isAuthenticated;
   void notAFunction;
   return auth.isAuthenticated();
+}
+
+export function useSignedInFlag(): boolean {
+  return useAuth().isSignedIn;
+}
+
+// A function child's busy flag is a boolean, never a string.
+export const renderBusy = ({ busy }: LoginButtonRenderProps): boolean => {
+  // @ts-expect-error busy is a boolean
+  const notAString: string = busy;
+  void notAString;
+  return busy;
+};
+
+export function useSignedInEmail(): string | undefined {
+  const user: PassflowUser = useUser();
+  // @ts-expect-error email is a string or absent, never a number
+  const notANumber: number = user.email;
+  void notANumber;
+  return user.email;
 }

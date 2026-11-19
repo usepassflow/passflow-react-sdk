@@ -21,6 +21,8 @@ type TwoFactorRecoveryFormProps = {
   subtitle?: string;
   /** Label of the "trust this device" option, unticked by default. */
   trustDeviceLabel?: string;
+  /** The server's `device_trust_available` for this sign-in. Only `false` hides the option; absent shows it. */
+  deviceTrustAvailable?: boolean;
 };
 
 /** Only a ticked box asks for trust; an unticked one sends no option at all. */
@@ -34,6 +36,7 @@ export const TwoFactorRecoveryForm: FC<TwoFactorRecoveryFormProps> = ({
   title = 'Use Recovery Code',
   subtitle = 'Enter one of your recovery codes',
   trustDeviceLabel = 'Trust this device',
+  deviceTrustAvailable,
 }) => {
   const [code, setCode] = useState('');
   const [trustDevice, setTrustDevice] = useState(false);
@@ -70,10 +73,13 @@ export const TwoFactorRecoveryForm: FC<TwoFactorRecoveryFormProps> = ({
       chrome={{ title, subtitle }}
       state={{
         kind: 'two-factor-code',
-        factor: { type: 'recovery', placeholder: 'XXXX-XXXX' },
+        factor: { type: 'recovery', placeholder: 'XXXX-XXXX-XXXX' },
         label: 'Recovery Code',
         code,
-        trustDevice: { label: trustDeviceLabel, checked: trustDevice, onChange: setTrustDevice },
+        trustDevice:
+          deviceTrustAvailable === false
+            ? undefined
+            : { label: trustDeviceLabel, checked: trustDevice, onChange: setTrustDevice },
         busy: isLoading,
         canSubmit: code.length >= 8,
         locked,

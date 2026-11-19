@@ -6,6 +6,7 @@ import { getTwoFactorEnrollmentScreenProps } from '@/components/flow/two-factor-
 import {
   getTwoFactorRecoveryCodesScreen,
   getTwoFactorSetupCodeScreen,
+  getTwoFactorSetupEnrolledScreen,
   getTwoFactorSetupStartScreen,
 } from '@/components/form/two-factor-setup/setup-screen';
 import type { TwoFactorEnrollmentScreen } from '@/hooks/use-two-factor-enrollment';
@@ -346,7 +347,20 @@ export const ValidationError: Story = {
     const email = canvas.getByLabelText('Email');
     await userEvent.type(email, 'a');
     await userEvent.clear(email);
+    await userEvent.tab();
     await expect(canvas.getByText('Email is required')).toBeVisible();
+  },
+};
+
+/** A half-typed address while the field still has focus: no error until the user leaves it. */
+export const EmailBeingTyped: Story = {
+  args: story(credentials(methods({ emailPassword: true }))),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const email = canvas.getByLabelText('Email');
+    await userEvent.type(email, 'jack');
+    await expect(email).toHaveFocus();
+    await expect(canvas.queryByText('Invalid email')).toBeNull();
   },
 };
 
@@ -1299,7 +1313,7 @@ const totpCode = (overrides: Partial<LoginTwoFactorCodeState> = {}): LoginTwoFac
 
 const recoveryCode = (overrides: Partial<LoginTwoFactorCodeState> = {}): LoginTwoFactorCodeState => ({
   ...twoFactorCommon,
-  factor: { type: 'recovery', placeholder: 'XXXX-XXXX' },
+  factor: { type: 'recovery', placeholder: 'XXXX-XXXX-XXXX' },
   label: 'Recovery Code',
   code: '',
   alternate: { prompt: 'Have your device?', label: 'Use authenticator code', onClick: handlers.onUseAuthenticator },
@@ -1325,6 +1339,11 @@ export const TwoFactorCodeTotpEightDigits: Story = {
     ...totpChrome,
     subtitle: 'Enter the 8-digit code from your authenticator app',
   }),
+};
+
+/** The server says this sign-in may not ask to trust the device, so the switch is gone. */
+export const TwoFactorCodeTotpNoTrustDevice: Story = {
+  args: story(totpCode({ trustDevice: undefined }), totpChrome),
 };
 
 /** A whole code, with the device trusted. */
@@ -1415,7 +1434,7 @@ export const TwoFactorCodeRecovery: Story = {
   args: story(recoveryCode(), recoveryChrome),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole('textbox', { name: 'Recovery Code' })).toHaveAttribute('placeholder', 'XXXX-XXXX');
+    await expect(canvas.getByRole('textbox', { name: 'Recovery Code' })).toHaveAttribute('placeholder', 'XXXX-XXXX-XXXX');
     await expect(canvas.getByRole('button', { name: 'Verify' })).toBeDisabled();
   },
 };
@@ -1533,6 +1552,16 @@ export const TwoFactorSetupStartError: Story = {
 /** `TwoFactorSetupForm` given `onCancel`: Cancel, not a way back to sign in. */
 export const TwoFactorSetupStartCancel: Story = {
   args: setupStart({ secondaryAction: { label: 'Cancel', onClick: handlers.onBackToSignIn } }),
+};
+
+/** `TwoFactorSetupForm` for a signed-in user who already has two-factor authentication on: no Get Started. */
+export const TwoFactorSetupEnrolled: Story = {
+  args: getTwoFactorSetupEnrolledScreen(),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Two-factor authentication is on for your account.')).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Get Started' })).toBeNull();
+  },
 };
 
 /** QR, the secret behind a toggle, and a code to confirm. A whole code does not submit by itself. */

@@ -107,7 +107,7 @@ for (const operation of ['begin', 'confirm', 'verify'] as const) {
     }
     await expect(screen(page, 'ended')).toBeVisible();
     await expect(page.getByText(rateCopy, { exact: true })).toBeVisible();
-    await expect(page.getByText(/15 minutes/)).toHaveCount(0);
+    await expect(page.getByText(/Please try again later/)).toHaveCount(0);
     expect(http.count(paths[operation])).toBe(1);
     expect(http.count(paths.read)).toBe(1);
     await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeEnabled();

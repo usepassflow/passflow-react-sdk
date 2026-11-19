@@ -1,11 +1,13 @@
 // Coverage map: REQ-2 (REQ-2.1, REQ-2.2, REQ-2.3)
 import type { Page } from '@playwright/test';
 import { expect, test } from '../fixture';
+import { waitForStoryRendered } from './storybook.helpers';
 
 const storybookUrl = process.env.STORYBOOK_URL ?? 'http://localhost:6107';
 
 const openStory = async (page: Page, id: string) => {
   await page.goto(`${storybookUrl}/iframe.html?id=components-loginscreen--${id}&viewMode=story`);
+  await waitForStoryRendered(page);
   const storyRoot = page.locator('#storybook-root');
   await expect(storyRoot).toBeVisible();
   await expect(storyRoot).not.toBeEmpty();
@@ -43,15 +45,15 @@ test.describe('REQ-2 LoginScreen customCss injection without react-helmet-async'
     await expect(formTitle).toHaveCSS('text-transform', 'uppercase');
   });
 
-  test('TEST-14 REQ-2.3 LoginScreen · stories without customCss · render no data-passflow-style-layer="custom" style element', async ({
-    page,
-  }) => {
-    for (const storyId of ['default-sign-in', 'email-and-password', 'dark-theme']) {
+  for (const storyId of ['default-sign-in', 'email-and-password', 'dark-theme']) {
+    test(`TEST-14 REQ-2.3 LoginScreen · ${storyId} without customCss · renders no data-passflow-style-layer="custom" style element`, async ({
+      page,
+    }) => {
       await openStory(page, storyId);
 
       await expect(page.locator('#passflow-wrapper')).toBeVisible();
       await expect(page.locator('[data-passflow-style-layer="custom"]')).toHaveCount(0);
       await expect(page.locator('style.psfw-custom-styles')).toHaveCount(0);
-    }
-  });
+    });
+  }
 });

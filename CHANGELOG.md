@@ -2,6 +2,48 @@
 
 All notable changes to `@passflow/react` are documented in this file.
 
+## [0.26.0] - 2026-11-19
+
+### Added
+
+- `<LoginButton />`, one button that signs in and out. Signed out, it starts the hosted sign-in (`authRedirect`). Signed in, it shows the user's email and signs out on click, which ends the hosted session after a hosted sign-in. It is disabled and `aria-busy` while signing out.
+  - Wrapping one element makes the app's own component the button. It keeps its props, ref and content; only `onClick` is replaced. Its own `onClick` runs first, and `preventDefault()` skips the action. A click with no event still works.
+  - A function child receives `{ isSignedIn, label, user, busy }`. While signing out, a wrapped element also gets `disabled` and `aria-busy`.
+  - `appearance="shadcn"` takes `--primary`, `--primary-foreground`, `--ring`, `--radius` and `--font-sans` from the app's shadcn theme. It accepts HSL triplets and complete colours (oklch, hex), falls back to the Passflow tokens, and follows theme switches (`class`, `style` or `data-theme` on `<html>` or `<body>`, and `prefers-color-scheme`).
+  - The visual part is the `LoginButtonView` primitive.
+- `useSignIn({ onPasswordChangeRequired })` for an account that must change its password. The bundled form opens forgot-password with the identifier filled in and shows a fixed notice.
+- `useUser()` returns the signed-in user's `{ id, email, phone }`, after hosted and embedded sign-in.
+- `useAuth().isSignedIn`, a boolean that updates on sign-in, sign-up, sign-out and session expiry.
+- `UpgradeProvider` option `onSignInRequired` (default: the flow's sign-in route, else `authRedirect()`), and `failures: 'dialog' | 'caller'`.
+- Exports `usePassflowStore`, `TwoFactorSetupFlow` and `TwoFactorVerifyFlow`.
+- `TwoFactorSetupForm` shows an enrolled state for a user with two-factor authentication on.
+
+### Changed
+
+- Requires `@passflow/core` ^0.32.0 (was ^0.30.1). On 0.x a caret range stops at the minor, so an app on core 0.32.0 got a second, older core under this package. `usePassflow().withAuth(fetch, { origins })` then failed to compile, and the request went out with no token.
+- `useSignIn().fetch` and `useSignUp().fetch` resolve `'signed-in'` or `'two-factor-required'` (both truthy) instead of `true`, the server's answer for passwordless, or `false`. Code that compared with `=== true` must check the outcome.
+- `useAuth().logout` is typed `() => Promise<void>`. It and `useLogout().fetch` take core's `LogOutOptions` (`postLogoutRedirectUri`). After a hosted sign-in, core also ends the hosted login's session, so the page leaves and code after `await logout()` may not run.
+- 2FA code entry sizes itself from the enrolment's code length. The step-up dialog allows 8 digits for authenticator codes; emailed and texted codes stay at 6.
+- Step-up offers exactly the factors the server lists, in its order. Sign-in required closes the dialog and calls `onSignInRequired`. Unsatisfiable says the account can't reach the level. Rate limited gives the wait as a duration ("15 minutes", "1 day"). Insufficient offers "Sign in again".
+- The hosted login page reads an exchange refusal with core's `parseUpgradeChallenge`, keeping the server's factor list and sign-in flag.
+- Password rules follow the app's policy and the server's checks. The length rule applies only when a minimum is set, symbols are exactly the server's set, and capitals and small letters count in any script.
+- Recovery codes are described in their current format, `XXXX-XXXX-XXXX`.
+- Sign-in and sign-up subtitles use the application name from Login Appearance.
+- The sign-in and sign-up email error shows once the user leaves the field or submits.
+- "Trust this device" is hidden when the server says `device_trust_available: false`.
+
+### Fixed
+
+- Changing the `appId` prop switches the app: the old app's tokens no longer count as signed in, and the new app's settings, scopes and password policy are loaded.
+- Cancelling a step-up dialog no longer hides the next step-up's outcome.
+- The hosted step-up no longer cancels itself on a fast server. App settings that arrived after the refusal rebuilt the instance and closed the prompt, and a refusal could land before the new instance's step-up was enabled.
+- A refused hosted sign-in return shows "Sign-in failed. Start again." instead of nothing.
+- A confirm answer with no recovery codes skips the codes screen instead of showing an empty list or crashing.
+- Forgot-password fills in the identifier from the URL, sends only the identifier on screen, and refuses an empty field.
+- `FieldPhone` shows a value it is given and reports country changes.
+- `useUrlParams` undoes only `&amp;` in the query, so a key such as `notice` is no longer decoded as an HTML entity.
+- `LoginAlert` loads its own stylesheet, so its `info` tone is styled outside the login screen.
+
 ## [0.25.3] - 2026-11-15
 
 ### Changed

@@ -60,7 +60,7 @@ describe('TEST-H2 REQ-6 REQ-7 REQ-12 useTwoFactorVerify classifies structured er
     const http = setup();
     http.endpoints.set('/auth/2fa/verify', {
       status: 429,
-      data: { error: 'Try again in 15 minutes.' },
+      data: { error: 'Too many attempts. Please try again later.' },
     });
     const { result } = renderHook(() => useTwoFactorVerify(), { wrapper });
     await http.releaseSettings();

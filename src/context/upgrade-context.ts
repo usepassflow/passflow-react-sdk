@@ -25,7 +25,13 @@ import type { AssuranceBar, UpgradeChallenge, UpgradeFactor, UpgradeFactorType }
 import { createContext } from 'react';
 
 /** What a protected elevation can fail with, in the hook's vocabulary (§13.3's table). */
-export type UpgradeErrorStatusKind = 'exhausted' | 'unsatisfiable' | 'unavailable' | 'transport';
+export type UpgradeErrorStatusKind =
+  | 'exhausted'
+  | 'unsatisfiable'
+  | 'unavailable'
+  | 'transport'
+  | 'rate_limited'
+  | 'sign_in_required';
 
 /**
  * The hook's observable state. Exactly one terminal state per flight, taken

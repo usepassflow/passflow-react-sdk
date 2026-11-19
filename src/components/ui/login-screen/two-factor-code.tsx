@@ -10,7 +10,8 @@ import type { LoginTwoFactorCodeState } from './types';
 
 /**
  * Asking for a second factor at sign-in: authenticator boxes or a recovery code field, with the trust switch above
- * them. The screen owns no code: a submit on the last digit belongs to the caller's `onCodeChange`.
+ * them when the state offers it. The screen owns no code: a submit on the last digit belongs to the caller's
+ * `onCodeChange`.
  */
 export const LoginTwoFactorCode: FC<LoginTwoFactorCodeState> = ({
   factor,
@@ -46,14 +47,16 @@ export const LoginTwoFactorCode: FC<LoginTwoFactorCodeState> = ({
     <form className='passflow-form' data-testid={testId} aria-busy={busy} onSubmit={handleSubmit}>
       <div className='passflow-form-container'>
         {/* Above the code: the code can submit itself on its last digit. */}
-        <div className='passflow-form-field'>
-          <Switch
-            label={trustDevice.label}
-            checked={trustDevice.checked}
-            disabled={disabled}
-            onChange={(event) => trustDevice.onChange(event.target.checked)}
-          />
-        </div>
+        {trustDevice ? (
+          <div className='passflow-form-field'>
+            <Switch
+              label={trustDevice.label}
+              checked={trustDevice.checked}
+              disabled={disabled}
+              onChange={(event) => trustDevice.onChange(event.target.checked)}
+            />
+          </div>
+        ) : null}
         {factor.type === 'totp' ? (
           <div className='passflow-verify-otp-wrapper'>
             <FieldOtp

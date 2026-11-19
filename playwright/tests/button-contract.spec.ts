@@ -1,4 +1,5 @@
 import { expect, test } from '../fixture';
+import { waitForStoryRendered } from './storybook.helpers';
 
 const states = [
   ['Primary', 'primary', 'Verify', false],
@@ -26,6 +27,7 @@ const states = [
 for (const [name, id, label, disabled] of states) {
   test(`REQ-19 Button · ${name} · exposes its advertised accessible state`, async ({ page }) => {
     await page.goto(`http://localhost:6107/iframe.html?id=components-button--${id}&viewMode=story`);
+    await waitForStoryRendered(page);
     const button = page.getByRole('button', { name: label, exact: true });
     await expect(button).toBeVisible();
     if (disabled) await expect(button).toBeDisabled();

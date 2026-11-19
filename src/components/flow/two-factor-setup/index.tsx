@@ -8,7 +8,7 @@ import { TwoFactorLoopPrevention } from '@/utils';
 
 import '@/styles/index.css';
 
-type TwoFactorSetupFlowProps = {
+export type TwoFactorSetupFlowProps = {
   successAuthRedirect?: SuccessAuthRedirect;
   twoFactorVerifyPath?: string;
   signInPath?: string;

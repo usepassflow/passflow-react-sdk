@@ -42,7 +42,7 @@ test.describe('default signup flow', () => {
     await page.goto('http://localhost:5173/web/signup');
     await expect(page).toHaveTitle(/Passflow/);
     await expect(page.getByText('Create your account', { exact: true })).toBeVisible();
-    await expect(page.getByText('For Passflow by Madappgang', { exact: true })).toBeVisible();
+    await expect(page.getByText('For Passflow', { exact: true })).toBeVisible();
     await page.locator('label div').click();
     await expect(page.locator('label div')).toBeVisible();
     await expect(page.locator('label div')).not.toBeChecked();
@@ -63,6 +63,21 @@ test.describe('default signup flow', () => {
     await expect(page.getByRole('button', { name: 'Sign Up', exact: true })).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Sign Up with email link' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Sign Up with a Passkey' })).toBeVisible();
+  });
+
+  test('checks the email once the user leaves the field, not while typing', async ({ page }) => {
+    const email = page.locator('input#email_or_username');
+    await email.pressSequentially('jack');
+    await expect(email).toHaveValue('jack');
+    await expect(page.getByText('Invalid email', { exact: true })).toHaveCount(0);
+    await expect(email).not.toHaveAttribute('aria-invalid', 'true');
+
+    await email.blur();
+    await expect(page.getByText('Invalid email', { exact: true })).toBeVisible();
+    await expect(email).toHaveAttribute('aria-invalid', 'true');
+
+    await email.pressSequentially('@example.com');
+    await expect(page.getByText('Invalid email', { exact: true })).toHaveCount(0);
   });
 
   test('has all element of default signup settings with phone + password', async ({ page }) => {

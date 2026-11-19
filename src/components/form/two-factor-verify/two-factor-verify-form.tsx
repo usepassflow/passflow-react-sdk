@@ -1,6 +1,6 @@
 import { type FC, useEffect, useRef, useState } from 'react';
 import { LoginScreen } from '@/components/ui';
-import { useTwoFactorVerify } from '@/hooks';
+import { usePassflow, useTwoFactorVerify } from '@/hooks';
 import { getUserFriendlyErrorMessage, isTerminalTwoFactorError, twoFactorBackToSignInLabel } from '@/utils';
 
 import '@/styles/index.css';
@@ -18,6 +18,8 @@ type TwoFactorVerifyFormProps = {
   shouldAutoFocus?: boolean;
   /** Label of the "trust this device" option, unticked by default. */
   trustDeviceLabel?: string;
+  /** The server's `device_trust_available` for this sign-in. Only `false` hides the option; absent shows it. */
+  deviceTrustAvailable?: boolean;
 };
 
 /** Only a ticked box asks for trust; an unticked one sends no option at all. */
@@ -33,14 +35,16 @@ export const TwoFactorVerifyForm: FC<TwoFactorVerifyFormProps> = ({
   numInputs,
   shouldAutoFocus = true,
   trustDeviceLabel = 'Trust this device',
+  deviceTrustAvailable,
 }) => {
   const [code, setCode] = useState('');
   const [trustDevice, setTrustDevice] = useState(false);
+  const passflow = usePassflow();
   const { verify, isLoading, isError, errorDetails, reset } = useTwoFactorVerify();
   const errorType = errorDetails?.type;
 
-  // Get TOTP digits (defaults to 6 if not provided)
-  const totpDigits = numInputs ?? 6;
+  // An explicit numInputs wins; otherwise core's digit count for the pending sign-in.
+  const totpDigits = numInputs ?? passflow.getTotpDigits();
 
   // Compute subtitle dynamically based on totpDigits
   const computedSubtitle = subtitle ?? `Enter the ${totpDigits}-digit code from your authenticator app`;
@@ -74,7 +78,10 @@ export const TwoFactorVerifyForm: FC<TwoFactorVerifyFormProps> = ({
         factor: { type: 'totp', digits: totpDigits },
         label: 'Verification code',
         code,
-        trustDevice: { label: trustDeviceLabel, checked: trustDevice, onChange: setTrustDevice },
+        trustDevice:
+          deviceTrustAvailable === false
+            ? undefined
+            : { label: trustDeviceLabel, checked: trustDevice, onChange: setTrustDevice },
         busy: isLoading,
         canSubmit: code.length === totpDigits,
         locked,

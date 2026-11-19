@@ -1,0 +1,65 @@
+/*
+ * The login button primitive.
+ *
+ * It sizes to its label, unlike the shared button's full-width `big` size,
+ * because it sits in an app's header or menu rather than in a form. Colour,
+ * typography, spacing and radius resolve through `--passflow-*` tokens.
+ *
+ * `--shadcn` reads the host app's shadcn/ui variables. Radius and font are a
+ * length and a family list in every shadcn theme, so they are read here
+ * directly. The colours come in two formats (a bare HSL triplet or a complete
+ * colour), so the component reads them in script, again on each theme switch,
+ * and passes them in as `--passflow-login-button-background`, `-foreground`
+ * and `-ring`. Every
+ * variable that is missing falls back to the Passflow token.
+ */
+
+.passflow-login-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--passflow-spacing-2);
+  padding: var(--passflow-spacing-3) var(--passflow-spacing-6);
+  border: 0;
+  border-radius: var(--passflow-radius);
+  font-family: var(--passflow-font-family);
+  font-size: var(--passflow-body-2);
+  font-weight: var(--passflow-semibold);
+  line-height: 1.5;
+  white-space: nowrap;
+  color: var(--passflow-button-text-color);
+  background-color: var(--passflow-primary-color);
+  cursor: pointer;
+}
+
+.passflow-login-button:focus-visible {
+  outline: 2px solid var(--passflow-focus-color);
+  outline-offset: 2px;
+}
+
+.passflow-login-button:disabled {
+  cursor: progress;
+  background-color: var(--passflow-grey-two);
+}
+
+.passflow-login-button--shadcn {
+  padding: var(--passflow-spacing-2) var(--passflow-spacing-4);
+  border-radius: var(--radius, var(--passflow-radius));
+  font-family: var(--font-sans, inherit);
+  font-weight: var(--passflow-medium);
+  color: var(--passflow-login-button-foreground, var(--passflow-button-text-color));
+  background-color: var(--passflow-login-button-background, var(--passflow-primary-color));
+}
+
+.passflow-login-button--shadcn:hover {
+  background-color: color-mix(in srgb, var(--passflow-login-button-background, var(--passflow-primary-color)) 90%, transparent);
+}
+
+.passflow-login-button--shadcn:focus-visible {
+  outline-color: var(--passflow-login-button-ring, var(--passflow-focus-color));
+}
+
+.passflow-login-button--shadcn:disabled {
+  background-color: var(--passflow-login-button-background, var(--passflow-primary-color));
+  opacity: 0.5;
+}

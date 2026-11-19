@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 // Coverage map: REQ-1 (REQ-1.1, REQ-1.2, REQ-1.3, REQ-1.4, REQ-1.5, REQ-1.6, REQ-1.7, REQ-1.8, REQ-1.9, REQ-1.10)
 import type { Page } from '@playwright/test';
 import { expect, test } from '../fixture';
+import { waitForStoryRendered } from './storybook.helpers';
 
 const storybookUrl = process.env.STORYBOOK_URL ?? 'http://localhost:6107';
 const storyTitle = 'Components/FieldOtp';
@@ -18,6 +19,7 @@ const stories = [
 
 const openStory = async (page: Page, id: string) => {
   await page.goto(`${storybookUrl}/iframe.html?id=components-fieldotp--${id}&viewMode=story`);
+  await waitForStoryRendered(page);
   const storyRoot = page.locator('#storybook-root');
   await expect(storyRoot).toBeVisible();
   await expect(storyRoot).not.toBeEmpty();

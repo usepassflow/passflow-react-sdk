@@ -9,7 +9,7 @@ import type { LoginSecondFactorMethod, LoginSecondFactorState } from './types';
 const METHOD_COPY: Record<LoginSecondFactorMethod, { label: string; hint: string; switchLabel: string }> = {
   totp: {
     label: 'Authenticator code',
-    hint: 'Enter the 6-digit code from your authenticator app.',
+    hint: 'Enter the code from your authenticator app.',
     switchLabel: 'Use authenticator app',
   },
   recovery_codes: {

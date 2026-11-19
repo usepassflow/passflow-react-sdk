@@ -17,6 +17,7 @@ export const passwordValidation = (passwordPolicy: PassflowPasswordPolicySetting
 
         if (passwordPolicy) {
           const {
+            restrict_min_password_length: restrictMinPasswordLength,
             min_password_length: minPasswordLength,
             require_lowercase: requireLowerCase,
             require_number: requireNumber,
@@ -24,11 +25,14 @@ export const passwordValidation = (passwordPolicy: PassflowPasswordPolicySetting
             require_uppercase: requireUpperCase,
           } = passwordPolicy;
 
-          if ((value ?? '').length < minPasswordLength) errors.push('length');
-          if (requireUpperCase && !/[A-Z]/.test(value)) errors.push('uppercase');
-          if (requireLowerCase && !/[a-z]/.test(value)) errors.push('lowercase');
+          // An unrestricted minimum leaves only the non-empty check, which `.required()` already makes.
+          if (restrictMinPasswordLength && (value ?? '').length < minPasswordLength) errors.push('length');
+          // Any script's capitals and small letters, as the server checks them.
+          if (requireUpperCase && !/\p{Lu}/u.test(value)) errors.push('uppercase');
+          if (requireLowerCase && !/\p{Ll}/u.test(value)) errors.push('lowercase');
           if (requireNumber && !/\d/.test(value)) errors.push('number');
-          if (requireSymbol && !/[!@#$%^&*()_+{}[\]:;<>,.?~\\-]/.test(value)) errors.push('symbol');
+          // Exactly the symbols the server's password check counts; `~` and backslash are not among them.
+          if (requireSymbol && !/[!$%^&*()_+{}:@[\];'#<>?,./|\-=]/.test(value)) errors.push('symbol');
         }
 
         if (errors.length > 0) {

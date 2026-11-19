@@ -1,9 +1,10 @@
 import type { TwoFactorConfirmResponse, TwoFactorSetupResponse } from '@passflow/core';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { enrollmentFailureFrom, twoFactorRateLimitedMessage, twoFactorWrongCodeMessage } from '@/utils/auth-error';
 import { usePassflow } from './use-passflow';
 
-export type TwoFactorSetupStep = 'idle' | 'setup' | 'complete';
+/** `checking` reads whether a signed-in user is enrolled; `enrolled` is a user with two-factor authentication on. */
+export type TwoFactorSetupStep = 'checking' | 'idle' | 'setup' | 'complete' | 'enrolled';
 
 export type UseTwoFactorSetupProps = () => {
   setupData: TwoFactorSetupResponse | null;
@@ -12,6 +13,8 @@ export type UseTwoFactorSetupProps = () => {
   beginSetup: () => Promise<TwoFactorSetupResponse | null>;
   confirmSetup: (code: string) => Promise<TwoFactorConfirmResponse | null>;
   reset: () => void;
+  /** The user saved the codes, or there were none: the step becomes `enrolled`. */
+  finish: () => void;
   isLoading: boolean;
   isError: boolean;
   error: string;
@@ -35,7 +38,24 @@ export const useTwoFactorSetup: UseTwoFactorSetupProps = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isError, setIsError] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
-  const [step, setStep] = useState<TwoFactorSetupStep>('idle');
+  // Signed out, as in a setup link or a sign-in waiting on its second factor, there is no status to read.
+  const [step, setStep] = useState<TwoFactorSetupStep>(() => (passflow.isAuthenticated() ? 'checking' : 'idle'));
+
+  const checkedRef = useRef(false);
+  useEffect(() => {
+    if (step !== 'checking' || checkedRef.current) return;
+    checkedRef.current = true;
+    const read = async () => {
+      let enabled = false;
+      try {
+        enabled = (await passflow.getTwoFactorStatus()).enabled;
+      } catch {
+        // Unread, the user can still start: the server refuses a second enrolment.
+      }
+      setStep((current) => (current === 'checking' ? (enabled ? 'enrolled' : 'idle') : current));
+    };
+    void read();
+  }, [passflow, step]);
 
   const beginSetup = useCallback(async (): Promise<TwoFactorSetupResponse | null> => {
     setIsLoading(true);
@@ -62,7 +82,8 @@ export const useTwoFactorSetup: UseTwoFactorSetupProps = () => {
       setError('');
       try {
         const response = await passflow.confirmTwoFactorSetup(code);
-        setRecoveryCodes(response.recovery_codes);
+        // The answer may carry no codes: an empty list, null or no field.
+        setRecoveryCodes(response.recovery_codes ?? []);
         setStep('complete');
         return response;
       } catch (e) {
@@ -84,6 +105,8 @@ export const useTwoFactorSetup: UseTwoFactorSetupProps = () => {
     setStep('idle');
   }, []);
 
+  const finish = useCallback(() => setStep('enrolled'), []);
+
   return {
     setupData,
     recoveryCodes,
@@ -91,6 +114,7 @@ export const useTwoFactorSetup: UseTwoFactorSetupProps = () => {
     beginSetup,
     confirmSetup,
     reset,
+    finish,
     isLoading,
     isError,
     error,

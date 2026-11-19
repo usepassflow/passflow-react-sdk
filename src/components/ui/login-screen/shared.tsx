@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { Button } from '../button';
 import { Icon } from '../icon';
 import type { LoginScreenNotice as LoginScreenNoticeProps } from './types';
+import './login-screen.css';
 
 /** `error` is the default; `info` is a neutral note that is not announced as an alert. */
 export const LoginAlert: FC<{ message?: string | null; id?: string; tone?: 'error' | 'info' }> = ({

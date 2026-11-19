@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
-import { UPGRADE_FACTOR_CODE_CONTRACTS } from './state-mapping';
+import { UPGRADE_FACTOR_CODE_CONTRACTS, UPGRADE_UNSATISFIABLE_DETAIL, upgradeRateLimitedMessage } from './state-mapping';
 import type { UpgradeDialogFactor, UpgradeDialogProps, UpgradeDialogState } from './types';
 import { UpgradeDialog } from './upgrade-dialog';
 
@@ -11,6 +11,7 @@ const handlers = {
   onCancel: fn(),
   onDismiss: fn(),
   onRetry: fn(),
+  onSignIn: fn(),
 };
 
 const totp: UpgradeDialogFactor = {
@@ -193,6 +194,20 @@ export const Insufficient: Story = {
   }),
 };
 
+/** Insufficient, with the one way left: a fresh sign-in. The in-app dialog offers it. */
+export const InsufficientSignInAgain: Story = {
+  args: story({
+    kind: 'insufficient',
+    message: 'Verified to AAL2; this action requires AAL3',
+    detail: 'The elevation succeeded but the action was challenged again. Nothing was completed.',
+    obtained: { acrValues: '2', level: 2 },
+    required: { acrValues: '3', level: 3 },
+    testId: 'upgrade-dialog-insufficient-sign-in',
+    onSignIn: handlers.onSignIn,
+    onDismiss: handlers.onDismiss,
+  }),
+};
+
 /** A freshness re-challenge: `max_age` demanded, no level. */
 export const InsufficientFreshness: Story = {
   args: story({
@@ -241,12 +256,15 @@ export const TransportFailureFinal: Story = {
   }),
 };
 
-/** The no-usable-factor diagnostic: the offered list is empty, so the flight ends. */
+/**
+ * No factor of this account reaches the level, and the server says a fresh sign-in would not either, so the dialog
+ * offers none: it says why and closes.
+ */
 export const NoUsableFactor: Story = {
   args: story({
     kind: 'unsatisfiable',
     message: 'No usable verification method',
-    detail: 'This action requires AAL3, and no verification method is available to answer it.',
+    detail: UPGRADE_UNSATISFIABLE_DETAIL,
     required: { acrValues: '3', level: 3 },
     testId: 'upgrade-dialog-unsatisfiable',
     onDismiss: handlers.onDismiss,
@@ -271,6 +289,16 @@ export const Exhausted: Story = {
     message: 'Too many attempts',
     detail: 'No attempts are left for this verification. Start the action again to retry.',
     testId: 'upgrade-dialog-exhausted',
+    onDismiss: handlers.onDismiss,
+  }),
+};
+
+/** The server's rate limit answered: the wait it named, and no new prompt. */
+export const RateLimited: Story = {
+  args: story({
+    kind: 'exhausted',
+    message: upgradeRateLimitedMessage(30, undefined),
+    testId: 'upgrade-dialog-rate-limited',
     onDismiss: handlers.onDismiss,
   }),
 };

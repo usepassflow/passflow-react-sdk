@@ -1,6 +1,9 @@
 import path from 'node:path';
 /* eslint-disable quotes */
 import { expect, test } from '../fixture';
+import { errorBody } from './email-verification.helpers';
+import { corsHeaders } from './enrollment-contract.helpers';
+import appSettings from './responses/app-settings.json';
 
 test.describe('default passwordless experience', () => {
   test('has all elements of passwordless signin', async ({ page }) => {
@@ -34,7 +37,7 @@ test.describe('default signin flow', () => {
     await page.goto('http://localhost:5173/web/signin');
     await expect(page).toHaveTitle(/Passflow/);
     await expect(page.getByText('Sign In to your account', { exact: true })).toBeVisible();
-    await expect(page.getByText('To Passflow by Madappgang', { exact: true })).toBeVisible();
+    await expect(page.getByText('To Passflow', { exact: true })).toBeVisible();
     await page.locator('label div').click();
     await expect(page.locator('label div')).toBeVisible();
     await expect(page.locator('label div')).not.toBeChecked();
@@ -310,5 +313,83 @@ test.describe('default signin flow with error', () => {
     ).toBeVisible();
     await expect(page.getByText('The redirect URL provided is not allowed by the app.', { exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Go back' })).toBeVisible();
+  });
+});
+
+test.describe('sign-in that requires a password change', () => {
+  // Different from the SDK's notice, so the test can tell which one forgot-password shows.
+  const serverMessage = 'Your administrator requires a new password. Use the reset link to continue.';
+  const passwordChangeNotice = 'You must change your password before you can sign in. Reset your password to continue.';
+
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/settings', async (route) => {
+      await route.fulfill({ path: path.join(__dirname, './responses/passflow-settings.json') });
+    });
+    const usernamePassword = { strategy: { identity: 'username', challenge: 'password', transport: 'none' }, type: 'internal' };
+    await page.route('**/app/settings', (route) =>
+      route.fulfill({ json: { ...appSettings, auth_strategies: [usernamePassword, ...appSettings.auth_strategies] } }),
+    );
+    await page.route('**/auth/login', (route) =>
+      route.request().method() === 'OPTIONS'
+        ? route.fulfill({ status: 204, headers: corsHeaders })
+        : route.fulfill({
+            status: 403,
+            headers: corsHeaders,
+            json: errorBody('error.api.password.change.required', serverMessage, 403, '/auth/login'),
+          }),
+    );
+
+    await page.goto('http://localhost:5173/web/signin');
+    await expect(page.getByText('Sign In to your account', { exact: true })).toBeVisible();
+    await page.locator('label div').click();
+    await expect(page.locator('input#password')).toBeVisible();
+  });
+
+  for (const [identifier, param] of [
+    ['jack@example.com', 'email'],
+    ['jack_r', 'username'],
+  ] as const) {
+    test(`lands on forgot password with the ${param} filled in and the notice shown`, async ({ page }) => {
+      await page.locator('input#email_or_username').fill(identifier);
+      await page.locator('input#password').fill('Correct-horse-battery-9!');
+      await page.getByRole('button', { name: 'Sign In', exact: true }).click();
+
+      await expect(page).toHaveURL((url) => url.pathname === '/web/forgot-password');
+      const search = new URL(page.url()).searchParams;
+      expect(search.get('reason')).toBe('password_change_required');
+      expect(search.get(param)).toBe(identifier);
+      expect(search.get('default_method')).toBe('email_or_username');
+      expect(page.url()).not.toContain('Correct-horse');
+      expect(decodeURIComponent(page.url())).not.toContain('must change');
+
+      await expect(page.locator('input#email_or_username')).toHaveValue(identifier);
+      await expect(page.getByRole('status').filter({ hasText: passwordChangeNotice })).toBeVisible();
+      await expect(page.getByText(serverMessage)).toHaveCount(0);
+      expect(decodeURIComponent(page.url())).not.toContain('administrator');
+      await expect(page.getByRole('button', { name: 'Send reset instructions' })).toBeEnabled();
+    });
+  }
+
+  test('lands on forgot password with the phone filled in and the notice shown', async ({ page }) => {
+    await page.getByRole('button', { name: 'Use phone' }).click();
+    const phoneField = page.locator('input#phone');
+    await phoneField.fill('');
+    await phoneField.pressSequentially('+447700900123');
+    await page.locator('input#password').fill('Correct-horse-battery-9!');
+    await page.getByRole('button', { name: 'Sign In', exact: true }).click();
+
+    await expect(page).toHaveURL((url) => url.pathname === '/web/forgot-password');
+    const search = new URL(page.url()).searchParams;
+    expect(search.get('reason')).toBe('password_change_required');
+    expect(search.get('default_method')).toBe('phone');
+    expect(search.get('phone')).toBe('+447700900123');
+    expect(search.get('email')).toBeNull();
+    expect(search.get('username')).toBeNull();
+    expect(page.url()).not.toContain('Correct-horse');
+
+    expect((await page.locator('input#phone').inputValue()).replace(/\D/g, '')).toBe('447700900123');
+    await expect(page.getByRole('status').filter({ hasText: passwordChangeNotice })).toBeVisible();
+    await expect(page.getByText(serverMessage)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Send reset instructions' })).toBeEnabled();
   });
 });

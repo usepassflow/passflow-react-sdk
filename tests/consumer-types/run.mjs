@@ -57,7 +57,7 @@ for (const [variant, deps] of Object.entries(legs.variants)) {
         private: true,
         type: 'module',
         packageManager,
-        dependencies: { '@passflow/react': `file:${tgz}`, ...deps, ...legs.tools },
+        dependencies: { '@passflow/react': `file:${tgz}`, ...legs.app, ...deps, ...legs.tools },
       },
       null,
       2,
@@ -74,6 +74,15 @@ for (const [variant, deps] of Object.entries(legs.variants)) {
   record(`${variant}: install`, install);
   if (!install.ok) continue;
   attwDir ??= dir;
+
+  // A second copy of core under @passflow/react would give usePassflow() an instance of a different version
+  // than the one the app imports.
+  const cores = readdirSync(join(dir, 'node_modules', '.pnpm')).filter((name) => name.startsWith('@passflow+core@'));
+  const coreVersions = [...new Set(cores.map((name) => name.split('@')[2].split('_')[0]))];
+  record(`${variant}: one @passflow/core`, {
+    ok: coreVersions.length === 1,
+    out: `installed @passflow/core versions: ${coreVersions.join(', ') || 'none'}`,
+  });
 
   for (const [tsVersion, tsPackage] of Object.entries(legs.typescript)) {
     const tsc = join(dir, 'node_modules', tsPackage, 'bin', 'tsc');

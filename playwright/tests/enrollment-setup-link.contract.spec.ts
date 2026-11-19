@@ -51,6 +51,24 @@ test('TEST-L2 REQ-14 REQ-15 validation has no bearer, begin/confirm use only lin
   expect(requests.find((r) => r.path === linkConfirmPath)?.body).toMatchObject({ code: '123456' });
 });
 
+// An app with recovery codes off answers the confirm with no codes: the link goes on to sign-in without a codes screen.
+for (const [name, answer] of [
+  ['an empty list', { enabled: true, recovery_codes: [] }],
+  ['no field', { enabled: true }],
+] as const) {
+  test(`TEST-L7 a confirm with ${name} for recovery codes skips the codes screen and goes to sign-in`, async ({ page }) => {
+    const requests = await linkBoundary(page, { confirm: ok(answer) });
+    await openLink(page);
+    await begin(page);
+    await enterSetupCode(page);
+    await expect(page).toHaveURL((url) => url.pathname === '/web/signin' && url.searchParams.get('appid') === 'link-app');
+    await expect(screen(page, 'recovery-codes')).toHaveCount(0);
+    // The sign-in page reads its own settings once it shows, so only the link's requests are counted.
+    const linkPaths = [validationPath, linkBeginPath, linkConfirmPath];
+    expect(requests.filter((r) => linkPaths.includes(r.path)).map((r) => r.path)).toEqual(linkPaths);
+  });
+}
+
 for (const withParent of [false, true]) {
   test(`TEST-L3 REQ-16 ALREADY_USED says already used and signs in ${withParent ? 'retaining parent context' : 'from an emailed appid-only link'}`, async ({ page }) => {
     const requests = await linkBoundary(page, {

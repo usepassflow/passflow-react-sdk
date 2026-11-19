@@ -16,10 +16,12 @@ describe('useSignUp', () => {
     signUp: vi.fn(),
     passkeyRegister: vi.fn(),
     passwordlessSignIn: vi.fn(),
+    isTwoFactorVerificationRequired: vi.fn(),
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPassflow.isTwoFactorVerificationRequired.mockReturnValue(false);
     (usePassflow as any).mockReturnValue(mockPassflow);
   });
 
@@ -43,7 +45,7 @@ describe('useSignUp', () => {
         signUpResult = await result.current.fetch(payload, 'password');
       });
 
-      expect(signUpResult).toBe(true);
+      expect(signUpResult).toBe('signed-in');
       expect(mockPassflow.signUp).toHaveBeenCalledWith(payload);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.isError).toBe(false);
@@ -129,7 +131,7 @@ describe('useSignUp', () => {
         registerResult = await result.current.fetch(payload, 'passkey');
       });
 
-      expect(registerResult).toBe(true);
+      expect(registerResult).toBe('signed-in');
       expect(mockPassflow.passkeyRegister).toHaveBeenCalledWith(payload);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.isError).toBe(false);
@@ -230,5 +232,42 @@ describe('useSignUp', () => {
       expect(result.current.error).toBeNull();
       expect(result.current.isLoading).toBe(false);
     });
+  });
+
+  describe('sign-up outcome', () => {
+    const passwordPayload = { email: 'test@example.com', password: 'password123' } as any;
+    const passkeyPayload = { email: 'test@example.com' } as any;
+
+    for (const [type, payload, call] of [
+      ['password', passwordPayload, 'signUp'],
+      ['passkey', passkeyPayload, 'passkeyRegister'],
+    ] as const) {
+      it(`resolves 'two-factor-required' when a ${type} sign-up still owes a second factor`, async () => {
+        mockPassflow[call].mockResolvedValue(undefined);
+        mockPassflow.isTwoFactorVerificationRequired.mockReturnValue(true);
+        const { result } = renderHook(() => useSignUp());
+
+        let outcome: unknown;
+        await act(async () => {
+          outcome = await result.current.fetch(payload, type);
+        });
+
+        expect(outcome).toBe('two-factor-required');
+        expect(result.current.isError).toBe(false);
+      });
+
+      it(`resolves 'signed-in' when a ${type} sign-up owes nothing more`, async () => {
+        mockPassflow[call].mockResolvedValue(undefined);
+        mockPassflow.isTwoFactorVerificationRequired.mockReturnValue(false);
+        const { result } = renderHook(() => useSignUp());
+
+        let outcome: unknown;
+        await act(async () => {
+          outcome = await result.current.fetch(payload, type);
+        });
+
+        expect(outcome).toBe('signed-in');
+      });
+    }
   });
 });

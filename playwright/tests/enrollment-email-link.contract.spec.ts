@@ -58,14 +58,14 @@ for (const [name, reply] of [
   });
 }
 
-test('TEST-E5 REQ-12 raw send 429 ends sign-in with own copy, not 15 minutes', async ({ page }) => {
+test('TEST-E5 REQ-12 raw send 429 ends sign-in with own copy, not the server text', async ({ page }) => {
   const http = await runtime(page, 'email_link');
   await endpoint(page, paths.send, [rawRateLimit]);
   await land(page, 'email_link');
   await page.getByRole('button', { name: 'Email me a setup link', exact: true }).click();
   await expect(screen(page, 'ended')).toBeVisible();
   await expect(page.getByText(rateCopy, { exact: true })).toBeVisible();
-  await expect(page.getByText(/15 minutes/)).toHaveCount(0);
+  await expect(page.getByText(/Please try again later/)).toHaveCount(0);
   await expect(page.getByRole('button', { name: /send again|email me a setup link/i })).toHaveCount(0);
   expect(http.count(paths.send)).toBe(1);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();

@@ -231,7 +231,8 @@ export type LoginTwoFactorCodeState = {
   /** Names the code field. */
   label: string;
   code: string;
-  trustDevice: LoginTwoFactorTrustDevice;
+  /** Absent when this sign-in may not ask to trust the device: the switch is gone. */
+  trustDevice?: LoginTwoFactorTrustDevice;
   /** A check is in flight: the code, the switch and every action are locked, and Verify shows `busyLabel`. */
   busy?: boolean;
   canSubmit: boolean;

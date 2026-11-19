@@ -35,7 +35,7 @@ export type AssuranceBar = {
  * characters for every factor, which silently truncated a recovery code: the
  * server issues those from `services/totp/recovery.go` at
  * `DefaultRecoveryCodeLength` (12) and validates a configured length anywhere
- * in 6..16 (`model/two_factor.go`), from an alphanumeric charset. A six-digit
+ * in 10..16 (`model/two_factor.go`), from an alphanumeric charset. A six-digit
  * numeric keypad is wrong for that answer on every axis — length, charset and
  * autofill — so all three travel together with the factor instead of being
  * restated at the input.
@@ -124,6 +124,8 @@ export type UpgradeDialogSuccessState = {
  * Elevated, and still not enough: the replay was re-challenged (§13.3, §13.4).
  * This state must never read as success — it is the honest
  * "elevated to AAL2; this action requires AAL3" message.
+ *
+ * `onSignIn` adds a "Sign in again" action: a fresh sign-in is the one way left to reach the bar.
  */
 export type UpgradeDialogInsufficientState = {
   kind: 'insufficient';
@@ -132,7 +134,9 @@ export type UpgradeDialogInsufficientState = {
   required: AssuranceBar;
   detail?: string;
   dismissLabel?: string;
+  signInLabel?: string;
   testId?: string;
+  onSignIn?: () => void;
   onDismiss: () => void;
 };
 
@@ -158,7 +162,7 @@ export type UpgradeDialogUnavailableState = {
   onDismiss: () => void;
 };
 
-/** The attempt budget ran out. */
+/** The attempt budget ran out, or the server's rate limit answered: `message` says how long to wait. */
 export type UpgradeDialogExhaustedState = {
   kind: 'exhausted';
   message: string;

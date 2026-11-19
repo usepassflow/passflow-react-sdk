@@ -5,6 +5,12 @@ export * from './dialog';
 export * from './fields';
 export { Icon } from './icon';
 export { Link } from './link';
+export {
+  type LoginButtonAppearance,
+  LoginButtonView,
+  type LoginButtonViewProps,
+  type LoginButtonViewState,
+} from './login-button';
 export * from './login-screen';
 export * from './popover';
 export * from './providers-box';

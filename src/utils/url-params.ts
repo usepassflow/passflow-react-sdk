@@ -4,12 +4,10 @@
 import { useSearchSource } from '../context/search-context';
 
 /**
- * Decodes HTML entities in a string
+ * Some mail clients deliver a link with its `&` separators HTML-escaped as `&amp;`. Only that escape is undone: any
+ * wider entity decoding would read a key such as `&notice=` as the `&not` entity.
  */
-const decodeHtmlEntities = (input: string): string => {
-  const doc = new DOMParser().parseFromString(input, 'text/html');
-  return doc.documentElement.textContent || '';
-};
+const unescapeAmpersands = (search: string): string => search.replaceAll('&amp;', '&');
 
 const withQuestionMark = (params: URLSearchParams) => (params.toString() ? `?${params.toString()}` : '');
 
@@ -63,9 +61,7 @@ export const urlWithoutParentChallenge = (url: string): string => {
  */
 export const useUrlParams = <T extends Record<string, string>>(defaultValues?: T) => {
   const source = useSearchSource();
-  // Decode HTML entities in location.search
-  const decodedSearch = decodeHtmlEntities(source.read());
-  const searchParams = new URLSearchParams(decodedSearch);
+  const searchParams = new URLSearchParams(unescapeAmpersands(source.read()));
 
   // Set default values if parameters don't exist
   if (defaultValues) {

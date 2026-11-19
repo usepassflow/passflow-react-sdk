@@ -1,4 +1,5 @@
 import {
+  type LogOutOptions,
   type ParsedTokens,
   PassflowEvent,
   type PassflowSubscriber,
@@ -12,7 +13,13 @@ export type SessionExpiredHandler = (reason: SessionExpiredReason) => void;
 
 export type AuthContextValue = {
   isAuthenticated: () => boolean;
-  logout: () => void;
+  /** Whether a user is signed in. Updates on sign-in, sign-up, sign-out and session expiry, so a component can render on it. */
+  isSignedIn: boolean;
+  /**
+   * Signs the user out. After a hosted sign-in core then leaves the page for the hosted login's sign-out, which ends
+   * at `postLogoutRedirectUri`, so code after `await logout()` may not run.
+   */
+  logout: (options?: LogOutOptions) => Promise<void>;
   isLoading: boolean;
   isSessionExpired: boolean;
   getTokens: (doRefresh: boolean) => Promise<{ tokens: Tokens | undefined; parsedTokens: ParsedTokens | undefined }>;
@@ -33,11 +40,14 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children, onSessionExpired
   const passflow = usePassflow();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSessionExpired, setIsSessionExpired] = useState<boolean>(false);
+  const [isSignedIn, setIsSignedIn] = useState<boolean>(() => passflow.isAuthenticated());
 
-  // Subscribe to SessionExpired events
   useEffect(() => {
+    // The session may have changed between the first render and this subscription.
+    setIsSignedIn(passflow.isAuthenticated());
     const subscriber: PassflowSubscriber = {
       onAuthChange: (eventType, payload) => {
+        setIsSignedIn(passflow.isAuthenticated());
         if (eventType === PassflowEvent.SessionExpired) {
           const reason = (payload as { reason?: SessionExpiredReason })?.reason ?? 'refresh_failed';
           setIsSessionExpired(true);
@@ -49,7 +59,12 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children, onSessionExpired
       },
     };
 
-    passflow.subscribe(subscriber, [PassflowEvent.SessionExpired, PassflowEvent.SignIn, PassflowEvent.Register]);
+    passflow.subscribe(subscriber, [
+      PassflowEvent.SessionExpired,
+      PassflowEvent.SignIn,
+      PassflowEvent.Register,
+      PassflowEvent.SignOut,
+    ]);
 
     return () => {
       passflow.unsubscribe(subscriber);
@@ -82,12 +97,20 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children, onSessionExpired
     [passflow],
   );
 
-  const logout = useCallback(async () => {
-    await passflow.logOut();
-  }, [passflow]);
+  const logout = useCallback(
+    async (options?: LogOutOptions) => {
+      try {
+        await passflow.logOut(options);
+      } finally {
+        setIsSignedIn(passflow.isAuthenticated());
+      }
+    },
+    [passflow],
+  );
 
   const value = {
     isAuthenticated,
+    isSignedIn,
     logout,
     isLoading,
     isSessionExpired,

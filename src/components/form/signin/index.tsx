@@ -8,7 +8,7 @@ import type {
 import { phone } from 'phone';
 import queryString from 'query-string';
 import type { FC } from 'react';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { ErrorComponent } from '@/components/error';
 import { SignInEndingScreen } from '@/components/form/signed-in';
 import { hasFollowedOIDCRedirect, readParentChallengeIdFromURL } from '@/components/provider/passflow-provider';
@@ -32,6 +32,7 @@ import {
   getInvitationAuthChrome,
   getPasswordlessData,
   getUrlErrors,
+  passwordChangeRequiredReason,
   routeToSecondFactor,
   urlWithoutParentChallenge,
   useUrlParams,
@@ -123,7 +124,25 @@ export const SignInForm: FC<TSignIn> = ({
   const { get } = useUrlParams({ invite_token: '' });
   const inviteToken = get('invite_token');
   const invitationChrome = getInvitationAuthChrome(inviteToken, 'sign-in');
-  const { fetch, isError, error, reset, cancelPasskey, isLoading, pendingOperation, emailCode } = useSignIn();
+  // The identifier of the password sign-in in flight, carried to forgot-password if the password must change.
+  const passwordIdentityRef = useRef<Pick<PassflowSignInPayload, 'email' | 'username' | 'phone'>>({});
+  const goToPasswordReset = () => {
+    const identity = passwordIdentityRef.current;
+    const params = new URLSearchParams(searchSource.read());
+    for (const name of ['email', 'username', 'phone']) params.delete(name);
+    navigate({
+      to: forgotPasswordPath ?? routes.forgot_password.path,
+      search: queryString.stringify({
+        ...Object.fromEntries(params.entries()),
+        ...identity,
+        default_method: identity.phone ? 'phone' : 'email_or_username',
+        reason: passwordChangeRequiredReason,
+      }),
+    });
+  };
+  const { fetch, isError, error, reset, cancelPasskey, isLoading, pendingOperation, emailCode } = useSignIn({
+    onPasswordChangeRequired: goToPasswordReset,
+  });
 
   const oidcLayerOwnsRedirect = (): boolean => {
     if (hasFollowedOIDCRedirect()) return true;
@@ -148,6 +167,12 @@ export const SignInForm: FC<TSignIn> = ({
       ...(inviteToken && { invite_token: inviteToken }),
     } as PassflowSignInPayload;
 
+    const { email, username, phone: phoneNumber } = userPayload;
+    passwordIdentityRef.current = {
+      ...(email && { email }),
+      ...(username && { username }),
+      ...(phoneNumber && { phone: phoneNumber }),
+    };
     const status = await fetch(payload, 'password');
     if (status) await completeAuthentication();
   };
@@ -158,6 +183,7 @@ export const SignInForm: FC<TSignIn> = ({
       ...(inviteToken && { invite_token: inviteToken }),
     } as PassflowPasskeyAuthenticateStartPayload;
 
+    passwordIdentityRef.current = {};
     const response = await fetch(payload, 'passkey');
     if (response) await completeAuthentication();
   };
@@ -175,6 +201,7 @@ export const SignInForm: FC<TSignIn> = ({
       ...(inviteToken && { invite_token: inviteToken }),
     } as PassflowPasswordlessSignInPayload;
 
+    passwordIdentityRef.current = {};
     const response = await fetch(payload, 'passwordless');
     if (!response) return;
 
@@ -239,9 +266,11 @@ export const SignInForm: FC<TSignIn> = ({
     if (await emailCode.resend()) await completeAuthentication();
   };
 
+  // The application name set in the admin panel's Login Appearance.
+  const appName = loginAppTheme?.application_name?.trim();
   const chrome: LoginScreenChrome = {
     title: invitationChrome?.title ?? 'Sign In to your account',
-    subtitle: invitationChrome?.subtitle ?? 'To Passflow by Madappgang',
+    subtitle: invitationChrome?.subtitle ?? (appName ? `To ${appName}` : undefined),
     variant: 'sign-in',
     customCss: currentStyles?.custom_css,
     customLogo: currentStyles?.logo_url,

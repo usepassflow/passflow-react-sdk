@@ -6,6 +6,7 @@ const verify = vi.fn();
 const useRecoveryCode = vi.fn();
 
 vi.mock('@/hooks', () => ({
+  usePassflow: () => ({ getTotpDigits: () => 6 }),
   useTwoFactorVerify: () => ({
     verify,
     useRecoveryCode,

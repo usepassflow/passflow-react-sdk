@@ -29,6 +29,7 @@ export { type UseLogoutProps, useLogout } from './use-logout';
 export { useNavigation } from './use-navigation';
 export { useOutsideClick } from './use-outsideclick';
 export { usePassflow } from './use-passflow';
+export { usePassflowStore } from './use-passflow-store';
 export { type UsePasswordlessCompleteProps, usePasswordlessComplete } from './use-passwordless-complete';
 export { type UseProviderProps, useProvider } from './use-provider';
 export { type UseRefreshStatusResult, useRefreshStatus } from './use-refresh-status';
@@ -41,7 +42,7 @@ export {
   useSessionExpired,
 } from './use-session-expired';
 export { useSignInEnding } from './use-sign-in-ending';
-export { type UseSignInProps, useSignIn } from './use-signin';
+export { type SignInOutcome, type UseSignInOptions, type UseSignInProps, useSignIn } from './use-signin';
 export { type UseSignUpProps, useSignUp } from './use-signup';
 export { type UseTrustedDevicesProps, useTrustedDevices } from './use-trusted-devices';
 export { type UseTwoFactorChallengeReturn, useTwoFactorChallenge } from './use-two-factor-challenge';
@@ -54,4 +55,5 @@ export { type UseTwoFactorStatusProps, useTwoFactorStatus } from './use-two-fact
 export { type UseTwoFactorVerifyProps, useTwoFactorVerify } from './use-two-factor-verify';
 // Assurance upgrade (step-up) — reads UpgradeContext, installs nothing
 export { type UseUpgradeResult, useUpgrade } from './use-upgrade';
+export { type PassflowUser, useUser } from './use-user';
 export { type UseUserPasskeysProps, useUserPasskeys } from './use-user-passkeys';

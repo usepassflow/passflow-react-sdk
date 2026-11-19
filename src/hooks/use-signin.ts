@@ -6,15 +6,41 @@ import type {
 } from '@passflow/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AuthOperation, AuthUiError } from '@/types';
-import { authErrorFor, authErrorFrom } from '@/utils';
+import {
+  authErrorFor,
+  authErrorFrom,
+  passwordChangeRequiredErrorId,
+  passwordChangeRequiredMessage,
+  serverErrorIdFrom,
+  serverMessageFor,
+} from '@/utils';
 import { type UseEmailCodeStep, useEmailCodeStep } from './use-email-code-step';
 import { usePassflow } from './use-passflow';
 
-export type UseSignInProps = () => {
+/**
+ * How a password or passkey sign-in ended. `'two-factor-required'` means core holds a pending sign-in that still owes
+ * a second factor: there is no session yet.
+ */
+export type SignInOutcome = 'signed-in' | 'two-factor-required';
+
+export type UseSignInOptions = {
+  /**
+   * Called when the server refuses the sign-in until the password is changed. `fetch` then resolves `false` and sets
+   * no form error; send the user to the password reset. `notice` is the server's message for the user. Without this
+   * option, the same message shows as the form error.
+   */
+  onPasswordChangeRequired?: (notice: string) => void;
+};
+
+export type UseSignInProps = (options?: UseSignInOptions) => {
+  /**
+   * Resolves a {@link SignInOutcome} for a password or passkey sign-in, the server's answer for a passwordless one,
+   * and `false` when the request failed, was superseded, or entered the emailed-code step.
+   */
   fetch: (
     payload: PassflowPasskeyAuthenticateStartPayload | PassflowSignInPayload | PassflowPasswordlessSignInPayload,
     type: AuthOperation,
-  ) => Promise<boolean | string | PassflowPasswordlessResponse>;
+  ) => Promise<false | SignInOutcome | PassflowPasswordlessResponse>;
   isLoading: boolean;
   isError: boolean;
   error: AuthUiError | null;
@@ -30,8 +56,10 @@ export type UseSignInProps = () => {
   emailCode: UseEmailCodeStep;
 };
 
-export const useSignIn: UseSignInProps = () => {
+export const useSignIn: UseSignInProps = ({ onPasswordChangeRequired } = {}) => {
   const passflow = usePassflow();
+  const onPasswordChangeRequiredRef = useRef(onPasswordChangeRequired);
+  onPasswordChangeRequiredRef.current = onPasswordChangeRequired;
   // The password request is kept only to repeat it for "Resend code"; never rendered, logged or stored.
   const lastPasswordPayloadRef = useRef<PassflowSignInPayload | null>(null);
   const resendPasswordRequest = useCallback(async () => {
@@ -62,7 +90,7 @@ export const useSignIn: UseSignInProps = () => {
     async (
       payload: PassflowPasskeyAuthenticateStartPayload | PassflowSignInPayload | PassflowPasswordlessSignInPayload,
       type: AuthOperation,
-    ): Promise<boolean | string | PassflowPasswordlessResponse> => {
+    ): Promise<false | SignInOutcome | PassflowPasswordlessResponse> => {
       attemptRef.current += 1;
       const attempt = attemptRef.current;
       const isCurrent = () => attempt === attemptRef.current;
@@ -85,9 +113,15 @@ export const useSignIn: UseSignInProps = () => {
           const answer = await passflow.passwordlessSignIn(payload as PassflowPasswordlessSignInPayload);
           return isCurrent() ? answer : false;
         }
-        return isCurrent();
+        if (!isCurrent()) return false;
+        return passflow.isTwoFactorVerificationRequired() ? 'two-factor-required' : 'signed-in';
       } catch (error) {
         if (!isCurrent()) return false;
+        const handlePasswordChange = onPasswordChangeRequiredRef.current;
+        if (handlePasswordChange && serverErrorIdFrom(error) === passwordChangeRequiredErrorId) {
+          handlePasswordChange(serverMessageFor(error) ?? passwordChangeRequiredMessage);
+          return false;
+        }
         console.error(`[passflow] ${type} sign-in failed`, error);
         setIsError(true);
         setError(authErrorFrom(error, 'sign-in', type));
@@ -99,7 +133,13 @@ export const useSignIn: UseSignInProps = () => {
         }
       }
     },
-    [passflow.passkeyAuthenticate, passflow.passwordlessSignIn, passflow.signIn, emailCode.enter],
+    [
+      passflow.passkeyAuthenticate,
+      passflow.passwordlessSignIn,
+      passflow.signIn,
+      passflow.isTwoFactorVerificationRequired,
+      emailCode.enter,
+    ],
   );
 
   const reset = () => {
