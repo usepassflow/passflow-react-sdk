@@ -1,5 +1,5 @@
 {
-  "$comment": "Exact pins for the consumer-types check (tests/consumer-types/run.mjs). Each variant is installed once, with the packed tarball, and every TypeScript leg type-checks every config in it. No variant installs a router: @passflow/react must install, type-check and load without one.",
+  "$comment": "Exact pins for the consumer-types check (tests/consumer-types/run.mjs). Each variant is installed once, with the packed tarball, and every TypeScript leg type-checks every config in it. No variant installs a router: @passflow/react must install, type-check and load without one. Every variant also installs the app dependencies, as a consumer app would; they must resolve to the one @passflow/core the package uses.",
   "tools": {
     "typescript": "7.0.2",
     "typescript-5.9": "npm:typescript@5.9.3",
@@ -13,6 +13,9 @@
   "attw": {
     "$comment": "Every attw rule is enforced under the strict profile (node10, node16 from CJS and ESM, bundler) except the ./dist/style.css entry, a CSS file with no types by design.",
     "args": ["--profile", "strict", "--exclude-entrypoints", "./dist/style.css"]
+  },
+  "app": {
+    "@passflow/core": "0.32.0"
   },
   "variants": {
     "react19": {
