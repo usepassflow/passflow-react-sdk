@@ -103,10 +103,25 @@ const CHALLENGE_REASON = 'This action needs extra verification';
 export const UPGRADE_UNSATISFIABLE_DETAIL =
   "This account can't reach the security level this app asks for. Add a passkey on this device, or contact the app.";
 
+const countOf = (count: number, unit: string): string => `${count} ${unit}${count === 1 ? '' : 's'}`;
+
+/**
+ * A wait in seconds in the largest unit it reaches once rounded up: `90` is "2 minutes", and `3599`, which rounds up
+ * to 60 minutes, is "1 hour".
+ */
+const waitDuration = (seconds: number): string => {
+  if (seconds < 60) return countOf(seconds, 'second');
+  const minutes = Math.ceil(seconds / 60);
+  if (minutes < 60) return countOf(minutes, 'minute');
+  const hours = Math.ceil(seconds / 3600);
+  if (hours < 24) return countOf(hours, 'hour');
+  return countOf(Math.ceil(seconds / 86400), 'day');
+};
+
 /** What the rate limit asks for: the wait, when the server named one, else its own text. */
 export const upgradeRateLimitedMessage = (retryAfter: number | undefined, serverText: string | undefined): string =>
   retryAfter !== undefined
-    ? `Too many attempts. Try again in ${retryAfter} second${retryAfter === 1 ? '' : 's'}.`
+    ? `Too many attempts. Try again in ${waitDuration(retryAfter)}.`
     : (serverText ?? 'Too many attempts. Try again later.');
 
 /** A six-digit numeric one-time code — the two OTP transports. */

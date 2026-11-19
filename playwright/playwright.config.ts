@@ -69,23 +69,22 @@ export default defineConfig({
     // },
   ],
 
-  /* Run the demo app and the component catalog for UI tests. */
+  /* Run the demo app and the component catalog for UI tests. Every run starts its own
+   * servers, so a port held by another process fails the run instead of being tested. */
   webServer: [
     {
       command: 'pnpm dev',
       cwd: process.cwd(),
       url: 'http://localhost:5173',
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
     },
     {
-      // Never 6006 or 6007: another project on this machine (meroku) serves its
-      // own Storybook on those ports, and `reuseExistingServer` would silently
-      // point this suite at that catalog — the failures then look like our
-      // stories rendering the wrong app. 6107 belongs to this package alone.
+      // Never 6006 or 6007: another project on this machine serves its own
+      // Storybook on those ports. 6107 belongs to this package alone.
       command: 'pnpm exec storybook dev -p 6107 --ci --quiet',
       cwd: process.cwd(),
       url: 'http://localhost:6107',
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 120_000,
     },
   ],

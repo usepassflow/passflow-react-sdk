@@ -338,7 +338,7 @@ The dialog offers the factors the server lists in `available_factors`, in its or
 |---------|--------------------|
 | Sign-in required (`sign_in_required: true`) | The dialog closes and the provider calls `upgrade.onSignInRequired`. The call is not repeated. |
 | Unsatisfiable (no factor reaches the level) | "This account can't reach the security level this app asks for. Add a passkey on this device, or contact the app.", with **Close**. Nothing navigates. |
-| Rate limited | "Too many attempts. Try again in N seconds.", or the server's own text when it names no wait. No new code is asked for. |
+| Rate limited | "Too many attempts. Try again in 30 seconds.", with the wait in seconds, minutes, hours or days, rounded up ("15 minutes", "1 day"), or the server's own text when it names no wait. No new code is asked for. |
 | Insufficient (verified, but the call was challenged again) | The levels reached and required, with **Sign in again**, which calls `upgrade.onSignInRequired`. |
 
 `upgrade.onSignInRequired` is where those sign-ins go. By default it opens the app's own sign-in route when a `PassflowFlow` is mounted, and otherwise calls `passflow.authRedirect()`. Pass your own to send the user somewhere else:

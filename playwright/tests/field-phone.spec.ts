@@ -1,11 +1,13 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from '../fixture';
+import { waitForStoryRendered } from './storybook.helpers';
 
 // Never 6006 or 6007: another project's Storybook answers there.
 const storybookUrl = process.env.STORYBOOK_URL ?? 'http://localhost:6107';
 
 const openStory = async (page: Page, id: string) => {
   await page.goto(`${storybookUrl}/iframe.html?id=components-fieldphone--${id}&viewMode=story`);
+  await waitForStoryRendered(page);
   const storyRoot = page.locator('#storybook-root');
   await expect(storyRoot).toBeVisible();
   const input = page.getByLabel('Phone', { exact: true });

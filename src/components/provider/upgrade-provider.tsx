@@ -411,7 +411,11 @@ export const UpgradeProvider: FC<UpgradeProviderProps> = ({
       clearPromptView();
       const signInRequired =
         summary.terminal === 'failed' && dialogOutcomeFromError(summaryError(summary)) === 'sign-in-required';
-      if (userCancelledRef.current || (failuresRef.current === 'caller' && summary.terminal !== 'success')) {
+      // Cleared here as well as when a prompt opens: a flight can settle without ever prompting, and a cancel from an
+      // earlier flight must not hide its outcome.
+      const userCancelled = userCancelledRef.current;
+      userCancelledRef.current = false;
+      if (userCancelled || (failuresRef.current === 'caller' && summary.terminal !== 'success')) {
         setOutcome(undefined);
       } else if (signInRequired) {
         setOutcome(undefined);

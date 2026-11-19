@@ -1,11 +1,13 @@
 // Coverage map: REQ-2 (REQ-2.1, REQ-2.2, REQ-2.3)
 import type { Page } from '@playwright/test';
 import { expect, test } from '../fixture';
+import { waitForStoryRendered } from './storybook.helpers';
 
 const storybookUrl = process.env.STORYBOOK_URL ?? 'http://localhost:6107';
 
 const openStory = async (page: Page, id: string) => {
   await page.goto(`${storybookUrl}/iframe.html?id=components-loginscreen--${id}&viewMode=story`);
+  await waitForStoryRendered(page);
   const storyRoot = page.locator('#storybook-root');
   await expect(storyRoot).toBeVisible();
   await expect(storyRoot).not.toBeEmpty();

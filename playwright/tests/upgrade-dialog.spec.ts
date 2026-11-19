@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 // Coverage map: REQ-5 (FR5)
 import type { Page } from '@playwright/test';
 import { expect, test } from '../fixture';
+import { waitForStoryRendered } from './storybook.helpers';
 
 const storybookUrl = process.env.STORYBOOK_URL ?? 'http://localhost:6107';
 const storyTitle = 'Components/UpgradeDialog';
@@ -34,6 +35,7 @@ const stories = [
 
 async function openStory(page: Page, id: string) {
   await page.goto(`${storybookUrl}/iframe.html?id=components-upgradedialog--${id}&viewMode=story`);
+  await waitForStoryRendered(page);
   // Dialogs are portaled outside #storybook-root. An empty render must fail,
   // including Success: closing is not evidence that its visible state was audited.
   await expect(page.getByRole('dialog')).toBeVisible();

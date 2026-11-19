@@ -834,11 +834,25 @@ export const PassflowProvider: FC<PassflowProviderProps> = ({
   });
 
   // A new `appId` prop is another app: the instance below is rebuilt for it and reads only that app's tokens.
+  // Everything the old app's settings wrote goes back to the props or the initial state, so the new app's settings
+  // are fetched and fill it again.
   const appIdPropRef = useRef(config.appId);
+  const [mountHandOff] = useState(config.handOff);
   useEffect(() => {
     if (!config.appId || config.appId === appIdPropRef.current) return;
     appIdPropRef.current = config.appId;
-    dispatch({ type: 'SET_PASSFLOW_STATE', payload: { appId: config.appId } });
+    dispatch({
+      type: 'SET_PASSFLOW_STATE',
+      payload: {
+        appId: config.appId,
+        appSettings: initialState.appSettings,
+        passwordPolicy: initialState.passwordPolicy,
+        hasSettingsError: initialState.hasSettingsError,
+        scopes: config.scopes,
+        createTenantForNewUser: config.createTenantForNewUser,
+        handOff: mountHandOff,
+      },
+    });
   }, [config.appId]);
 
   const [navigate, setNavigate] = useState<NavigateFunction>(() => {

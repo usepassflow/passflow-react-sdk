@@ -3,6 +3,7 @@ import { expect, test } from '../fixture';
 import { corsHeaders, installEnrollmentBoundary, onState, screen, signInToFactor } from './enrollment-contract.helpers';
 import { tokens } from './email-verification.helpers';
 import { begin, endpoint, enterSetupCode, failure, finish, ok, paths, setupData } from './enrollment-runtime.helpers';
+import { waitForStoryRendered } from './storybook.helpers';
 
 // "Trust this device" shows unless the server says this sign-in may not ask for it.
 test.use({ locale: 'en-US', timezoneId: 'UTC', viewport: { width: 715, height: 900 } });
@@ -74,6 +75,7 @@ test('the code screen after enrolling here keeps the server answer: false hides 
 
 test('the catalog has the code screen without the trust option', async ({ page }) => {
   await page.goto(`${storybookUrl}/iframe.html?id=components-loginscreen--two-factor-code-totp-no-trust-device&viewMode=story`);
+  await waitForStoryRendered(page);
   await expect(page.getByRole('textbox', { name: 'Verification code', exact: true })).toBeVisible();
   await expect(trust(page)).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Use recovery code', exact: true })).toBeVisible();

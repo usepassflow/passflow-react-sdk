@@ -1,12 +1,14 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from '../fixture';
 import { land, runtime } from './enrollment-runtime.helpers';
+import { waitForStoryRendered } from './storybook.helpers';
 
 // Never 6006 or 6007: another project's Storybook answers there.
 const storybookUrl = process.env.STORYBOOK_URL ?? 'http://localhost:6107';
 
 const openStory = async (page: Page, id: string) => {
   await page.goto(`${storybookUrl}/iframe.html?id=${id}&viewMode=story`);
+  await waitForStoryRendered(page);
   const storyRoot = page.locator('#storybook-root');
   await expect(storyRoot).toBeVisible();
   await expect(storyRoot).not.toBeEmpty();
@@ -16,6 +18,7 @@ test.use({ locale: 'en-US', timezoneId: 'UTC', viewport: { width: 715, height: 9
 
 test('step-up dialog takes an eight-digit authenticator code', async ({ page }) => {
   await page.goto(`${storybookUrl}/iframe.html?id=components-upgradedialog--challenge&viewMode=story`);
+  await waitForStoryRendered(page);
   await expect(page.getByRole('dialog')).toBeVisible();
   const code = page.getByTestId('upgrade-dialog-code');
 

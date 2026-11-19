@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { expect, test } from '../fixture';
+import { waitForStoryRendered } from './storybook.helpers';
 
 test.use({ locale: 'en-US', timezoneId: 'UTC', viewport: { width: 715, height: 900 } });
 const parentCopy = {
@@ -73,6 +74,7 @@ for (const [story, message] of Object.entries(messages)) {
   test(`REQ-16 LoginScreen · ${story} · renders its supported state accessibly`, async ({ page }) => {
     const kebab = story.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
     await page.goto(`http://localhost:6107/iframe.html?id=components-loginscreen--${kebab}&viewMode=story`);
+    await waitForStoryRendered(page);
     await expect(page.getByText(message, { exact: !story.startsWith('PasswordlessWaiting') })).toBeVisible();
 
     if (story in parentCopy) {
