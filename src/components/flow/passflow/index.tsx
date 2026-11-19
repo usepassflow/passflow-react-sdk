@@ -93,14 +93,24 @@ const createHistory = (routerType: RouterKind): FlowHistory => {
   return createBrowserHistory();
 };
 
-/** The location the flow renders and how it moves: its own history, or the app's when it passes both. */
+const noLocation = () => null;
+
+/**
+ * The location the flow renders and how it moves: its own history, or the app's when it passes both. Null on the
+ * server and during hydration of a browser or hash history: the server has no URL, so it renders no screen, and the
+ * screen appears in the render right after hydration.
+ */
 const useFlowLocation = (
   routerType: RouterKind,
   controlledLocation: FlowLocation | undefined,
   controlledNavigate: FlowNavigate | undefined,
-): { location: FlowLocation; navigate: FlowNavigate } => {
+): { location: FlowLocation | null; navigate: FlowNavigate } => {
   const history = useMemo(() => createHistory(routerType), [routerType]);
-  const ownLocation = useSyncExternalStore(history.subscribe, history.read);
+  const ownLocation = useSyncExternalStore(
+    history.subscribe,
+    history.read,
+    routerType === 'memory' ? history.read : noLocation,
+  );
   if (controlledLocation && controlledNavigate) {
     return {
       location: { pathname: controlledLocation.pathname, search: withQuestionMark(controlledLocation.search ?? '') },
@@ -356,6 +366,8 @@ const PassflowWrapper: FC<PassflowProps> = ({
   }
 
   if (error) throw new Error(error);
+
+  if (!location) return null;
 
   return (
     <PassflowRoutes
