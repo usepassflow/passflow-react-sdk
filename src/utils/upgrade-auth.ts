@@ -43,7 +43,7 @@
  * reaching for an instance that has just been torn down.
  */
 
-import type { FetchLike, Passflow, ResponseInterceptorHost } from '@passflow/core';
+import type { FetchLike, Passflow, ResponseInterceptorHost, WithAuthOptions } from '@passflow/core';
 
 let activeInstance: Passflow | null = null;
 
@@ -104,8 +104,12 @@ const requireInstance = (name: string): Passflow => {
  * Wraps a `fetch` and returns the wrapper. Installs nothing and touches no
  * global — two verbs exist because the semantics genuinely differ: an axios
  * interceptor mutates, a fetch wrapper returns.
+ *
+ * A token goes only to the page's own origin and the ones in `options.origins`;
+ * a request to any other origin is sent without it.
  */
-export const withAuth = (next?: FetchLike): FetchLike => requireInstance('withAuth').withAuth(next);
+export const withAuth = (next?: FetchLike, options?: WithAuthOptions): FetchLike =>
+  requireInstance('withAuth').withAuth(next, options);
 
 /**
  * Attaches step-up handling to an axios instance the caller already owns,
@@ -114,7 +118,7 @@ export const withAuth = (next?: FetchLike): FetchLike => requireInstance('withAu
  *
  * The parameter is typed structurally (duck-typed on
  * `interceptors.response.use`), so this package's axios version is not a
- * constraint on the caller's.
+ * constraint on the caller's. `options.origins` works as it does for `withAuth`.
  */
-export const attachAuth = (instance: ResponseInterceptorHost): (() => void) =>
-  requireInstance('attachAuth').attachAuth(instance);
+export const attachAuth = (instance: ResponseInterceptorHost, options?: WithAuthOptions): (() => void) =>
+  requireInstance('attachAuth').attachAuth(instance, options);
