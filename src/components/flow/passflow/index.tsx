@@ -19,7 +19,7 @@ import { SignInEndingScreen } from '@/components/form/signed-in';
 import { withError } from '@/hocs';
 import { useNavigation, usePassflow, useSignInEnding } from '@/hooks';
 import type { FederatedLanding, SuccessAuthRedirect } from '@/types';
-import { authRedirectErrorFrom, getUrlErrors, passwordlessSignInFailedMessage } from '@/utils';
+import { authRedirectErrorFrom, getUrlErrors, inAppPath, passwordlessSignInFailedMessage } from '@/utils';
 import {
   createBrowserHistory,
   createHashHistory,
@@ -292,7 +292,7 @@ const FlowScreenView: FC<FlowScreenViewProps> = ({
 };
 
 const PassflowWrapper: FC<PassflowProps> = ({
-  successAuthRedirect,
+  successAuthRedirect: requestedRedirect,
   federatedDisplayMode = 'redirect',
   federatedLanding = 'app',
   error = undefined,
@@ -302,7 +302,11 @@ const PassflowWrapper: FC<PassflowProps> = ({
   location: controlledLocation,
   navigate: controlledNavigate,
 }) => {
-  const { error: errorUrlSuccess, message: messageUrlSuccess } = getUrlErrors(successAuthRedirect);
+  const { error: errorUrlSuccess, message: messageUrlSuccess } = getUrlErrors(requestedRedirect);
+  // On an app's own page, a full address on this origin is a page of the same app: the sign-in moves there in the
+  // app, with no new page load. A hosted login page keeps it as an address to leave for.
+  const successAuthRedirect =
+    federatedLanding === 'app' && requestedRedirect ? (inAppPath(requestedRedirect) ?? requestedRedirect) : requestedRedirect;
   const { location, navigate } = useFlowLocation(routerType, controlledLocation, controlledNavigate);
   const passflow = usePassflow();
   const { federatedLandingOutcome } = useContext(NavigationContext);
