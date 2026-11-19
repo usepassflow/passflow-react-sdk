@@ -7,11 +7,16 @@ import {
   type Tokens,
 } from '@passflow/core';
 import { createContext, type FC, type PropsWithChildren, useCallback, useEffect, useState } from 'react';
+import { useHydrated } from '../hooks/use-hydrated';
 import { usePassflow } from '../hooks/use-passflow';
 
 export type SessionExpiredHandler = (reason: SessionExpiredReason) => void;
 
 export type AuthContextValue = {
+  /**
+   * Reads the session now. On a server-rendered page, render from `isSignedIn` instead: the server has no session, so
+   * output that calls this during render differs between the server and the browser.
+   */
   isAuthenticated: () => boolean;
   /** Whether a user is signed in. Updates on sign-in, sign-up, sign-out and session expiry, so a component can render on it. */
   isSignedIn: boolean;
@@ -38,6 +43,7 @@ export type AuthProviderProps = PropsWithChildren<{
 
 export const AuthProvider: FC<AuthProviderProps> = ({ children, onSessionExpired }) => {
   const passflow = usePassflow();
+  const hydrated = useHydrated();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSessionExpired, setIsSessionExpired] = useState<boolean>(false);
   const [isSignedIn, setIsSignedIn] = useState<boolean>(() => passflow.isAuthenticated());
@@ -110,7 +116,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children, onSessionExpired
 
   const value = {
     isAuthenticated,
-    isSignedIn,
+    isSignedIn: hydrated && isSignedIn,
     logout,
     isLoading,
     isSessionExpired,

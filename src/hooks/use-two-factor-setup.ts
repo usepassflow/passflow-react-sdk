@@ -1,6 +1,7 @@
 import type { TwoFactorConfirmResponse, TwoFactorSetupResponse } from '@passflow/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { enrollmentFailureFrom, twoFactorRateLimitedMessage, twoFactorWrongCodeMessage } from '@/utils/auth-error';
+import { useHydrated } from './use-hydrated';
 import { usePassflow } from './use-passflow';
 
 /** `checking` reads whether a signed-in user is enrolled; `enrolled` is a user with two-factor authentication on. */
@@ -33,6 +34,7 @@ const setupErrorMessage = (e: unknown): string => {
  */
 export const useTwoFactorSetup: UseTwoFactorSetupProps = () => {
   const passflow = usePassflow();
+  const hydrated = useHydrated();
   const [setupData, setSetupData] = useState<TwoFactorSetupResponse | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -110,7 +112,8 @@ export const useTwoFactorSetup: UseTwoFactorSetupProps = () => {
   return {
     setupData,
     recoveryCodes,
-    step,
+    // Hydration renders what the signed-out server rendered.
+    step: hydrated ? step : 'idle',
     beginSetup,
     confirmSetup,
     reset,

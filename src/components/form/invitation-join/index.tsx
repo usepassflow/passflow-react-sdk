@@ -6,6 +6,7 @@ import { LoginScreen } from '@/components/ui';
 import { routes, useSearchSource } from '@/context';
 import { withError } from '@/hocs';
 import { useAppSettings, useJoinInvite, useNavigation, usePassflow, useSignInEnding } from '@/hooks';
+import { useHydrated } from '@/hooks/use-hydrated';
 import { invitationLinkErrorMessage, undefinedOnCatch, useUrlParams } from '@/utils';
 
 export type TInvitationJoinFlow = {
@@ -24,6 +25,7 @@ const InvitationJoinFlow: FC<TInvitationJoinFlow> = ({
   const searchSource = useSearchSource();
   const { get } = useUrlParams();
   const passflow = usePassflow();
+  const hydrated = useHydrated();
   const { fetch: joinInvite, isLoading, error, isError } = useJoinInvite();
   const { ending, retry, finishSignIn } = useSignInEnding();
   const invitationToken = get('invite_token');
@@ -41,7 +43,8 @@ const InvitationJoinFlow: FC<TInvitationJoinFlow> = ({
     console.error('[passflow] invitation token could not be parsed');
     throw new Error(invitationLinkErrorMessage);
   }
-  if (!hasAuthenticatedSession) return null;
+  // Hydration renders what the signed-out server rendered.
+  if (!hasAuthenticatedSession || !hydrated) return null;
 
   const {
     inviter_name: inviterName,

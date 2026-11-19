@@ -4,7 +4,7 @@ import { usePassflow } from './use-passflow';
 
 export function usePassflowStore(events?: PassflowEvent[]) {
   const passflow = usePassflow();
-  const passflowSnapshot = useSyncExternalStore(subscribe(passflow, events), getSnapshot(passflow));
+  const passflowSnapshot = useSyncExternalStore(subscribe(passflow, events), getSnapshot(passflow), getServerSnapshot);
   return passflowSnapshot;
 }
 
@@ -31,4 +31,9 @@ function getSnapshot(passflow: Passflow): () => Tokens | undefined {
   return () => {
     return passflow.getCachedTokens();
   };
+}
+
+// The server has no session; hydration renders with this, then switches to the cached tokens.
+function getServerSnapshot(): Tokens | undefined {
+  return undefined;
 }
