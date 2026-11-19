@@ -22,6 +22,25 @@ describe('passwordValidation', () => {
     it('accepts a password shorter than min_password_length when the minimum is not restricted', () => {
       expect(accepts(policy({ restrict_min_password_length: false, min_password_length: 12 }), 'abc')).toBe(true);
     });
+
+    // The server counts characters (code points), not UTF-16 units or bytes.
+    it('accepts an all-Cyrillic password exactly at the minimum', () => {
+      expect(accepts(policy(), 'пароль12')).toBe(true);
+      expect(accepts(policy(), 'парольдв')).toBe(true);
+    });
+
+    it('refuses an all-Cyrillic password one character under the minimum', () => {
+      expect(accepts(policy(), 'парольд')).toBe(false);
+    });
+
+    it('accepts an emoji password exactly at the minimum', () => {
+      expect(accepts(policy(), '😀😀😀😀😀😀😀😀')).toBe(true);
+    });
+
+    it('refuses an emoji password one character under the minimum, though its UTF-16 length is above it', () => {
+      expect(accepts(policy(), '😀😀😀😀😀😀😀')).toBe(false);
+      expect(accepts(policy(), '😀😀😀😀')).toBe(false);
+    });
   });
 
   describe('letter case', () => {

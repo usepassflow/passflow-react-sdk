@@ -26,7 +26,8 @@ export const passwordValidation = (passwordPolicy: PassflowPasswordPolicySetting
           } = passwordPolicy;
 
           // An unrestricted minimum leaves only the non-empty check, which `.required()` already makes.
-          if (restrictMinPasswordLength && (value ?? '').length < minPasswordLength) errors.push('length');
+          // Counted in characters, as the server counts them: an emoji is one, not two UTF-16 units.
+          if (restrictMinPasswordLength && [...(value ?? '')].length < minPasswordLength) errors.push('length');
           // Any script's capitals and small letters, as the server checks them.
           if (requireUpperCase && !/\p{Lu}/u.test(value)) errors.push('uppercase');
           if (requireLowerCase && !/\p{Ll}/u.test(value)) errors.push('lowercase');
