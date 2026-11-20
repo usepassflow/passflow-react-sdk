@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { TwoFactorSetupForm } from '@/components/form/two-factor-setup';
 import { LoginScreen, type LoginStatusState } from '@/components/ui';
 import { routes, useSearchSource } from '@/context';
+import { withHydration } from '@/hocs/with-hydration';
 import { type UseTwoFactorSetupMagicLinkReturn, useNavigation, useTwoFactorSetupMagicLink } from '@/hooks';
 import {
   signInSearch,
@@ -104,7 +105,7 @@ const errorState = (error: MagicLinkError, { isRetrying, onRetry, onSignIn }: Er
  *
  * Route: /two-factor-setup-magic-link/:token
  */
-export const TwoFactorSetupMagicLinkFlow: FC<TwoFactorSetupMagicLinkFlowProps> = ({
+const TwoFactorSetupMagicLinkFlowScreen: FC<TwoFactorSetupMagicLinkFlowProps> = ({
   token: tokenProp,
   onSuccess,
   onError,
@@ -155,3 +156,5 @@ export const TwoFactorSetupMagicLinkFlow: FC<TwoFactorSetupMagicLinkFlowProps> =
   // Fallback (should not reach here)
   return null;
 };
+
+export const TwoFactorSetupMagicLinkFlow = withHydration(TwoFactorSetupMagicLinkFlowScreen);

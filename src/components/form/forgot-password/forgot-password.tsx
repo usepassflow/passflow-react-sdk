@@ -9,6 +9,7 @@ import { Controller, useForm } from 'react-hook-form';
 import * as Yup from 'yup';
 import { Button, FieldPhone, FieldText, Icon, Link, LoginAlert } from '@/components/ui';
 import { routes, useSearchSource } from '@/context';
+import { withHydration } from '@/hocs/with-hydration';
 import { useAppSettings, useForgotPassword, useNavigation } from '@/hooks';
 import {
   cn,
@@ -34,7 +35,7 @@ type TForgotPassword = {
   forgotPasswordSuccessPath?: string;
 };
 
-export const ForgotPassword: FC<TForgotPassword> = ({
+const ForgotPasswordScreen: FC<TForgotPassword> = ({
   successResetRedirect,
   signInPath = routes.signin.path,
   forgotPasswordSuccessPath = routes.forgot_password_success.path,
@@ -229,3 +230,5 @@ export const ForgotPassword: FC<TForgotPassword> = ({
     </Wrapper>
   );
 };
+
+export const ForgotPassword = withHydration(ForgotPasswordScreen);

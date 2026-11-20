@@ -34,6 +34,7 @@ import {
   type RouterType,
   routes,
 } from '@/context';
+import { useHydrated } from '@/hooks/use-hydrated';
 import { passwordlessSignInFailedMessage } from '@/utils/auth-error';
 import { submitFormPost } from '@/utils/form-post';
 import { signInSearch, twoFactorTokenAppId, urlCarriesAccessToken, urlCarriesTwoFactorToken } from '@/utils/second-factor';
@@ -782,15 +783,20 @@ const useSecondFactorLanding = (
     passflow.handleTokensRedirect();
   }, [passflow, takeTokensFromUrl, isDiscoveringAppId]);
 
-  // Once, on mount — the landing is a property of the page load.
+  // Once, on mount — the landing is a property of the page load. A hydrated page waits for the render after
+  // hydration: the flow mounts its routes only then, and the navigation must come one render after them.
+  const hydrated = useHydrated();
+  const landingTakenRef = useRef(false);
   useEffect(() => {
+    if (!hydrated || landingTakenRef.current) return;
+    landingTakenRef.current = true;
     if (!landedWithTwoFactorToken) return;
     // A signed-in user owes no factor: a `#tfa_token=` link is not theirs to answer. Under an OIDC parent it is the
     // parent's sign-in that owes it.
     if (passflow.isAuthenticated() && !parentChallengeId) return;
     if (!passflow.isTwoFactorVerificationRequired()) passflow.handleTokensRedirect();
     if (passflow.isTwoFactorVerificationRequired()) setPending(true);
-  }, []);
+  }, [hydrated]);
 
   useEffect(() => {
     if (!pending) return;

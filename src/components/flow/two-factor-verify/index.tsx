@@ -5,6 +5,7 @@ import { TwoFactorRecoveryForm, TwoFactorVerifyForm } from '@/components/form/tw
 import { hasFollowedOIDCRedirect } from '@/components/provider/passflow-provider';
 import { LoginScreen } from '@/components/ui';
 import { routes, useSearchSource } from '@/context';
+import { withHydration } from '@/hocs/with-hydration';
 import { useNavigation, usePassflow, useSignInEnding } from '@/hooks';
 import { useTwoFactorEnrollment } from '@/hooks/use-two-factor-enrollment';
 import type { SuccessAuthRedirect } from '@/types';
@@ -18,7 +19,7 @@ export type TwoFactorVerifyFlowProps = {
   signInPath?: string;
 };
 
-export const TwoFactorVerifyFlow: FC<TwoFactorVerifyFlowProps> = ({ successAuthRedirect, signInPath = routes.signin.path }) => {
+const TwoFactorVerifyFlowScreen: FC<TwoFactorVerifyFlowProps> = ({ successAuthRedirect, signInPath = routes.signin.path }) => {
   const [mode, setMode] = useState<'verify' | 'recovery'>('verify');
   const { navigate } = useNavigation();
   const passflow = usePassflow();
@@ -89,3 +90,5 @@ export const TwoFactorVerifyFlow: FC<TwoFactorVerifyFlowProps> = ({ successAuthR
     />
   );
 };
+
+export const TwoFactorVerifyFlow = withHydration(TwoFactorVerifyFlowScreen);

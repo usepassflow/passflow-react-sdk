@@ -2,6 +2,7 @@
 /* eslint-disable complexity */
 import * as Yup from 'yup';
 import { Button } from '@/components/ui';
+import { withHydration } from '@/hocs/with-hydration';
 import { useAppSettings, useForgotPassword } from '@/hooks';
 import { Wrapper } from '../wrapper';
 import '@/styles/index.css';
@@ -14,7 +15,7 @@ const searchParamsForgotPasswordSuccessSchema = Yup.object().shape({
   redirectUrl: Yup.string().nullable(),
 });
 
-export const ForgotPasswordSuccess = () => {
+const ForgotPasswordSuccessScreen = () => {
   const { currentStyles, loginAppTheme } = useAppSettings();
   const { fetch: refetch } = useForgotPassword();
   const { get } = useUrlParams();
@@ -76,3 +77,5 @@ export const ForgotPasswordSuccess = () => {
     </Wrapper>
   );
 };
+
+export const ForgotPasswordSuccess = withHydration(ForgotPasswordSuccessScreen);
