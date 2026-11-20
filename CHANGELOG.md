@@ -2,6 +2,20 @@
 
 All notable changes to `@passflow/react` are documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- A server render in Node no longer throws `window is not defined`. `PassflowFlow` and every public screen render on the server with `PassflowProvider` around them. No component reads `window` or `document` during render.
+- A screen that reads the URL or the session renders nothing on the server and in the hydration render. It shows its content in the render right after hydration, so the server HTML and the browser's first render match. This covers `PassflowFlow`, `SignIn`, `SignUp`, `SignInForm`, `SignUpForm`, `InvitationJoin`, `ForgotPassword`, `ForgotPasswordSuccess`, `ResetPassword`, `VerifyChallengeOTP`, `VerifyChallengeMagicLink`, `TwoFactorVerifyFlow`, `TwoFactorVerifyForm`, `TwoFactorSetupFlow`, `TwoFactorSetupMagicLinkFlow`, `ConsentFlow` and `DeviceVerifyFlow`. A page rendered only in the browser shows them from its first render, as before.
+- On a server-rendered page, a sign-in landing that owes its second factor goes to the flow's own 2FA route, such as `/auth/two-factor-verify`. It went to `/two-factor-verify` when the flow had a `pathPrefix`.
+- React 18 no longer warns "useLayoutEffect does nothing on the server" from `PassflowProvider` and the hooks under it.
+- On React 18, `FieldOtp` passes its `ref` to the code input and no longer warns that `ref` is not a prop.
+
+### Added
+
+- The README shows how to mount `PassflowFlow` in a Next.js App Router app. The flow goes inside a `'use client'` component, on an optional catch-all route under a prefix (`app/auth/[[...passflow]]/page.tsx` with `pathPrefix="/auth"`), so a reload of any flow path reaches the flow page. A flow at the root uses `app/page.tsx` plus a required catch-all, `app/[...passflow]/page.tsx`.
+
 ## [0.26.2] - 2026-11-20
 
 ### Fixed

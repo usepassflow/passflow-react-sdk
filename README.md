@@ -22,6 +22,7 @@ This is a SDK for react application.
     - [React Router](#react-router)
     - [Wouter](#wouter)
     - [TanStack Router](#tanstack-router)
+    - [Next.js (App Router)](#nextjs-app-router)
   - [Props](#props)
     - [PassflowProvider](#passflowprovider)
   - [Form Components](#form-components)
@@ -689,6 +690,30 @@ export const routerTree = rootRoute.addChildren([
   protectedRoute.addChildren([dashboardRoute, aboutRoute]),
 ]);
 ```
+
+### Next.js (App Router)
+
+Render `PassflowFlow` inside a `'use client'` component, under `PassflowProvider`. Put the flow under a prefix and mount it on an optional catch-all route, `app/auth/[[...passflow]]/page.tsx`. Then a reload of `/auth/signin`, `/auth/two-factor-verify`, `/auth/password/reset`, `/auth/two-factor-setup-magic-link/<token>` or any other flow path reaches the flow page. Send the user to one of the app's own pages after sign-in.
+
+```tsx
+// app/auth/[[...passflow]]/page.tsx
+'use client';
+
+import { PassflowFlow, PassflowProvider } from '@passflow/react';
+import '@passflow/react/dist/style.css';
+
+export default function PassflowPage() {
+  return (
+    <PassflowProvider url={process.env.NEXT_PUBLIC_PASSFLOW_URL} appId={process.env.NEXT_PUBLIC_PASSFLOW_APP_ID}>
+      <PassflowFlow pathPrefix="/auth" successAuthRedirect="/dashboard" />
+    </PassflowProvider>
+  );
+}
+```
+
+**The flow at the root.** If the root page is the flow, Next.js does not allow `app/[[...passflow]]/page.tsx` beside `app/page.tsx`. Keep the flow in `app/page.tsx` and add a required catch-all, `app/[...passflow]/page.tsx`, that renders the same component. Unknown paths then reach the flow, which moves them to `/signin`, instead of a 404. `successAuthRedirect` must point at a route of its own, such as `/dashboard`: `/` is the flow, and it sends the user back to `/signin`.
+
+The URL and the session exist only in the browser. So the server renders the flow's screens as nothing, and the browser shows them right after hydration.
 
 ## Props
 
