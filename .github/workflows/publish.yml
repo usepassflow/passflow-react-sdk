@@ -6,8 +6,11 @@ on:
       - 'v*'
 
 jobs:
+  # A GitHub-hosted runner, not Blacksmith: npm trusted publishing and
+  # provenance accept only an OIDC token whose runner_environment is
+  # github-hosted, and any third-party runner reports self-hosted.
   publish:
-    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
       id-token: write
