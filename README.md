@@ -697,7 +697,7 @@ Three things make the flow work in the App Router:
 
 - **A catch-all route.** The flow moves the address to `/auth/signin`, `/auth/signup`, `/auth/two-factor-verify` and its other paths. Mount it on an optional catch-all, `app/auth/[[...passflow]]/page.tsx`, so a reload of any of them reaches the flow page.
 - **Next.js's router.** Pass the flow `location` and `navigate` from `next/navigation`. A change the flow makes to the address on its own does not load another page in Next.js, so leaving the flow, for example after sign-in, needs the router.
-- **The provider in a layout.** `app/auth/layout.tsx` stays mounted while the flow moves between its paths, so the provider keeps its state. Give it `twoFactorVerifyPath`, the flow's second-factor path under the prefix.
+- **The provider in a layout.** `app/auth/layout.tsx` stays mounted while the flow moves between its paths, so the provider keeps its state. Give it `twoFactorVerifyPath`, the flow's second-factor path under the prefix. Without it, a sign-in that comes back owing a second factor can go to `/two-factor-verify` instead of `/auth/two-factor-verify`, because the flow behind the page's Suspense boundary has not told the provider its path yet.
 
 ```tsx
 // app/auth/layout.tsx
