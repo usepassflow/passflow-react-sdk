@@ -6,9 +6,9 @@ on:
       - 'v*'
 
 jobs:
-  # A GitHub-hosted runner, not Blacksmith: npm trusted publishing and
-  # provenance accept only an OIDC token whose runner_environment is
-  # github-hosted, and any third-party runner reports self-hosted.
+  # Jobs that hold write credentials run on GitHub-hosted runners. npm trusted
+  # publishing and provenance also accept only an OIDC token whose
+  # runner_environment is github-hosted.
   publish:
     runs-on: ubuntu-24.04-arm
     permissions:
@@ -66,7 +66,8 @@ jobs:
   # place for the release to go wrong, and the changelog is one click away.
   release-page:
     needs: publish
-    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
+    # Jobs that hold write credentials run on GitHub-hosted runners.
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: write
 
