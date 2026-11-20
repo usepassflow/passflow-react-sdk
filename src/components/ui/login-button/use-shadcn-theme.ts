@@ -1,8 +1,6 @@
-import { type RefObject, useEffect, useLayoutEffect } from 'react';
+import type { RefObject } from 'react';
+import { useIsomorphicLayoutEffect } from '@/hooks/use-isomorphic-layout-effect';
 import { readShadcnTheme } from './shadcn-theme';
-
-// A layout effect so the host's colours are in place before the first paint; a plain effect on the server.
-const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 /** The attributes a shadcn app switches its theme with, on `<html>` or `<body>`. */
 const THEME_ATTRIBUTES = ['class', 'style', 'data-theme'];
@@ -14,6 +12,7 @@ const THEME_ATTRIBUTES = ['class', 'style', 'data-theme'];
  * `prefers-color-scheme`. Does nothing while `enabled` is false.
  */
 export const useShadcnTheme = (ref: RefObject<HTMLElement | null>, enabled: boolean): void => {
+  // A layout effect so the host's colours are in place before the first paint.
   useIsomorphicLayoutEffect(() => {
     const element = ref.current;
     if (!enabled || !element) return;

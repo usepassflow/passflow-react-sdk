@@ -55,17 +55,7 @@ import {
   type UpgradeReplayInfo,
   type Waiter,
 } from '@passflow/core';
-import {
-  type FC,
-  type ReactElement,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { type FC, type ReactElement, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { UpgradeDialogLabels, UpgradeDialogOutcome, UpgradeDialogProps } from '@/components/ui/upgrade-dialog';
 import { dialogOutcomeFromError, readAssuranceBar, toDialogState, UpgradeDialog } from '@/components/ui/upgrade-dialog';
 import {
@@ -77,6 +67,7 @@ import {
   type UpgradePromptView,
   type UpgradeSettledState,
 } from '@/context/upgrade-context';
+import { useIsomorphicLayoutEffect } from '@/hooks/use-isomorphic-layout-effect';
 import { usePassflow } from '@/hooks/use-passflow';
 import { registerUpgradeAuthInstance, upgradeAuthInstance } from '@/utils/upgrade-auth';
 
@@ -430,7 +421,7 @@ export const UpgradeProvider: FC<UpgradeProviderProps> = ({
   // A layout effect, so the facade is enabled in the commit that brings it. The hosted login elevates through the
   // facade from an awaited network answer, which can run between a commit and its passive effects; a facade that is
   // not enabled yet rejects that elevation as unavailable.
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (!enabled) {
       setInstalled(false);
       return;
