@@ -1,5 +1,5 @@
 import { OTPInput, REGEXP_ONLY_DIGITS, REGEXP_ONLY_DIGITS_AND_CHARS, type SlotProps } from 'input-otp';
-import type { FC, Ref } from 'react';
+import { type FC, forwardRef } from 'react';
 import { cn } from '@/utils';
 import '@/styles/index.css';
 import './field-otp.css';
@@ -26,8 +26,6 @@ type FieldOtpBaseProps = {
   /** Id of the element that describes it, such as the error message. */
   describedBy?: string;
   autoFocus?: boolean;
-  /** The one real `<input>`, so a screen can return focus to it after the field was locked. */
-  ref?: Ref<HTMLInputElement>;
 };
 
 /**
@@ -76,23 +74,26 @@ const Slot: FC<SlotViewProps> = ({ char, isActive, hasFakeCaret, state }) => (
  * autofill, password managers and pasting a whole code all work. The boxes are
  * a drawing of its value, hidden from assistive technology. With `label` the
  * field draws its own visible label above the boxes; with `labelledBy` it is
- * named by a prompt the screen already shows.
+ * named by a prompt the screen already shows. Its ref is the real `<input>`,
+ * so a screen can return focus to it after the field was locked.
  */
-export const FieldOtp: FC<FieldOtpProps> = ({
-  id,
-  name,
-  length,
-  value,
-  onChange,
-  onComplete,
-  charset = 'numeric',
-  state = 'default',
-  label,
-  labelledBy,
-  describedBy,
-  autoFocus = false,
+export const FieldOtp = forwardRef<HTMLInputElement, FieldOtpProps>(function FieldOtp(
+  {
+    id,
+    name,
+    length,
+    value,
+    onChange,
+    onComplete,
+    charset = 'numeric',
+    state = 'default',
+    label,
+    labelledBy,
+    describedBy,
+    autoFocus = false,
+  },
   ref,
-}) => {
+) {
   const { pattern, inputMode } = CHARSETS[charset];
 
   const input = (
@@ -136,4 +137,4 @@ export const FieldOtp: FC<FieldOtpProps> = ({
       {input}
     </div>
   );
-};
+});
