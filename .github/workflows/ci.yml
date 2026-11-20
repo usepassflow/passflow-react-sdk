@@ -10,8 +10,8 @@ on:
 jobs:
   build:
     # The 24.x leg also builds Storybook and runs the Playwright suite, which
-    # takes about twice as long on 2 vCPUs, so it gets 4.
-    runs-on: ${{ matrix.node-version == '24.x' && 'blacksmith-4vcpu-ubuntu-2404-arm' || 'blacksmith-2vcpu-ubuntu-2404-arm' }}
+    # needs 8 vCPUs to be no slower than on a GitHub-hosted runner.
+    runs-on: ${{ matrix.node-version == '24.x' && 'blacksmith-8vcpu-ubuntu-2404-arm' || 'blacksmith-4vcpu-ubuntu-2404-arm' }}
 
     # Every Node line the package declares support for gets lint, unit tests and
     # a build. One failing leg must not hide the others' results.
@@ -70,7 +70,7 @@ jobs:
   # type-check and the unit tests still pass there. React Router 8 needs
   # React >=19.2.7, so the leg also swaps in React Router 7 (the peer admits both).
   react18-compat:
-    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
+    runs-on: blacksmith-4vcpu-ubuntu-2404-arm
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -101,7 +101,7 @@ jobs:
   # React Router 8 and React 18 + React Router 7, skipLibCheck off. Then runs
   # @arethetypeswrong/cli on the tarball. Pins live in tests/consumer-types/legs.json.
   consumer-types:
-    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
+    runs-on: blacksmith-4vcpu-ubuntu-2404-arm
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
