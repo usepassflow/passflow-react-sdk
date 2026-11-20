@@ -9,7 +9,9 @@ on:
 
 jobs:
   build:
-    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
+    # The 24.x leg also builds Storybook and runs the Playwright suite, which
+    # takes about twice as long on 2 vCPUs, so it gets 4.
+    runs-on: ${{ matrix.node-version == '24.x' && 'blacksmith-4vcpu-ubuntu-2404-arm' || 'blacksmith-2vcpu-ubuntu-2404-arm' }}
 
     # Every Node line the package declares support for gets lint, unit tests and
     # a build. One failing leg must not hide the others' results.
