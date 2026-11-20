@@ -693,25 +693,70 @@ export const routerTree = rootRoute.addChildren([
 
 ### Next.js (App Router)
 
-Render `PassflowFlow` inside a `'use client'` component, under `PassflowProvider`. Put the flow under a prefix and mount it on an optional catch-all route, `app/auth/[[...passflow]]/page.tsx`. Then a reload of `/auth/signin`, `/auth/two-factor-verify`, `/auth/password/reset`, `/auth/two-factor-setup-magic-link/<token>` or any other flow path reaches the flow page. Send the user to one of the app's own pages after sign-in.
+Three things make the flow work in the App Router:
+
+- **A catch-all route.** The flow moves the address to `/auth/signin`, `/auth/signup`, `/auth/two-factor-verify` and its other paths. Mount it on an optional catch-all, `app/auth/[[...passflow]]/page.tsx`, so a reload of any of them reaches the flow page.
+- **Next.js's router.** Pass the flow `location` and `navigate` from `next/navigation`. A change the flow makes to the address on its own does not load another page in Next.js, so leaving the flow, for example after sign-in, needs the router.
+- **The provider in a layout.** `app/auth/layout.tsx` stays mounted while the flow moves between its paths, so the provider keeps its state. Give it `twoFactorVerifyPath`, the flow's second-factor path under the prefix.
 
 ```tsx
-// app/auth/[[...passflow]]/page.tsx
+// app/auth/layout.tsx
 'use client';
 
-import { PassflowFlow, PassflowProvider } from '@passflow/react';
+import { PassflowProvider } from '@passflow/react';
 import '@passflow/react/dist/style.css';
+import type { ReactNode } from 'react';
 
-export default function PassflowPage() {
+export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <PassflowProvider url={process.env.NEXT_PUBLIC_PASSFLOW_URL} appId={process.env.NEXT_PUBLIC_PASSFLOW_APP_ID}>
-      <PassflowFlow pathPrefix="/auth" successAuthRedirect="/dashboard" />
+    <PassflowProvider
+      url={process.env.NEXT_PUBLIC_PASSFLOW_URL}
+      appId={process.env.NEXT_PUBLIC_PASSFLOW_APP_ID}
+      twoFactorVerifyPath="/auth/two-factor-verify"
+    >
+      {children}
     </PassflowProvider>
   );
 }
 ```
 
-**The flow at the root.** If the root page is the flow, Next.js does not allow `app/[[...passflow]]/page.tsx` beside `app/page.tsx`. Keep the flow in `app/page.tsx` and add a required catch-all, `app/[...passflow]/page.tsx`, that renders the same component. Unknown paths then reach the flow, which moves them to `/signin`, instead of a 404. `successAuthRedirect` must point at a route of its own, such as `/dashboard`: `/` is the flow, and it sends the user back to `/signin`.
+```tsx
+// app/auth/[[...passflow]]/page.tsx
+'use client';
+
+import { PassflowFlow } from '@passflow/react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
+
+function Flow() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  return (
+    <PassflowFlow
+      pathPrefix="/auth"
+      successAuthRedirect="/dashboard"
+      location={{ pathname, search: searchParams.toString() }}
+      navigate={(to, { replace }) => {
+        const href = `${to.pathname}${to.search}${to.hash ?? ''}`;
+        if (replace) router.replace(href);
+        else router.push(href);
+      }}
+    />
+  );
+}
+
+// useSearchParams needs a Suspense boundary in a prerendered page.
+export default function PassflowPage() {
+  return (
+    <Suspense>
+      <Flow />
+    </Suspense>
+  );
+}
+```
+
+**The flow at the root.** Next.js does not allow `app/[[...passflow]]/page.tsx` beside `app/page.tsx`. Put the provider around `children` in `app/layout.tsx` (through a `'use client'` component), render the flow from both `app/page.tsx` and a required catch-all, `app/[...passflow]/page.tsx`, and pass `pathPrefix=""` and `twoFactorVerifyPath="/two-factor-verify"`. Next.js's own routes, such as `/dashboard`, still win over the catch-all. Any other unknown path reaches the flow, which moves it to `/signin`, instead of a 404.
 
 The URL and the session exist only in the browser. So the server renders the flow's screens as nothing, and the browser shows them right after hydration.
 
