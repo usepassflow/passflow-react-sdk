@@ -22,4 +22,5 @@ export {
 } from './context/upgrade-context';
 export * from './hooks';
 export type { EmailCodeStep, EmailVerificationStep } from './types';
+export { startHostedSignIn } from './utils/hosted-sign-in';
 export { attachAuth, withAuth } from './utils/upgrade-auth';

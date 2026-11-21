@@ -36,7 +36,7 @@ describe('useAuthCloudRedirect', () => {
     watcher = undefined;
   });
 
-  it('passes the cloud URL to authRedirect', () => {
+  it('passes the cloud URL to authRedirect, with the app root as the redirect URL', () => {
     const authRedirect = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() => useAuthCloudRedirect('https://auth.example.com'), {
       wrapper: wrapperFor(authRedirect),
@@ -44,7 +44,10 @@ describe('useAuthCloudRedirect', () => {
 
     result.current();
 
-    expect(authRedirect).toHaveBeenCalledWith({ url: 'https://auth.example.com' });
+    expect(authRedirect).toHaveBeenCalledWith({
+      url: 'https://auth.example.com',
+      redirectUrl: `${window.location.origin}/`,
+    });
   });
 
   it.each([

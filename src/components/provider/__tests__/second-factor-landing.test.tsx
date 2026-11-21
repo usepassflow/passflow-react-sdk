@@ -174,11 +174,11 @@ describe('PassflowProvider on a landing with tokens in the fragment', () => {
     network = undefined;
   });
 
-  const land = () => {
+  const land = (pathname = '/web/signin') => {
     const access = signedJwt({ type: 'access' });
     const refresh = signedJwt({ type: 'refresh' });
     network = installLandingEnvironment({
-      pathname: '/web/signin',
+      pathname,
       search: `#access_token=${access}&refresh_token=${refresh}&state=app-state`,
     });
     installServerKeys(network);
@@ -208,6 +208,20 @@ describe('PassflowProvider on a landing with tokens in the fragment', () => {
     });
     expect(window.location.hash).not.toContain('access_token');
     expect(network!.requests.filter((request) => request.path === '/.well-known/jwks.json')).toHaveLength(1);
+  });
+
+  it('a Simple app landing at the root goes on to the page the sign-in started on', async () => {
+    const { discovery } = land('/');
+    sessionStorage.setItem('passflow_return_to', '/account/settings?tab=2');
+    const observed = makeObserved();
+    render(<DiscoveringTree observed={observed} />);
+
+    await discover(discovery);
+    await network!.releaseSettings({ ...network!.settingsData, pkce_enabled: false });
+
+    await waitFor(() => expect(observed.current!.isAuthenticated()).toBe(true));
+    await waitFor(() => expect(observed.navigations).toEqual([{ to: '/account/settings', search: '?tab=2', replace: true }]));
+    expect(sessionStorage.getItem('passflow_return_to')).toBeNull();
   });
 
   it('an SDK app does not take them', async () => {

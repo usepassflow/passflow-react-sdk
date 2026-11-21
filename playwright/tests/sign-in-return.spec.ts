@@ -53,7 +53,11 @@ test('a return whose state is not this sign-in tells the user, and Sign in again
   await expect(page.getByRole('heading', { name: 'Hosted sign-in' })).toBeVisible();
   const authorize = new URL(page.url());
   expect(authorize.pathname).toBe('/oidc/authorize');
-  expect(authorize.searchParams.get('redirect_uri')).toBe(accountUrl);
+  expect(authorize.searchParams.get('redirect_uri')).toBe(`${appOrigin}/`);
+
+  // sessionStorage belongs to the app's origin, so read it back there; a load with no code takes no return path.
+  await page.goto(accountUrl);
+  expect(await page.evaluate(() => window.sessionStorage.getItem('passflow_return_to'))).toBe('/account');
 });
 
 test('a page with no return shows the app as it is', async ({ page }) => {

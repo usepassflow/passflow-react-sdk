@@ -1,7 +1,7 @@
 import { type ParsedTokens, PassflowEvent, type PassflowSubscriber } from '@passflow/core';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { MouseEvent, ReactElement } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '@/context/auth-context';
 import { initialState, PassflowContext, type PassflowContextType } from '@/context/passflow-context';
 import { LoginButton } from '..';
@@ -86,6 +86,25 @@ describe('LoginButton', () => {
 
     expect(session.passflow.authRedirect).toHaveBeenCalledWith({ redirectUrl: 'https://app.example.com/callback' });
     expect(session.passflow.logOut).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem('passflow_return_to')).toBeNull();
+  });
+
+  describe('on a deep page with no redirect URL given', () => {
+    afterEach(() => {
+      sessionStorage.clear();
+      window.history.replaceState({}, '', '/');
+    });
+
+    it('asks to come back to the app root and remembers the page it started on', async () => {
+      window.history.replaceState({}, '', '/account/settings?tab=2#x');
+      const session = createSession(false);
+      renderWith(session, <LoginButton />);
+
+      await click('Sign in');
+
+      expect(session.passflow.authRedirect).toHaveBeenCalledWith({ redirectUrl: `${window.location.origin}/` });
+      expect(sessionStorage.getItem('passflow_return_to')).toBe('/account/settings?tab=2#x');
+    });
   });
 
   it('takes its own sign-in label', () => {

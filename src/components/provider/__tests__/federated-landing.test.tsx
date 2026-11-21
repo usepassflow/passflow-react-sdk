@@ -212,6 +212,58 @@ describe('SDK-mode landing (authorization code with state)', () => {
     expect(network.requests.some((request) => request.path === '/oidc/token')).toBe(false);
     expect(network.forwards).toEqual([]);
   });
+
+  describe('back at the app root, returns to the page the sign-in started on', () => {
+    const returnKey = 'passflow_return_to';
+
+    const landAtRoot = async (storedReturnPath?: string) => {
+      network = installLandingEnvironment({ pathname: '/', search: '?code=oidc-code&state=sign-in-state' });
+      writeOidcSlot({ state: 'sign-in-state' });
+      if (storedReturnPath !== undefined) sessionStorage.setItem(returnKey, storedReturnPath);
+      network.endpoints.set('/oidc/token', { data: authTokens() });
+      const observed = makeObserved();
+      renderLanding({ observed, flow: false });
+      await network.releaseSettings();
+      await waitFor(() => expect(observed.outcome).toBe('signed-in'));
+      await waitFor(() => expect(observed.current!.isAuthenticated()).toBe(true));
+      return observed;
+    };
+
+    it('navigates once, replacing the landing, to the stored page', async () => {
+      const observed = await landAtRoot('/account/settings?tab=2');
+
+      expect(observed.navigations).toEqual([{ to: '/account/settings', search: '?tab=2', replace: true }]);
+      expect(sessionStorage.getItem(returnKey)).toBeNull();
+      expect(network!.forwards).toEqual([]);
+    });
+
+    it('loads a stored page with a fragment in full, since navigate carries no fragment', async () => {
+      const observed = await landAtRoot('/account/settings?tab=2#security');
+
+      expect(network!.forwards).toEqual(['/account/settings?tab=2#security']);
+      expect(observed.navigations).toEqual([]);
+      expect(sessionStorage.getItem(returnKey)).toBeNull();
+    });
+
+    it.each(['https://evil.example/x', '//evil.example/x'])(
+      'goes nowhere for a stored %j, which is not a path on this origin',
+      async (stored) => {
+        const observed = await landAtRoot(stored);
+
+        expect(window.location.pathname).toBe('/');
+        expect(observed.navigations).toEqual([]);
+        expect(sessionStorage.getItem(returnKey)).toBeNull();
+        expect(network!.forwards).toEqual([]);
+      },
+    );
+
+    it('goes nowhere when no page was stored', async () => {
+      const observed = await landAtRoot();
+
+      expect(observed.navigations).toEqual([]);
+      expect(sessionStorage.getItem(returnKey)).toBeNull();
+    });
+  });
 });
 
 describe('REQ-20 no explicit redirect target does not depend on appSettings render state', () => {

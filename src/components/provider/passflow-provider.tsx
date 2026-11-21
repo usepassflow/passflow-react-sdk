@@ -37,6 +37,7 @@ import {
 import { useHydrated } from '@/hooks/use-hydrated';
 import { passwordlessSignInFailedMessage } from '@/utils/auth-error';
 import { submitFormPost } from '@/utils/form-post';
+import { startHostedSignIn, takeReturnPath } from '@/utils/hosted-sign-in';
 import { signInSearch, twoFactorTokenAppId, urlCarriesAccessToken, urlCarriesTwoFactorToken } from '@/utils/second-factor';
 import { readParentChallengeIdFromURL } from '@/utils/url-params';
 import '@/styles/index.css';
@@ -717,6 +718,19 @@ const useSecondFactorLanding = (
   const takenRef = useRef(false);
   const currentPassflowRef = useRef(passflow);
   currentPassflowRef.current = passflow;
+  const navigateRef = useRef(navigate);
+  navigateRef.current = navigate;
+
+  // A hosted sign-in returns to the app root; this takes the user on to the page it started on.
+  // A fragment cannot travel through `navigate`, so a page with one is loaded in full.
+  const returnToStartPage = () => {
+    const to = takeReturnPath();
+    const { pathname, search, hash } = window.location;
+    if (to === undefined || to === pathname + search + hash) return;
+    const url = new URL(to, window.location.origin);
+    if (url.hash) window.location.replace(to);
+    else navigateRef.current({ to: url.pathname, search: url.search || undefined, replace: true });
+  };
 
   // Deps `[passflow]`: under app-id discovery the first instance has no app id
   // and leaves the landing to the next one. The ref makes StrictMode's replay a
@@ -747,6 +761,7 @@ const useSecondFactorLanding = (
           const current = currentPassflowRef.current;
           if (current !== passflow && signIn.tokens) current.setTokens(signIn.tokens);
           setFederatedLandingOutcome('signed-in');
+          if (signIn.source === 'oidc-landing') returnToStartPage();
         }
       },
     };
@@ -775,6 +790,7 @@ const useSecondFactorLanding = (
           const current = currentPassflowRef.current;
           if (current !== passflow && signIn.tokens) current.setTokens(signIn.tokens);
           setFederatedLandingOutcome('tokens-in-url');
+          returnToStartPage();
         }
       },
     };
@@ -1041,7 +1057,7 @@ export const PassflowProvider: FC<PassflowProviderProps> = ({
   // hosted login. The hosted login page itself shows its sign-in form from the exchange instead.
   const signInForStepUp = useCallback(() => {
     if (flowSignInPath) navigate({ to: flowSignInPath });
-    else void passflow.authRedirect().catch(() => undefined);
+    else void startHostedSignIn(passflow).catch(() => undefined);
   }, [flowSignInPath, navigate, passflow]);
 
   // Render the continuing status while the exchange is in flight or the
@@ -1065,7 +1081,7 @@ export const PassflowProvider: FC<PassflowProviderProps> = ({
               backend={backend}
             >
               {signInReturnFailed ? (
-                <SignInReturnFailed onSignInAgain={() => void passflow.authRedirect().catch(() => undefined)} />
+                <SignInReturnFailed onSignInAgain={() => void startHostedSignIn(passflow).catch(() => undefined)} />
               ) : (exchangeState === 'unsatisfiable' || exchangeState === 'rate_limited') && stepUpFailure ? (
                 <StepUpFailed message={stepUpFailure} testId={`exchange-${exchangeState.replace('_', '-')}`} />
               ) : showContinuing ? (
