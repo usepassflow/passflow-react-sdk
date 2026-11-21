@@ -2,6 +2,19 @@
 
 All notable changes to `@passflow/react` are documented in this file.
 
+## [0.29.0] - 2026-11-22
+
+### Added
+
+- `useSessions()` lists the signed-in user's sessions, one per sign-in on any device or app, and ends them. It returns `data`, `isLoading`, `isError`, `errorMessage`, `refetch()`, `revoke(sessionId)` and `signOutOthers()`. The session the app is signed in with has `current: true`.
+- `revoke(sessionId)` ends one session and drops it from `data`. Ending the current session signs out as `logout()` does: `PassflowProvider` turns signed out and, after a hosted sign-in, the page goes to the hosted end-session page.
+- `signOutOthers()` ends every session except the current one and returns how many it ended. `data` then holds the current session only.
+- The session types of `@passflow/core` come from `@passflow/react` as well: `PassflowUserSession`, `PassflowSessionDevice`, `PassflowUserSessionList` and `PassflowRevokeOtherSessionsResponse`.
+
+### Changed
+
+- The minimum `@passflow/core` is now 0.33.0.
+
 ## [0.28.0] - 2026-11-21
 
 ### Changed
