@@ -2,6 +2,18 @@
 
 All notable changes to `@passflow/react` are documented in this file.
 
+## [0.28.0] - 2026-11-21
+
+### Changed
+
+- A hosted sign-in started by the SDK now asks to return to the app root, `${origin}/`, instead of the page it started on. That covers `LoginButton`, the default step-up sign-in, the "Sign in again" action and `useAuthCloudRedirect`. After the sign-in, `PassflowProvider` takes the user back to the page they started on. Register `${origin}/` as a redirect URL of the app. Before, a sign-in started on a page such as `/account/settings` asked to return to that page and the hosted login refused it with "redirect_uri not registered for this client" unless that exact page was registered.
+- A hosted sign-out with no `postLogoutRedirectUri` now returns to `${origin}/` too, since it defaults to the address the sign-in returned to.
+- A `redirectUrl` passed in `authRedirectOptions` (or to `startHostedSignIn()`) is used as before, and the user stays where it lands. An app served under a sub-path (Vite `base: '/app/'`) passes `redirectUrl`, such as `${origin}/app/`, to `LoginButton`'s `authRedirectOptions` or to `startHostedSignIn()`, since the origin root is not its page.
+
+### Added
+
+- `startHostedSignIn(passflow, options?)` starts the hosted sign-in the same way, for an app with its own sign-in button.
+
 ## [0.27.0] - 2026-11-21
 
 ### Fixed
