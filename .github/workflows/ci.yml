@@ -123,3 +123,32 @@ jobs:
       # Installs into $RUNNER_TEMP, outside this pnpm workspace, with scripts disabled.
       - name: Type-check the tarball as a consumer
         run: node tests/consumer-types/run.mjs "$RUNNER_TEMP"/pack/passflow-react-*.tgz --work "$RUNNER_TEMP/consumer-types"
+
+  # Builds and serves a stock Next.js 16 App Router app (Turbopack, cacheComponents) with the packed tarball.
+  # Its layout and flow page are server components that import from the package directly; /signin must answer
+  # 200. Pins live in tests/next-app/pins.json.
+  next-app:
+    runs-on: blacksmith-4vcpu-ubuntu-2404-arm
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # prepack runs the full build (bundles and declarations).
+      - name: Build and pack
+        run: pnpm pack --pack-destination "$RUNNER_TEMP/pack"
+
+      # Installs into $RUNNER_TEMP, outside this pnpm workspace, with scripts disabled.
+      - name: Build and serve the tarball in a Next.js app
+        run: node tests/next-app/run.mjs "$RUNNER_TEMP"/pack/passflow-react-*.tgz --work "$RUNNER_TEMP/next-app"

@@ -699,10 +699,10 @@ Three things make the flow work in the App Router:
 - **Next.js's router.** Pass the flow `location` and `navigate` from `next/navigation`. A change the flow makes to the address on its own does not load another page in Next.js, so leaving the flow, for example after sign-in, needs the router.
 - **The provider in a layout.** `app/auth/layout.tsx` stays mounted while the flow moves between its paths, so the provider keeps its state. Give it `twoFactorVerifyPath`, the flow's second-factor path under the prefix. Without it, a sign-in that comes back owing a second factor can go to `/two-factor-verify` instead of `/auth/two-factor-verify`, because the flow behind the page's Suspense boundary has not told the provider its path yet.
 
+The package is client code and says so (`'use client'`), so a server component, such as this layout, can import from it directly.
+
 ```tsx
 // app/auth/layout.tsx
-'use client';
-
 import { PassflowProvider } from '@passflow/react';
 import '@passflow/react/dist/style.css';
 import type { ReactNode } from 'react';
@@ -719,6 +719,8 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   );
 }
 ```
+
+The flow page is a client component: it reads Next.js's router and hands the flow a function.
 
 ```tsx
 // app/auth/[[...passflow]]/page.tsx
@@ -756,7 +758,7 @@ export default function PassflowPage() {
 }
 ```
 
-**The flow at the root.** Next.js does not allow `app/[[...passflow]]/page.tsx` beside `app/page.tsx`. Put the provider around `children` in `app/layout.tsx` (through a `'use client'` component), render the flow from both `app/page.tsx` and a required catch-all, `app/[...passflow]/page.tsx`, and pass `pathPrefix=""` and `twoFactorVerifyPath="/two-factor-verify"`. Next.js's own routes, such as `/dashboard`, still win over the catch-all. Any other unknown path reaches the flow, which moves it to `/signin`, instead of a 404.
+**The flow at the root.** Next.js does not allow `app/[[...passflow]]/page.tsx` beside `app/page.tsx`. Put the provider around `children` in `app/layout.tsx`, render the flow from both `app/page.tsx` and a required catch-all, `app/[...passflow]/page.tsx`, and pass `pathPrefix=""` and `twoFactorVerifyPath="/two-factor-verify"`. Next.js's own routes, such as `/dashboard`, still win over the catch-all. Any other unknown path reaches the flow, which moves it to `/signin`, instead of a 404.
 
 The URL and the session exist only in the browser. So the server renders the flow's screens as nothing, and the browser shows them right after hydration.
 
