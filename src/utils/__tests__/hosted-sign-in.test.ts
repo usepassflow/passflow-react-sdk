@@ -100,6 +100,12 @@ describe('takeReturnPath', () => {
     expect(takeReturnPath()).toBe('/settings/billing?tab=2');
   });
 
+  it('keeps a page whose path is percent-encoded', () => {
+    sessionStorage.setItem(returnKey, '/files/a%20b%2Fc?q=1');
+
+    expect(takeReturnPath()).toBe('/files/a%20b%2Fc?q=1');
+  });
+
   it.each([
     'https://evil.example/x',
     '//evil.example/x',
@@ -109,6 +115,13 @@ describe('takeReturnPath', () => {
     '/a/..//evil.example/x',
     '/a/../\\evil.example/x',
     '/account\\settings',
+    '/%2e%2e//evil.example/x',
+    '/\t/evil.example',
+    '/\n/evil.example',
+    '/%09/evil.example',
+    '/%2F%2Fevil.example/x',
+    '/%5Cevil.example/x',
+    '/%E0%A4%A',
     'javascript:alert(1)',
     'account',
     '',

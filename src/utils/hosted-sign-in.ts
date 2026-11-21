@@ -32,17 +32,22 @@ export const startHostedSignIn = (passflow: Passflow, options?: AuthRedirectOpti
  * The stored value as a path on this origin, with dot segments resolved, or
  * undefined. The check runs on the resolved path: `/..//evil.example` resolves
  * to `//evil.example`, which a browser reads as another host. A `\` anywhere is
- * refused, since browsers read it as `/`.
+ * refused, since browsers read it as `/`. The percent-decoded path is checked
+ * the same way, with tabs and newlines removed as a URL parser removes them, so
+ * a router that decodes `to` cannot turn `/%09/evil.example` into another host.
  */
 const rootRelativePath = (value: string): string | undefined => {
   if (!value.startsWith('/') || value.includes('\\')) return undefined;
   let url: URL;
+  let decoded: string;
   try {
     url = new URL(value, window.location.origin);
+    decoded = decodeURIComponent(url.pathname).replace(/[\t\n\r]/g, '');
   } catch {
     return undefined;
   }
-  if (url.origin !== window.location.origin || url.pathname.startsWith('//')) return undefined;
+  if (url.origin !== window.location.origin) return undefined;
+  if (url.pathname.startsWith('//') || decoded.startsWith('//') || decoded.includes('\\')) return undefined;
   return url.pathname + url.search + url.hash;
 };
 
