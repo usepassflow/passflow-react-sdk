@@ -1,0 +1,9 @@
+{
+  "$comment": "Exact pins for the Next.js app check (tests/next-app/run.mjs). A stock App Router app, Turbopack and cacheComponents on, with the packed tarball and the @passflow/core the package needs.",
+  "dependencies": {
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "@passflow/core": "0.32.1"
+  }
+}
