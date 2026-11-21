@@ -53,6 +53,7 @@ export { type AuthMethods, getAuthMethods } from './get-auth-methods';
 export { getIdentityLabel, getPasswordlessData, getValidationErrorsLabel } from './get-form-labels';
 export { getUrlErrors } from './get-url-errors';
 export { getUrlWithTokens, type TokenUrlFormat } from './get-url-with-tokens';
+export { startHostedSignIn, takeReturnPath } from './hosted-sign-in';
 export { getInvitationAuthChrome, type InvitationAuthIntent } from './invitation-auth-chrome';
 export { inAppPath, isSameOriginPath, isSignInPage } from './is-sign-in-page';
 export { routeToSecondFactor, signInSearch, urlCarriesTwoFactorToken } from './second-factor';

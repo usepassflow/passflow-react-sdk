@@ -69,6 +69,7 @@ import {
 } from '@/context/upgrade-context';
 import { useIsomorphicLayoutEffect } from '@/hooks/use-isomorphic-layout-effect';
 import { usePassflow } from '@/hooks/use-passflow';
+import { startHostedSignIn } from '@/utils/hosted-sign-in';
 import { registerUpgradeAuthInstance, upgradeAuthInstance } from '@/utils/upgrade-auth';
 
 export type UpgradeProviderProps = {
@@ -109,7 +110,7 @@ export type UpgradeProviderProps = {
   title?: string;
   /**
    * Where a step-up that only a fresh sign-in can meet sends the user, and the "Sign in again" action of an
-   * insufficient one. Called once, with the dialog closed; nothing is retried. Default: `passflow.authRedirect()`.
+   * insufficient one. Called once, with the dialog closed; nothing is retried. Default: `startHostedSignIn(passflow)`.
    */
   onSignInRequired?: () => void;
   /**
@@ -315,7 +316,7 @@ export const UpgradeProvider: FC<UpgradeProviderProps> = ({
   diagnosticRef.current = onUpgradeDiagnostic;
 
   const signInRef = useRef<() => void>(() => undefined);
-  signInRef.current = onSignInRequired ?? (() => void passflow.authRedirect().catch(() => undefined));
+  signInRef.current = onSignInRequired ?? (() => void startHostedSignIn(passflow).catch(() => undefined));
   const failuresRef = useRef(failures);
   failuresRef.current = failures;
 

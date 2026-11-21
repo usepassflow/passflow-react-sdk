@@ -321,7 +321,7 @@ import { LoginButton } from '@passflow/react';
 <LoginButton />;
 ```
 
-Signed out, it shows **Sign in** (`signInLabel`) and a click starts the hosted sign-in, `passflow.authRedirect(authRedirectOptions)`. Signed in, it shows the user's email (`signedInLabel={(user) => …}`) and a click signs out with `useAuth().logout()`, which also ends the hosted session after a hosted sign-in; `postLogoutRedirectUri` says where the browser lands. The button is disabled and `aria-busy` while the sign-out is in flight, and it switches on sign-in and sign-out events.
+Signed out, it shows **Sign in** (`signInLabel`) and a click starts the hosted sign-in, `startHostedSignIn(passflow, authRedirectOptions)`. Signed in, it shows the user's email (`signedInLabel={(user) => …}`) and a click signs out with `useAuth().logout()`, which also ends the hosted session after a hosted sign-in; `postLogoutRedirectUri` says where the browser lands. The button is disabled and `aria-busy` while the sign-out is in flight, and it switches on sign-in and sign-out events.
 
 To use your own button, wrap it. Your element becomes the button: it keeps its props, content and look, and gets a click handler that calls its own `onClick` first, then signs in or out unless that called `event.preventDefault()` (a component that calls `onClick()` with no event still signs in or out). No label is injected, so its text stays as you wrote it. While the sign-out is in flight it gets `disabled` and `aria-busy`; otherwise those stay as you passed them. For text that switches, pass a function, which also receives `busy`:
 
@@ -337,6 +337,19 @@ In an app styled with shadcn/ui, `appearance="shadcn"` takes `--primary`, `--pri
 
 ```tsx
 <LoginButton appearance='shadcn' />
+```
+
+#### Where the hosted sign-in returns
+
+The redirect URL the SDK sends is the app root, `${origin}/`, unless `authRedirectOptions.redirectUrl` is given. Register `${origin}/` as a redirect URL of the app. The page the user started on is kept in sessionStorage, and once the provider has taken the sign-in at `/` it navigates back there with `replace`, so a sign-in started on `/account/settings?tab=2` ends on that page. A `redirectUrl` you pass is sent as it is, and the user lands there instead. An app served under a sub-path (Vite `base: '/app/'`) is not at the origin root, so it passes its own `redirectUrl`, such as `${origin}/app/`, in `LoginButton`'s `authRedirectOptions` or to `startHostedSignIn()`.
+
+Every hosted sign-in the SDK starts works this way: `LoginButton`, `useAuthCloudRedirect`, and the step-up and "sign in again" fallbacks. For a button of your own, call the same function:
+
+```tsx
+import { startHostedSignIn, usePassflow } from '@passflow/react';
+
+const passflow = usePassflow();
+<button type='button' onClick={() => void startHostedSignIn(passflow)}>Sign in</button>;
 ```
 
 ### Two-factor setup for a signed-in user
@@ -373,7 +386,7 @@ The dialog offers the factors the server lists in `available_factors`, in its or
 | Rate limited | "Too many attempts. Try again in 30 seconds.", with the wait in seconds, minutes, hours or days, rounded up ("15 minutes", "1 day"), or the server's own text when it names no wait. No new code is asked for. |
 | Insufficient (verified, but the call was challenged again) | The levels reached and required, with **Sign in again**, which calls `upgrade.onSignInRequired`. |
 
-`upgrade.onSignInRequired` is where those sign-ins go. By default it opens the app's own sign-in route when a `PassflowFlow` is mounted, and otherwise calls `passflow.authRedirect()`. Pass your own to send the user somewhere else:
+`upgrade.onSignInRequired` is where those sign-ins go. By default it opens the app's own sign-in route when a `PassflowFlow` is mounted, and otherwise calls `startHostedSignIn(passflow)`. Pass your own to send the user somewhere else:
 
 ```tsx
 <PassflowProvider {...config} upgrade={{ interceptFetch: true, onSignInRequired: () => router.navigate('/login') }}>
@@ -889,7 +902,8 @@ When the user signed in through the hosted login (`authRedirect()`), `logout()` 
 ```tsx
 const { logout } = useAuth();
 
-// Must match one of the app's registered redirect URLs. Default: the address the hosted sign-in landed on.
+// Must match one of the app's registered redirect URLs. Default: the address the hosted sign-in landed on, the app root
+// when the SDK started it.
 await logout({ postLogoutRedirectUri: 'https://app.example.com/signed-out' });
 ```
 

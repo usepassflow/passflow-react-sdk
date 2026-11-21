@@ -4,6 +4,7 @@ import { type LoginButtonAppearance, LoginButtonView } from '@/components/ui/log
 import { useAuth } from '@/hooks/use-auth';
 import { usePassflow } from '@/hooks/use-passflow';
 import { type PassflowUser, useUser } from '@/hooks/use-user';
+import { startHostedSignIn } from '@/utils/hosted-sign-in';
 
 /** What a function child of `LoginButton` receives. */
 export type LoginButtonRenderProps = {
@@ -22,7 +23,11 @@ export type LoginButtonProps = {
   signedInLabel?: (user: PassflowUser) => ReactNode;
   /** Read by assistive technology after the signed-in label, since a click signs out. Default "Sign out". */
   signOutDescription?: string;
-  /** Passed to `passflow.authRedirect()` on sign-in. */
+  /**
+   * Passed to `passflow.authRedirect()` on sign-in. Without `redirectUrl`, the hosted login returns to the app
+   * root, `${origin}/` (the URL to register), and the provider then takes the user back to the page they
+   * started on. A `redirectUrl` given here is used as it is.
+   */
   authRedirectOptions?: AuthRedirectOptions;
   /** After a hosted sign-in: where the hosted login sends the browser once signed out. */
   postLogoutRedirectUri?: string;
@@ -45,7 +50,7 @@ const defaultSignedInLabel = (user: PassflowUser): ReactNode => user.email ?? us
 
 /**
  * One button that signs in or out. Signed out, a click starts the hosted
- * sign-in (`passflow.authRedirect()`); signed in, it shows who is signed in and
+ * sign-in (`startHostedSignIn()`); signed in, it shows who is signed in and
  * a click signs out (`useAuth().logout()`). It switches on sign-in and
  * sign-out events.
  *
@@ -77,7 +82,7 @@ export const LoginButton: FC<LoginButtonProps> = ({
   const handleClick = () => {
     if (signingOut) return;
     if (!isSignedIn) {
-      passflow.authRedirect(authRedirectOptions).catch(() => undefined);
+      startHostedSignIn(passflow, authRedirectOptions).catch(() => undefined);
       return;
     }
     setSigningOut(true);
