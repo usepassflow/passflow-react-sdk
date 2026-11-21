@@ -2,6 +2,7 @@
 /* eslint-disable no-nested-ternary */
 import type { FC } from 'react';
 import * as Yup from 'yup';
+import { withHydration } from '@/hocs/with-hydration';
 import type { SuccessAuthRedirect } from '@/types';
 import { VerifyChallengeApproval } from './verify-challenge-approval';
 import { VerifyChallengeOTPManual } from './verify-challenge-otp-manual';
@@ -32,7 +33,7 @@ const searchParamsVerifyChallengeOtpSchema = Yup.object().shape({
   type: Yup.string().oneOf(['passwordless', 'passkey']).optional(),
 });
 
-export const VerifyChallengeOTP: FC<TVerifyChallengeOTP> = ({
+const VerifyChallengeOTPScreen: FC<TVerifyChallengeOTP> = ({
   successAuthRedirect,
   numInputs,
   shouldAutoFocus,
@@ -113,3 +114,5 @@ export const VerifyChallengeOTP: FC<TVerifyChallengeOTP> = ({
     />
   );
 };
+
+export const VerifyChallengeOTP = withHydration(VerifyChallengeOTPScreen);

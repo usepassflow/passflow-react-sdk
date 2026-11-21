@@ -5,6 +5,7 @@ import { SignInEndingScreen } from '@/components/form/signed-in';
 import { hasFollowedOIDCRedirect } from '@/components/provider/passflow-provider';
 import { LoginScreen, type LoginScreenChrome, type LoginScreenState } from '@/components/ui';
 import { routes, useSearchSource } from '@/context';
+import { withHydration } from '@/hocs/with-hydration';
 import { useAppSettings, useNavigation, usePassflow, useResetPassword, useSignInEnding } from '@/hooks';
 import type { SuccessAuthRedirect } from '@/types';
 import { routeToSecondFactor, undefinedOnCatch, useUrlParams } from '@/utils';
@@ -30,7 +31,7 @@ type ResetToken = Token & {
   registration_continuation?: string;
 };
 
-export const ResetPassword: FC<TResetPassword> = ({
+const ResetPasswordScreen: FC<TResetPassword> = ({
   successAuthRedirect,
   twoFactorVerifyPath = routes.two_factor_verify.path,
   signInPath = routes.signin.path,
@@ -145,3 +146,5 @@ export const ResetPassword: FC<TResetPassword> = ({
 
   return <LoginScreen chrome={{ ...chrome, ...heading }} state={state} />;
 };
+
+export const ResetPassword = withHydration(ResetPasswordScreen);

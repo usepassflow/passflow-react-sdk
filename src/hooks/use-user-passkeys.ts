@@ -1,5 +1,6 @@
 import type { PassflowUserPasskey } from '@passflow/core';
-import { useLayoutEffect, useState } from 'react';
+import { useState } from 'react';
+import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect';
 import { usePassflow } from './use-passflow';
 
 export type UseUserPasskeysProps = () => {
@@ -19,7 +20,7 @@ export const useUserPasskeys: UseUserPasskeysProps = () => {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const fetch = async (): Promise<void> => {
       setIsLoading(true);
       try {

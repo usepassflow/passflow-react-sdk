@@ -22,6 +22,7 @@ This is a SDK for react application.
     - [React Router](#react-router)
     - [Wouter](#wouter)
     - [TanStack Router](#tanstack-router)
+    - [Next.js (App Router)](#nextjs-app-router)
   - [Props](#props)
     - [PassflowProvider](#passflowprovider)
   - [Form Components](#form-components)
@@ -689,6 +690,75 @@ export const routerTree = rootRoute.addChildren([
   protectedRoute.addChildren([dashboardRoute, aboutRoute]),
 ]);
 ```
+
+### Next.js (App Router)
+
+Three things make the flow work in the App Router:
+
+- **A catch-all route.** The flow moves the address to `/auth/signin`, `/auth/signup`, `/auth/two-factor-verify` and its other paths. Mount it on an optional catch-all, `app/auth/[[...passflow]]/page.tsx`, so a reload of any of them reaches the flow page.
+- **Next.js's router.** Pass the flow `location` and `navigate` from `next/navigation`. A change the flow makes to the address on its own does not load another page in Next.js, so leaving the flow, for example after sign-in, needs the router.
+- **The provider in a layout.** `app/auth/layout.tsx` stays mounted while the flow moves between its paths, so the provider keeps its state. Give it `twoFactorVerifyPath`, the flow's second-factor path under the prefix. Without it, a sign-in that comes back owing a second factor can go to `/two-factor-verify` instead of `/auth/two-factor-verify`, because the flow behind the page's Suspense boundary has not told the provider its path yet.
+
+```tsx
+// app/auth/layout.tsx
+'use client';
+
+import { PassflowProvider } from '@passflow/react';
+import '@passflow/react/dist/style.css';
+import type { ReactNode } from 'react';
+
+export default function AuthLayout({ children }: { children: ReactNode }) {
+  return (
+    <PassflowProvider
+      url={process.env.NEXT_PUBLIC_PASSFLOW_URL}
+      appId={process.env.NEXT_PUBLIC_PASSFLOW_APP_ID}
+      twoFactorVerifyPath="/auth/two-factor-verify"
+    >
+      {children}
+    </PassflowProvider>
+  );
+}
+```
+
+```tsx
+// app/auth/[[...passflow]]/page.tsx
+'use client';
+
+import { PassflowFlow } from '@passflow/react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
+
+function Flow() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  return (
+    <PassflowFlow
+      pathPrefix="/auth"
+      successAuthRedirect="/dashboard"
+      location={{ pathname, search: searchParams.toString() }}
+      navigate={(to, { replace }) => {
+        const href = `${to.pathname}${to.search}${to.hash ?? ''}`;
+        if (replace) router.replace(href);
+        else router.push(href);
+      }}
+    />
+  );
+}
+
+// useSearchParams needs a Suspense boundary in a prerendered page.
+export default function PassflowPage() {
+  return (
+    <Suspense>
+      <Flow />
+    </Suspense>
+  );
+}
+```
+
+**The flow at the root.** Next.js does not allow `app/[[...passflow]]/page.tsx` beside `app/page.tsx`. Put the provider around `children` in `app/layout.tsx` (through a `'use client'` component), render the flow from both `app/page.tsx` and a required catch-all, `app/[...passflow]/page.tsx`, and pass `pathPrefix=""` and `twoFactorVerifyPath="/two-factor-verify"`. Next.js's own routes, such as `/dashboard`, still win over the catch-all. Any other unknown path reaches the flow, which moves it to `/signin`, instead of a 404.
+
+The URL and the session exist only in the browser. So the server renders the flow's screens as nothing, and the browser shows them right after hydration.
 
 ## Props
 

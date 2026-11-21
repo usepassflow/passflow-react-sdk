@@ -1,5 +1,6 @@
 import type { FC } from 'react';
 import { LoginScreen } from '@/components/ui';
+import { withHydration } from '@/hocs/with-hydration';
 import { useConsent } from '@/hooks/use-consent';
 import { getConsentLoginScreenProps } from './screen';
 
@@ -13,9 +14,11 @@ import { getConsentLoginScreenProps } from './screen';
  * wrong, since the provider's session-exchange probe would fire against a
  * challenge that is waiting for a human decision.
  */
-export const ConsentFlow: FC = () => {
+const ConsentFlowScreen: FC = () => {
   const consent = useConsent();
   const screen = getConsentLoginScreenProps(consent);
 
   return screen ? <LoginScreen {...screen} /> : null;
 };
+
+export const ConsentFlow = withHydration(ConsentFlowScreen);

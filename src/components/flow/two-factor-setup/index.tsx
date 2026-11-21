@@ -2,6 +2,7 @@ import type { FC } from 'react';
 import { useEffect, useState } from 'react';
 import { TwoFactorSetupForm } from '@/components/form/two-factor-setup';
 import { routes } from '@/context';
+import { withHydration } from '@/hocs/with-hydration';
 import { useNavigation, usePassflow } from '@/hooks';
 import type { SuccessAuthRedirect } from '@/types';
 import { TwoFactorLoopPrevention } from '@/utils';
@@ -14,7 +15,7 @@ export type TwoFactorSetupFlowProps = {
   signInPath?: string;
 };
 
-export const TwoFactorSetupFlow: FC<TwoFactorSetupFlowProps> = ({
+const TwoFactorSetupFlowScreen: FC<TwoFactorSetupFlowProps> = ({
   twoFactorVerifyPath = routes.two_factor_verify.path,
   signInPath = routes.signin.path,
 }) => {
@@ -62,3 +63,5 @@ export const TwoFactorSetupFlow: FC<TwoFactorSetupFlowProps> = ({
 
   return <TwoFactorSetupForm onComplete={handleSetupComplete} onCancel={handleCancel} />;
 };
+
+export const TwoFactorSetupFlow = withHydration(TwoFactorSetupFlowScreen);

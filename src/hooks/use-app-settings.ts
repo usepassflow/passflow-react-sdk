@@ -1,7 +1,8 @@
 import type { AppSettings, LoginWebAppStyle, LoginWebAppTheme, PassflowPasswordPolicySettings } from '@passflow/core';
-import { useContext, useLayoutEffect, useRef, useState } from 'react';
+import { useContext, useRef, useState } from 'react';
 import { PassflowContext, type PassflowState } from '@/context';
 import { applyLoginThemeStyles, type CompatibleLoginWebAppStyle } from '@/utils/login-theme';
+import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect';
 import { usePassflow } from './use-passflow';
 
 export type UseAppSettingsProps = () => {
@@ -36,7 +37,7 @@ export const useAppSettings: UseAppSettingsProps = () => {
 
   const { state, dispatch } = context;
 
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     // The provider is still looking for the app id: settings read now would be the empty default.
     if (state.isDiscoveringAppId) return;
     if (state.appSettings || state.hasSettingsError || isFetchingRef.current) return;

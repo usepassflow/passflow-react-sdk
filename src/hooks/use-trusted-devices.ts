@@ -1,5 +1,6 @@
 import type { TwoFactorTrustedDevice } from '@passflow/core';
-import { useCallback, useLayoutEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect';
 import { usePassflow } from './use-passflow';
 
 export type UseTrustedDevicesProps = () => {
@@ -68,7 +69,7 @@ export const useTrustedDevices: UseTrustedDevicesProps = () => {
     [passflow, fail],
   );
 
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     void fetch();
   }, [fetch]);
 

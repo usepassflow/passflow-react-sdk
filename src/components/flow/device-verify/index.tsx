@@ -1,6 +1,7 @@
 import type { FC } from 'react';
 import { useEffect, useRef } from 'react';
 import { LoginScreen } from '@/components/ui';
+import { withHydration } from '@/hocs/with-hydration';
 import { useDeviceVerify } from '@/hooks/use-device-verify';
 import { getDeviceLoginScreenProps } from './screen';
 
@@ -11,7 +12,7 @@ import { getDeviceLoginScreenProps } from './screen';
  * the state transition and automatic passkey attempt; the Storybook-backed
  * LoginScreen owns every visual state.
  */
-export const DeviceVerifyFlow: FC = () => {
+const DeviceVerifyFlowScreen: FC = () => {
   const device = useDeviceVerify();
   const attemptedPasskeyChallenge = useRef<string | null>(null);
   const { confirmWithPasskey } = device;
@@ -28,3 +29,5 @@ export const DeviceVerifyFlow: FC = () => {
   const screen = getDeviceLoginScreenProps(device);
   return screen ? <LoginScreen {...screen} /> : null;
 };
+
+export const DeviceVerifyFlow = withHydration(DeviceVerifyFlowScreen);

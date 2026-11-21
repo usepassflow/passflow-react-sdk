@@ -6,6 +6,7 @@ import type { TError } from '@/components/error';
 import type { PassflowProps } from '@/components/flow/passflow';
 import type { TInvitationJoinFlow, TSignIn, TSignUp } from '@/components/form';
 import { PassflowContext } from '@/context';
+import { useHydrated } from '@/hooks/use-hydrated';
 
 type UnionType = TSignIn | TSignUp | TInvitationJoinFlow | PassflowProps;
 // react-error-boundary 6 types the caught value as unknown: anything can be thrown.
@@ -17,7 +18,12 @@ export const withError =
   <P extends UnionType>(Component: ComponentType<P>, ErrorComponent: ComponentType<TError>) =>
   (props: P) => {
     const context = useContext(PassflowContext);
+    const hydrated = useHydrated();
     const { successAuthRedirect } = props;
+
+    // The URL exists only in the browser: render nothing on the server and in the hydration render.
+    if (!hydrated) return null;
+
     const { pathname } = window.location;
 
     // Allow excluded routes to render without checking appId

@@ -1,5 +1,6 @@
 import { type FC, useEffect, useRef, useState } from 'react';
 import { LoginScreen } from '@/components/ui';
+import { withHydration } from '@/hocs/with-hydration';
 import { usePassflow, useTwoFactorVerify } from '@/hooks';
 import { getUserFriendlyErrorMessage, isTerminalTwoFactorError, twoFactorBackToSignInLabel } from '@/utils';
 
@@ -25,7 +26,7 @@ type TwoFactorVerifyFormProps = {
 /** Only a ticked box asks for trust; an unticked one sends no option at all. */
 const completionOptions = (trustDevice: boolean) => (trustDevice ? { trustDevice: true } : undefined);
 
-export const TwoFactorVerifyForm: FC<TwoFactorVerifyFormProps> = ({
+const TwoFactorVerifyFormScreen: FC<TwoFactorVerifyFormProps> = ({
   onSuccess,
   onUseRecovery,
   onEnded,
@@ -103,3 +104,5 @@ export const TwoFactorVerifyForm: FC<TwoFactorVerifyFormProps> = ({
     />
   );
 };
+
+export const TwoFactorVerifyForm = withHydration(TwoFactorVerifyFormScreen);

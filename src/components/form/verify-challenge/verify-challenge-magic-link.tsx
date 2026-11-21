@@ -4,6 +4,7 @@ import { type FC, useEffect, useMemo, useRef, useState } from 'react';
 import { SignInEndingScreen } from '@/components/form/signed-in';
 import { Button, LoginScreen } from '@/components/ui';
 import { routes, useSearchSource } from '@/context';
+import { withHydration } from '@/hocs/with-hydration';
 import { useAppSettings, useNavigation, usePassflow, useSignIn, useSignInEnding } from '@/hooks';
 import { useSecondFactorRoute } from '@/hooks/use-second-factor-route';
 import { Wrapper } from '../wrapper';
@@ -198,7 +199,7 @@ type VerifyChallengeMagicLinkProps = {
   signInPath?: string;
 };
 
-export const VerifyChallengeMagicLink: FC<VerifyChallengeMagicLinkProps> = ({ signInPath = routes.signin.path }) => {
+const VerifyChallengeMagicLinkScreen: FC<VerifyChallengeMagicLinkProps> = ({ signInPath = routes.signin.path }) => {
   const passflow = usePassflow();
   const { get, set } = useUrlParams();
   // The address bar does not re-render on a write, so a resend asks for it.
@@ -222,3 +223,5 @@ export const VerifyChallengeMagicLink: FC<VerifyChallengeMagicLinkProps> = ({ si
     />
   );
 };
+
+export const VerifyChallengeMagicLink = withHydration(VerifyChallengeMagicLinkScreen);

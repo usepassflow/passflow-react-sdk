@@ -21,7 +21,7 @@ import {
   type LoginScreenState,
 } from '@/components/ui';
 import { routes, useSearchSource } from '@/context';
-import { withError } from '@/hocs';
+import { withError, withHydration } from '@/hocs';
 import { useAppSettings, useNavigation, usePassflow, useProvider, useSignInEnding, useSignUp } from '@/hooks';
 import type { DefaultMethod, FederatedLanding, SuccessAuthRedirect } from '@/types';
 import {
@@ -87,7 +87,7 @@ export type TSignUp = {
   twoFactorVerifyPath?: string;
 };
 
-export const SignUpForm: FC<TSignUp> = ({
+const SignUpFormScreen: FC<TSignUp> = ({
   successAuthRedirect,
   relyingPartyId = window.location.hostname,
   federatedLanding,
@@ -313,4 +313,6 @@ export const SignUpForm: FC<TSignUp> = ({
   );
 };
 
-export const SignUp = withError(SignUpForm, ErrorComponent);
+export const SignUpForm = withHydration(SignUpFormScreen);
+
+export const SignUp = withError(SignUpFormScreen, ErrorComponent);
