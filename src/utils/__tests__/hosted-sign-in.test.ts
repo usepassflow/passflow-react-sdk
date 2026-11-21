@@ -94,15 +94,30 @@ describe('takeReturnPath', () => {
     expect(takeReturnPath()).toBeUndefined();
   });
 
-  it.each(['https://evil.example/x', '//evil.example/x', '/\\evil.example/x', 'javascript:alert(1)', 'account', ''])(
-    'gives the app root for %j, which is not a path on this origin',
-    (stored) => {
-      sessionStorage.setItem(returnKey, stored);
+  it('gives the page with its dot segments resolved', () => {
+    sessionStorage.setItem(returnKey, '/account/../settings/./billing?tab=2');
 
-      expect(takeReturnPath()).toBe('/');
-      expect(sessionStorage.getItem(returnKey)).toBeNull();
-    },
-  );
+    expect(takeReturnPath()).toBe('/settings/billing?tab=2');
+  });
+
+  it.each([
+    'https://evil.example/x',
+    '//evil.example/x',
+    '/\\evil.example/x',
+    '/..//evil.example/x',
+    '/.//evil.example/x',
+    '/a/..//evil.example/x',
+    '/a/../\\evil.example/x',
+    '/account\\settings',
+    'javascript:alert(1)',
+    'account',
+    '',
+  ])('gives the app root for %j, which is not a path on this origin', (stored) => {
+    sessionStorage.setItem(returnKey, stored);
+
+    expect(takeReturnPath()).toBe('/');
+    expect(sessionStorage.getItem(returnKey)).toBeNull();
+  });
 
   it('gives nothing when sessionStorage cannot be read', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {

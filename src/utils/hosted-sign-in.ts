@@ -28,14 +28,22 @@ export const startHostedSignIn = (passflow: Passflow, options?: AuthRedirectOpti
   return passflow.authRedirect({ ...options, redirectUrl: `${origin}/` });
 };
 
-/** An absolute path on this origin: one leading `/`, never `//` or `/\`, which browsers read as another host. */
-const isRootRelativePath = (value: string): boolean => {
-  if (!value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return false;
+/**
+ * The stored value as a path on this origin, with dot segments resolved, or
+ * undefined. The check runs on the resolved path: `/..//evil.example` resolves
+ * to `//evil.example`, which a browser reads as another host. A `\` anywhere is
+ * refused, since browsers read it as `/`.
+ */
+const rootRelativePath = (value: string): string | undefined => {
+  if (!value.startsWith('/') || value.includes('\\')) return undefined;
+  let url: URL;
   try {
-    return new URL(value, window.location.origin).origin === window.location.origin;
+    url = new URL(value, window.location.origin);
   } catch {
-    return false;
+    return undefined;
   }
+  if (url.origin !== window.location.origin || url.pathname.startsWith('//')) return undefined;
+  return url.pathname + url.search + url.hash;
 };
 
 /**
@@ -51,5 +59,5 @@ export const takeReturnPath = (): string | undefined => {
     return undefined;
   }
   if (value === null) return undefined;
-  return isRootRelativePath(value) ? value : '/';
+  return rootRelativePath(value) ?? '/';
 };
