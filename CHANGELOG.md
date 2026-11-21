@@ -2,7 +2,7 @@
 
 All notable changes to `@passflow/react` are documented in this file.
 
-## [Unreleased]
+## [0.27.0] - 2026-11-21
 
 ### Fixed
 
@@ -15,6 +15,7 @@ All notable changes to `@passflow/react` are documented in this file.
 
 ### Added
 
+- The bundles start with `'use client'`. A Next.js server component, such as `app/layout.tsx`, can import `PassflowProvider` and the other components from `@passflow/react` directly, with no `'use client'` wrapper of its own. Before, its build stopped on "Export Controller doesn't exist in target module".
 - The README shows how to mount `PassflowFlow` in a Next.js App Router app: on an optional catch-all route under a prefix (`app/auth/[[...passflow]]/page.tsx`), so a reload of any flow path reaches the flow page; with `location` and `navigate` from Next.js's router, so leaving the flow loads the next page; and with the provider in the route's layout. A flow at the root uses `app/page.tsx` plus a required catch-all, `app/[...passflow]/page.tsx`, with `pathPrefix=""`.
 
 ## [0.26.2] - 2026-11-20
