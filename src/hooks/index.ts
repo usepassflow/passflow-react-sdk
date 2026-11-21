@@ -41,6 +41,7 @@ export {
   type UseSessionExpiredResult,
   useSessionExpired,
 } from './use-session-expired';
+export { type UseSessionsProps, useSessions } from './use-sessions';
 export { useSignInEnding } from './use-sign-in-ending';
 export { type SignInOutcome, type UseSignInOptions, type UseSignInProps, useSignIn } from './use-signin';
 export { type UseSignUpProps, useSignUp } from './use-signup';
