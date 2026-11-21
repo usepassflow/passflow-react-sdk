@@ -49,6 +49,10 @@ export default defineConfig({
     sourcemap: true,
     emptyOutDir: true,
     minify: 'terser',
+    // The package is React client code: frameworks with server components (Next.js App Router) load it as a
+    // client module, so a server layout or page can import from it directly. A preamble, not a rolldown banner:
+    // terser drops the banner's directive when it minifies.
+    terserOptions: { format: { preamble: "'use client';" } },
     cssCodeSplit: false,
   },
   css: {
