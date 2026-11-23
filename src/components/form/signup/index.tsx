@@ -150,11 +150,18 @@ const SignUpFormScreen: FC<TSignUp> = ({
 
   // The server can answer a sign-up with a 2FA token in place of tokens, as it
   // does a sign-in, so the 2FA screen comes before any success redirect.
-  const completeRegistration = async ({ oidcMayOwnRedirect = false } = {}) => {
+  // `requested` is the server's own target when the answer names one, as a passwordless completion does.
+  const completeRegistration = async ({
+    oidcMayOwnRedirect = false,
+    requested = successAuthRedirect,
+  }: {
+    oidcMayOwnRedirect?: boolean;
+    requested?: string;
+  } = {}) => {
     if (routeToSecondFactor(passflow, navigate, twoFactorVerifyPath ?? routes.two_factor_verify.path, searchSource.read()))
       return;
     if (oidcMayOwnRedirect && hasFollowedOIDCRedirect()) return;
-    await finishSignIn(successAuthRedirect, appSettings?.defaults?.redirect);
+    await finishSignIn(requested, appSettings?.defaults?.redirect);
   };
 
   // Resolves as soon as the outcome is known: the completion it starts may leave the page, and an agent tool still
@@ -291,7 +298,7 @@ const SignUpFormScreen: FC<TSignUp> = ({
         );
         if (!response) return { text: passwordlessComplete.readError() || AGENT_TOOL_TEXT.failed, isError: true };
         const outcome = passflow.isTwoFactorVerificationRequired() ? 'two-factor-required' : 'signed-in';
-        void completeRegistration({ oidcMayOwnRedirect: true });
+        void completeRegistration({ oidcMayOwnRedirect: true, requested: response.redirect_url });
         return signInAnswer(outcome, null);
       },
       startSocial: async ({ provider }) => {

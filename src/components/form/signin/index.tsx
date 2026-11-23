@@ -173,11 +173,12 @@ const SignInFormScreen: FC<TSignIn> = ({
     return false;
   };
 
-  const completeAuthentication = async () => {
+  // `requested` is the server's own target when the answer names one, as a passwordless completion does.
+  const completeAuthentication = async (requested: string | undefined = successAuthRedirect) => {
     if (routeToSecondFactor(passflow, navigate, twoFactorVerifyPath ?? routes.two_factor_verify.path, searchSource.read()))
       return;
     if (oidcLayerOwnsRedirect()) return;
-    await finishSignIn(successAuthRedirect, appSettings?.defaults?.redirect);
+    await finishSignIn(requested, appSettings?.defaults?.redirect);
   };
 
   // Resolves as soon as the outcome is known: the completion it starts may leave the page, and an agent tool still
@@ -322,7 +323,7 @@ const SignInFormScreen: FC<TSignIn> = ({
         );
         if (!response) return { text: passwordlessComplete.readError() || AGENT_TOOL_TEXT.failed, isError: true };
         const outcome = passflow.isTwoFactorVerificationRequired() ? 'two-factor-required' : 'signed-in';
-        void completeAuthentication();
+        void completeAuthentication(response.redirect_url);
         return signInAnswer(outcome, null);
       },
       startSocial: async ({ provider }) => {

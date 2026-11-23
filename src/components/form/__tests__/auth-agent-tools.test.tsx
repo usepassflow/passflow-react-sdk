@@ -322,6 +322,33 @@ describe.each(forms)('$name WebMCP', ({ Form, passwordTool, fetch }) => {
     }
   });
 
+  it('REQ-12 finishes complete_passwordless at the redirect the server answered with', async () => {
+    const doc = modelContext();
+    setContext(document, doc);
+    hooks.complete.mockResolvedValue({ redirect_url: 'https://rp.example.com/after-code' });
+    render(<Form {...formProps} />);
+
+    expect(await execute(doc, 'complete_passwordless', { challenge_id: 'test-challenge', code: '123456' })).toEqual(
+      textAnswer('Signed in. The page is finishing the sign-in.'),
+    );
+    expect(hooks.finish).toHaveBeenCalledExactlyOnceWith('https://rp.example.com/after-code', '/dashboard');
+    expect(hooks.navigate).not.toHaveBeenCalled();
+  });
+
+  it('REQ-12 sends complete_passwordless to the second factor before any redirect', async () => {
+    const doc = modelContext();
+    setContext(document, doc);
+    vi.spyOn(hooks.core, 'isTwoFactorVerificationRequired').mockReturnValue(true);
+    hooks.complete.mockResolvedValue({ redirect_url: 'https://rp.example.com/after-code' });
+    render(<Form {...formProps} />);
+
+    expect(await execute(doc, 'complete_passwordless', { challenge_id: 'test-challenge', code: '123456' })).toEqual(
+      textAnswer('The sign-in needs a second factor. Ask the user to finish it on the page.'),
+    );
+    expect(hooks.navigate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ to: '/two-factor' }));
+    expect(hooks.finish).not.toHaveBeenCalled();
+  });
+
   it.each([
     [
       'second factor',
