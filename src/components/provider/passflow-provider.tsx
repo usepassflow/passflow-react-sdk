@@ -1,4 +1,5 @@
 import {
+  ANTI_BOT_HEADER_KEY,
   type ErrorPayload,
   FETCH_PRIORITY_OIDC,
   Passflow,
@@ -554,8 +555,12 @@ const useSessionExchangeOnMount = (
 
     const base = baseUrl ?? '';
 
-    const exchange = (): Promise<Response> =>
-      fetch(`${base}/auth/session/exchange`, {
+    const exchange = async (): Promise<Response> => {
+      // A human_only app guards the exchange too. Without a token the server refuses it, and that refusal takes the usual path.
+      const antiBotToken = await currentPassflow()
+        .antiBotToken({ operation: 'session.exchange' })
+        .catch(() => undefined);
+      return fetch(`${base}/auth/session/exchange`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -563,9 +568,11 @@ const useSessionExchangeOnMount = (
           // App middleware reads X-Passflow-ClientID; without it the
           // request gets 400 "Application ID is missing from request".
           'X-Passflow-ClientID': appId,
+          ...(antiBotToken ? { [ANTI_BOT_HEADER_KEY]: antiBotToken } : {}),
         },
         body: JSON.stringify({ parent_challenge_id: parentChallengeId }),
       });
+    };
 
     const run = async () => {
       // The parent's metadata: where an error for the relying party goes
