@@ -39,6 +39,18 @@ describe('useProvider', () => {
     (contextValue: PassflowContextType): FC<PropsWithChildren> =>
     ({ children }) => <PassflowContext.Provider value={contextValue}>{children}</PassflowContext.Provider>;
 
+  it.each([
+    ['federatedWithPopup', 'federatedAuthWithPopup'],
+    ['federatedWithRedirect', 'federatedAuthWithRedirect'],
+  ] as const)('REQ-13 forwards the agent option via %s', (action, method) => {
+    const { result } = renderHook(() => useProvider(), { wrapper: createWrapper(mockContext) });
+    result.current[action]('google' as Parameters<typeof result.current.federatedWithRedirect>[0], 'invite-fixture', {
+      agentTool: true,
+    });
+    expect(mockPassflow[method].mock.calls[0]?.[0]).toMatchObject({ provider: 'google', invite_token: 'invite-fixture' });
+    expect(mockPassflow[method].mock.calls[0]?.at(-1)?.agentTool).toBe(true);
+  });
+
   describe('federatedWithPopup', () => {
     it('calls federatedAuthWithPopup with correct provider', () => {
       const { result } = renderHook(() => useProvider(), {
@@ -51,6 +63,7 @@ describe('useProvider', () => {
         expect.objectContaining({
           provider: 'google',
         }),
+        undefined,
       );
     });
 
@@ -65,6 +78,7 @@ describe('useProvider', () => {
         expect.objectContaining({
           redirect_url: 'https://callback.example.com/auth',
         }),
+        undefined,
       );
     });
 
@@ -79,6 +93,7 @@ describe('useProvider', () => {
         expect.objectContaining({
           redirect_url: `${mockOrigin}/callback`,
         }),
+        undefined,
       );
     });
 
@@ -93,6 +108,7 @@ describe('useProvider', () => {
         expect.objectContaining({
           redirect_url: `${mockOrigin}/callback`,
         }),
+        undefined,
       );
     });
 
@@ -107,6 +123,7 @@ describe('useProvider', () => {
         expect.objectContaining({
           invite_token: 'invite-123',
         }),
+        undefined,
       );
     });
 
@@ -121,6 +138,7 @@ describe('useProvider', () => {
         expect.objectContaining({
           scopes: ['openid', 'profile'],
         }),
+        undefined,
       );
     });
 
@@ -135,6 +153,7 @@ describe('useProvider', () => {
         expect.objectContaining({
           create_tenant: true,
         }),
+        undefined,
       );
     });
 
@@ -165,6 +184,7 @@ describe('useProvider', () => {
         expect.objectContaining({
           provider: 'google',
         }),
+        undefined,
       );
     });
 
@@ -179,6 +199,7 @@ describe('useProvider', () => {
         expect.objectContaining({
           redirect_url: 'https://callback.example.com',
         }),
+        undefined,
       );
     });
 
@@ -193,6 +214,7 @@ describe('useProvider', () => {
         expect.objectContaining({
           invite_token: 'invite-456',
         }),
+        undefined,
       );
     });
 
@@ -207,6 +229,7 @@ describe('useProvider', () => {
         expect.objectContaining({
           create_tenant: true,
         }),
+        undefined,
       );
     });
   });
@@ -239,6 +262,7 @@ describe('useProvider', () => {
           appSettings: { pkce_enabled: false } as never,
           handOff: { scopes: ['openid', 'email'], state: 'app-state' },
         }),
+        undefined,
       );
 
       expect(payload.scopes).toEqual(['openid', 'email']);
@@ -257,6 +281,7 @@ describe('useProvider', () => {
           appSettings: { pkce_enabled: true } as never,
           handOff: { scopes: ['openid', 'email'], state: 'app-state' },
         }),
+        undefined,
       );
 
       expect(payload.scopes).toEqual(signInScopes);
@@ -290,6 +315,7 @@ describe('useProvider', () => {
         expect.objectContaining({
           redirect_url: '',
         }),
+        undefined,
       );
     });
 
@@ -331,6 +357,7 @@ describe('useProvider', () => {
         expect.objectContaining({
           invite_token: undefined,
         }),
+        undefined,
       );
     });
   });

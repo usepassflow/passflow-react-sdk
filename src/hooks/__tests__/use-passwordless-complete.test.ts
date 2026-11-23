@@ -26,6 +26,34 @@ describe('usePasswordlessComplete', () => {
     vi.mocked(usePassflow).mockReturnValue(mockPassflow as ReturnType<typeof usePassflow>);
   });
 
+  it('REQ-13 forwards the agent option and exposes the completion failure immediately', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      mockPassflow.passwordlessSignInComplete
+        .mockRejectedValueOnce(new Error('private failure'))
+        .mockResolvedValueOnce({ redirect_url: '/dashboard' });
+      const { result } = renderHook(() => usePasswordlessComplete());
+
+      await act(async () => {
+        const { fetch, readError } = result.current;
+        expect(await fetch(payload, { agentTool: true })).toBeNull();
+        expect(readError()).toBe(verificationRequestErrorMessage);
+      });
+      expect(result.current.readError()).toBe(result.current.error);
+      const [call] = mockPassflow.passwordlessSignInComplete.mock.calls;
+      expect(call[0]).toEqual(payload);
+      expect(call.at(-1)?.agentTool).toBe(true);
+
+      await act(async () => {
+        const { fetch, readError } = result.current;
+        expect(await fetch(payload)).not.toBeNull();
+        expect(readError()).toBe('');
+      });
+    } finally {
+      errorLog.mockRestore();
+    }
+  });
+
   it('returns the verification response and clears loading state', async () => {
     const response = { redirect_url: 'https://example.com/complete' };
     mockPassflow.passwordlessSignInComplete.mockResolvedValue(response);

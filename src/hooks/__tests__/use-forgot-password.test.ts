@@ -45,7 +45,7 @@ describe('useForgotPassword', () => {
     expect(result.current.error).toBe('');
   });
 
-  it('should handle send password reset email error', async () => {
+  it('REQ-3 stops loading after a password-reset request fails', async () => {
     const errorMessage = 'Email not found';
     mockPassflow.sendPasswordResetEmail.mockRejectedValue(new Error(errorMessage));
 
@@ -64,8 +64,24 @@ describe('useForgotPassword', () => {
     expect(resetResult).toBe(false);
     expect(result.current.isError).toBe(true);
     expect(result.current.error).toBe(errorMessage);
-    // Note: The hook doesn't set isLoading to false in the error case (a potential bug)
-    expect(result.current.isLoading).toBe(true);
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it.each([
+    'error.api.anti_bot.required',
+    'error.api.anti_bot.failed',
+    'error.api.anti_bot.unavailable',
+    'error.anti_bot.provider_missing',
+    'error.anti_bot.provider_failed',
+    'error.anti_bot.solve_failed',
+  ])('REQ-3 shows the safe anti-bot message on password reset for %s', async (id) => {
+    mockPassflow.sendPasswordResetEmail.mockRejectedValueOnce({ id, message: 'Raw vendor error' });
+    const { result } = renderHook(() => useForgotPassword());
+    await act(async () => {
+      expect(await result.current.fetch({ email: 'test@example.com' })).toBe(false);
+    });
+    expect(result.current.error).toBe('We could not confirm you are human. Try again.');
+    expect(result.current.isLoading).toBe(false);
   });
 
   it('should set loading state during password reset email send', async () => {
