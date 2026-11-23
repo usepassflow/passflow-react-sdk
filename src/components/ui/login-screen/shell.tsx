@@ -55,7 +55,7 @@ export const LoginScreenShell: FC<LoginScreenShellProps> = ({
     {!removeBranding ? (
       <footer className='passflow-branding'>
         <p className='passflow-branding-text'>
-          Secured by <span className='passflow-branding-text-secondary passflow-secondary-font'>PASSFLOW</span>
+          Powered by <span className='passflow-branding-text-secondary passflow-secondary-font'>Passflow</span>
         </p>
       </footer>
     ) : null}

@@ -77,22 +77,22 @@ describe('Wrapper', () => {
     it('renders Passflow branding by default', () => {
       render(<Wrapper>Content</Wrapper>);
 
-      expect(screen.getByText('Secured by')).toBeInTheDocument();
-      expect(screen.getByText('PASSFLOW')).toBeInTheDocument();
+      expect(screen.getByText('Powered by')).toBeInTheDocument();
+      expect(screen.getByText('Passflow')).toBeInTheDocument();
     });
 
     it('removes branding when removeBranding is true', () => {
       render(<Wrapper removeBranding>Content</Wrapper>);
 
-      expect(screen.queryByText('Secured by')).not.toBeInTheDocument();
-      expect(screen.queryByText('PASSFLOW')).not.toBeInTheDocument();
+      expect(screen.queryByText('Powered by')).not.toBeInTheDocument();
+      expect(screen.queryByText('Passflow')).not.toBeInTheDocument();
     });
 
     it('shows branding when removeBranding is explicitly false', () => {
       render(<Wrapper removeBranding={false}>Content</Wrapper>);
 
-      expect(screen.getByText('Secured by')).toBeInTheDocument();
-      expect(screen.getByText('PASSFLOW')).toBeInTheDocument();
+      expect(screen.getByText('Powered by')).toBeInTheDocument();
+      expect(screen.getByText('Passflow')).toBeInTheDocument();
     });
   });
 
@@ -172,7 +172,7 @@ describe('Wrapper', () => {
 
       expect(screen.getByText('Create Account')).toBeInTheDocument();
       expect(screen.getByAltText('Application logo')).toBeInTheDocument();
-      expect(screen.getByText('PASSFLOW')).toBeInTheDocument();
+      expect(screen.getByText('Passflow')).toBeInTheDocument();
     });
 
     it('renders a white-labeled wrapper', () => {
@@ -189,7 +189,7 @@ describe('Wrapper', () => {
 
       expect(screen.getByText('Login')).toBeInTheDocument();
       expect(screen.getByAltText('Application logo')).toBeInTheDocument();
-      expect(screen.queryByText('PASSFLOW')).not.toBeInTheDocument();
+      expect(screen.queryByText('Passflow')).not.toBeInTheDocument();
     });
   });
 });

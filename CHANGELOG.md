@@ -2,6 +2,12 @@
 
 All notable changes to `@passflow/react` are documented in this file.
 
+## [0.30.1] - 2026-11-23
+
+### Changed
+
+- The footer badge on the login screen reads "Powered by Passflow". It read "Secured by PASSFLOW".
+
 ## [0.30.0] - 2026-11-23
 
 ### Added
