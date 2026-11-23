@@ -1,4 +1,5 @@
 import { act, cleanup, render } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LoginCredentialsState, LoginScreenProps } from '@/components/ui';
 import { SignInForm } from '../signin';
@@ -11,7 +12,25 @@ type Tool = {
   inputSchema: { properties?: Record<string, object>; required?: string[] };
   execute: (args: unknown) => Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: true }>;
 };
-const modelContext = () => ({ registerTool: vi.fn<(tool: Tool, options: { signal: AbortSignal }) => void>() });
+const modelContext = () => ({
+  registerTool: vi.fn<(tool: Tool, options: { signal: AbortSignal }) => Promise<undefined> | void>(),
+});
+/**
+ * A browser whose `registerTool` answers with `answer`. A plain function, not a `vi.fn`: a mock observes the promises it
+ * returns, which would mark a rejection as handled and hide the one the page leaves unhandled.
+ */
+const answeringContext = (answer: (tool: Tool, signal: AbortSignal) => Promise<undefined>) => {
+  const signals: AbortSignal[] = [];
+  return {
+    signals,
+    api: {
+      registerTool: (tool: Tool, options: { signal: AbortSignal }) => {
+        signals.push(options.signal);
+        return answer(tool, options.signal);
+      },
+    },
+  };
+};
 
 const hooks = vi.hoisted(() => ({
   signIn: vi.fn(),
@@ -181,6 +200,70 @@ describe.each(forms)('$name WebMCP', ({ Form, passwordTool, fetch }) => {
       expect(signals[0].aborted).toBe(true);
     },
   );
+
+  it.each([
+    ['rejects', (name: string) => Promise.reject(new DOMException(`Duplicate tool name: ${name}`, 'InvalidStateError'))],
+    [
+      'throws',
+      (name: string) => {
+        throw new DOMException(`Duplicate tool name: ${name}`, 'InvalidStateError');
+      },
+    ],
+  ] as const)('drops every tool, unreported, when one registration %s', async (_how, fail) => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      const doc = modelContext();
+      doc.registerTool.mockImplementation((tool) =>
+        tool.name === passwordTool ? fail(tool.name) : Promise.resolve(undefined),
+      );
+      setContext(document, doc);
+      render(<Form {...formProps} />);
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      const signals = doc.registerTool.mock.calls.map(([, options]) => options.signal);
+      expect(signals.length).toBeGreaterThan(1);
+      expect(signals.every((signal) => signal.aborted)).toBe(true);
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+    }
+  });
+
+  it('reports nothing when StrictMode aborts registrations that are still settling', async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      const { api, signals } = answeringContext(
+        (_tool, signal) =>
+          new Promise<undefined>((resolve, reject) => {
+            signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+            setTimeout(() => resolve(undefined), 10);
+          }),
+      );
+      setContext(document, api);
+      const view = render(
+        <StrictMode>
+          <Form {...formProps} />
+        </StrictMode>,
+      );
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      });
+      expect(new Set(signals).size).toBe(2);
+      expect(signals.at(-1)?.aborted).toBe(false);
+      view.unmount();
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+    }
+  });
 
   it('REQ-9 waits for settings and never registers on human_only', () => {
     const doc = modelContext();

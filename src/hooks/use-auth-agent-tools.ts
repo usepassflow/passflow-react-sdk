@@ -48,12 +48,16 @@ export const useAuthAgentTools = ({
       }),
       actions: () => actionsRef.current,
     });
-    try {
-      for (const tool of tools) modelContext.registerTool(tool, { signal: controller.signal });
-    } catch {
-      // The page works without tools: drop the ones already registered and carry on.
-      controller.abort();
-    }
+    // `registerTool` may throw or return a promise that rejects (a duplicate name, a denied permission, a signal aborted
+    // before it settles). The page works without tools: any failure drops the whole set and is not reported.
+    const register = (tool: (typeof tools)[number]): Promise<unknown> => {
+      try {
+        return Promise.resolve(modelContext.registerTool(tool, { signal: controller.signal }));
+      } catch (error) {
+        return Promise.reject(error);
+      }
+    };
+    void Promise.all(tools.map(register)).catch(() => controller.abort());
     return () => controller.abort();
   }, [passflow, flow, settingsLoaded, botMode, toolsKey]);
 };

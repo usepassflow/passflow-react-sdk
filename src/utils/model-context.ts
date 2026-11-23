@@ -24,7 +24,7 @@ export type ModelContextTool = {
 
 export type ModelContext = {
   /** Aborting `signal` removes the tool again. */
-  registerTool: (tool: ModelContextTool, options?: { signal?: AbortSignal }) => void;
+  registerTool: (tool: ModelContextTool, options?: { signal?: AbortSignal }) => Promise<undefined> | void;
 };
 
 type WithModelContext = { modelContext?: unknown };
