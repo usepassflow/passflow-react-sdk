@@ -115,10 +115,13 @@ const mountTurnstile = async (siteKey: string, container: HTMLElement): Promise<
   return {
     getToken: () =>
       new Promise<string>((resolve, reject) => {
+        // One widget answers one check at a time: a newer request replaces the one still waiting.
+        pending?.reject(new Error('The Turnstile check was replaced'));
         pending = { resolve, reject };
         turnstile.execute(rendered);
       }),
     remove: () => {
+      pending?.reject(new Error('The Turnstile check was removed'));
       pending = undefined;
       turnstile.remove(rendered);
     },

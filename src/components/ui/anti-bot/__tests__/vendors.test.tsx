@@ -137,6 +137,24 @@ describe('REQ-5 AntiBotCheck vendor protocol', () => {
     await expect(onReady.mock.calls[0][0]()).rejects.toBeDefined();
   });
 
+  it('settles a waiting Turnstile request when a newer one replaces it or the widget goes away', async () => {
+    const AntiBotCheck = await freshCheck();
+    const vendor = installVendor('turnstile');
+    // The check never answers on its own, so each request stays waiting.
+    vendor.execute.mockImplementation(() => undefined);
+    const onReady = vi.fn();
+    const view = render(<AntiBotCheck provider='turnstile' siteKey={siteKey} onReady={onReady} />);
+    await waitFor(() => expect(onReady).toHaveBeenCalledWith(expect.any(Function)));
+    const [[getToken]] = onReady.mock.calls;
+
+    const replaced = getToken();
+    const removed = getToken();
+    await expect(replaced).rejects.toThrow('The Turnstile check was replaced');
+
+    view.unmount();
+    await expect(removed).rejects.toThrow('The Turnstile check was removed');
+  });
+
   it('allows a fresh mount to load the script after a load error', async () => {
     const AntiBotCheck = await freshCheck();
     const onReady = vi.fn();
