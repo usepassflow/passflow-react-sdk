@@ -1,3 +1,4 @@
+export { type UseAntiBotResult, useAntiBot } from './use-anti-bot';
 export { type UseAppSettingsProps, useAppSettings } from './use-app-settings';
 export { useAuth } from './use-auth';
 export { useAuthCloudRedirect } from './use-auth-cloud-redirect';

@@ -1,4 +1,5 @@
 import type { FC } from 'react';
+import { AntiBotCheck } from '../anti-bot';
 import { LoginCodeEntry } from './code-entry';
 import { LoginConsent } from './consent';
 import { LoginCredentials } from './credentials';
@@ -18,7 +19,7 @@ import { LoginTwoFactorRecoveryCodes } from './two-factor-recovery-codes';
 import { LoginTwoFactorSetup } from './two-factor-setup';
 import type { LoginScreenProps } from './types';
 
-export const LoginScreen: FC<LoginScreenProps> = ({ chrome, state }) => {
+export const LoginScreen: FC<LoginScreenProps> = ({ chrome, state, antiBot }) => {
   const content = (() => {
     switch (state.kind) {
       case 'credentials':
@@ -77,6 +78,7 @@ export const LoginScreen: FC<LoginScreenProps> = ({ chrome, state }) => {
       removeBranding={chrome.removeBranding}
     >
       {content}
+      {antiBot ? <AntiBotCheck {...antiBot} /> : null}
     </LoginScreenShell>
   );
 };

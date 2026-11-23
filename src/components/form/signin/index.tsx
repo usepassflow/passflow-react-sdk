@@ -1,4 +1,5 @@
 import type {
+  PassflowAuthOptions,
   PassflowPasskeyAuthenticateStartPayload,
   PassflowPasswordlessResponse,
   PassflowPasswordlessSignInPayload,
@@ -21,7 +22,17 @@ import {
 } from '@/components/ui';
 import { routes, useSearchSource } from '@/context';
 import { withError, withHydration } from '@/hocs';
-import { useAppSettings, useNavigation, usePassflow, useProvider, useSignIn, useSignInEnding } from '@/hooks';
+import {
+  useAntiBot,
+  useAppSettings,
+  useNavigation,
+  usePassflow,
+  usePasswordlessComplete,
+  useProvider,
+  useSignIn,
+  useSignInEnding,
+} from '@/hooks';
+import { useAuthAgentTools } from '@/hooks/use-auth-agent-tools';
 import type { FederatedLanding, SuccessAuthRedirect } from '@/types';
 import {
   type AuthMethods,
@@ -37,6 +48,13 @@ import {
   urlWithoutParentChallenge,
   useUrlParams,
 } from '@/utils';
+import {
+  AGENT_TOOL_OPTIONS,
+  AGENT_TOOL_TEXT,
+  credentialsFromIdentity,
+  passwordlessStartAnswer,
+  signInAnswer,
+} from '@/utils/agent-tools';
 
 const getLoginMethodConfig = (authMethods: AuthMethods): LoginMethodConfig => {
   const identities: LoginMethodConfig['identities'] = [];
@@ -140,9 +158,10 @@ const SignInFormScreen: FC<TSignIn> = ({
       }),
     });
   };
-  const { fetch, isError, error, reset, cancelPasskey, isLoading, pendingOperation, emailCode } = useSignIn({
+  const { fetch, isError, error, readError, reset, cancelPasskey, isLoading, pendingOperation, emailCode } = useSignIn({
     onPasswordChangeRequired: goToPasswordReset,
   });
+  const passwordlessComplete = usePasswordlessComplete();
 
   const oidcLayerOwnsRedirect = (): boolean => {
     if (hasFollowedOIDCRedirect()) return true;
@@ -161,7 +180,9 @@ const SignInFormScreen: FC<TSignIn> = ({
     await finishSignIn(successAuthRedirect, appSettings?.defaults?.redirect);
   };
 
-  const submitPassword = async (userPayload: PassflowSignInPayload) => {
+  // Resolves as soon as the outcome is known: the completion it starts may leave the page, and an agent tool still
+  // needs its answer.
+  const submitPassword = async (userPayload: PassflowSignInPayload, options?: PassflowAuthOptions) => {
     const payload = {
       ...userPayload,
       ...(inviteToken && { invite_token: inviteToken }),
@@ -173,8 +194,9 @@ const SignInFormScreen: FC<TSignIn> = ({
       ...(username && { username }),
       ...(phoneNumber && { phone: phoneNumber }),
     };
-    const status = await fetch(payload, 'password');
-    if (status) await completeAuthentication();
+    const status = await fetch(payload, 'password', options);
+    if (status) void completeAuthentication();
+    return status;
   };
 
   const submitPasskey = async (passkeyPayload: PassflowPasskeyAuthenticateStartPayload) => {
@@ -188,9 +210,10 @@ const SignInFormScreen: FC<TSignIn> = ({
     if (response) await completeAuthentication();
   };
 
-  const submitPasswordless = async (
+  const startPasswordless = async (
     userPayload: Partial<PassflowPasswordlessSignInPayload>,
     method: LoginCredentialsValues['method'],
+    options?: PassflowAuthOptions,
   ) => {
     const challengeType = getPasswordlessData(authMethods, method)?.challengeType;
     const payload = {
@@ -202,7 +225,14 @@ const SignInFormScreen: FC<TSignIn> = ({
     } as PassflowPasswordlessSignInPayload;
 
     passwordIdentityRef.current = {};
-    const response = await fetch(payload, 'passwordless');
+    return { payload, challengeType, response: await fetch(payload, 'passwordless', options) };
+  };
+
+  const submitPasswordless = async (
+    userPayload: Partial<PassflowPasswordlessSignInPayload>,
+    method: LoginCredentialsValues['method'],
+  ) => {
+    const { payload, challengeType, response } = await startPasswordless(userPayload, method);
     if (!response) return;
 
     // The match code is shown only by the tab holding it: it never goes in a URL.
@@ -224,7 +254,7 @@ const SignInFormScreen: FC<TSignIn> = ({
       navigate({ to: verifyMagicLinkPath ?? routes.verify_magic_link.path, search: newParams });
   };
 
-  const handlePassword = async (values: LoginCredentialsValues) => {
+  const handlePassword = (values: LoginCredentialsValues, options?: PassflowAuthOptions) => {
     const isEmail = Boolean(values.emailOrUsername.match(emailRegex));
     const isUsername = values.method === 'email_or_username' && !isEmail && values.emailOrUsername.length > 0;
     const validatedPhone = phone(values.phone);
@@ -236,26 +266,29 @@ const SignInFormScreen: FC<TSignIn> = ({
       password: values.password,
     };
 
-    await submitPassword(payload as PassflowSignInPayload);
+    return submitPassword(payload as PassflowSignInPayload, options);
   };
 
-  const handlePasswordless = async (values: LoginCredentialsValues) => {
+  const passwordlessPayloadFrom = (values: LoginCredentialsValues) => {
     const isEmail = Boolean(values.emailOrUsername.match(emailRegex));
     const validatedPhone = phone(values.phone);
-    const payload = {
+    return {
       ...(isEmail && { email: values.emailOrUsername }),
       ...(validatedPhone.isValid && { phone: validatedPhone.phoneNumber }),
       scopes,
-    };
+    } as Partial<PassflowPasswordlessSignInPayload>;
+  };
 
-    await submitPasswordless(payload as Partial<PassflowPasswordlessSignInPayload>, values.method);
+  const handlePasswordless = async (values: LoginCredentialsValues) => {
+    await submitPasswordless(passwordlessPayloadFrom(values), values.method);
   };
 
   const handlePasskey = async () => {
     await submitPasskey({ relying_party_id: relyingPartyId, scopes });
   };
 
-  const handleProvider = (provider: Providers) => federatedWithRedirect(provider, inviteToken ?? undefined);
+  const handleProvider = (provider: Providers, options?: PassflowAuthOptions) =>
+    federatedWithRedirect(provider, inviteToken ?? undefined, options);
 
   // The emailed code answers like a sign-in: the same 2FA, OIDC and redirect path follows.
   const verifyEmailCode = async (code: string) => {
@@ -265,6 +298,39 @@ const SignInFormScreen: FC<TSignIn> = ({
   const resendEmailCode = async () => {
     if (await emailCode.resend()) await completeAuthentication();
   };
+
+  const antiBot = useAntiBot(appSettings);
+
+  // An agent runs the same handlers as the screen. A passwordless start stays on this page, so the code can be
+  // completed through the tools registered here.
+  useAuthAgentTools({
+    flow: 'sign-in',
+    appSettings,
+    authMethods,
+    actions: {
+      password: async ({ identity, password }) =>
+        signInAnswer(await handlePassword(credentialsFromIdentity(identity, password), AGENT_TOOL_OPTIONS), readError()),
+      startPasswordless: async ({ identity }) => {
+        const values = credentialsFromIdentity(identity);
+        const start = await startPasswordless(passwordlessPayloadFrom(values), values.method, AGENT_TOOL_OPTIONS);
+        return passwordlessStartAnswer(identity.value, start, readError());
+      },
+      completePasswordless: async ({ challengeId, code }) => {
+        const response = await passwordlessComplete.fetch(
+          { challenge_id: challengeId, challenge_type: 'otp', otp: code },
+          AGENT_TOOL_OPTIONS,
+        );
+        if (!response) return { text: passwordlessComplete.readError() || AGENT_TOOL_TEXT.failed, isError: true };
+        const outcome = passflow.isTwoFactorVerificationRequired() ? 'two-factor-required' : 'signed-in';
+        void completeAuthentication();
+        return signInAnswer(outcome, null);
+      },
+      startSocial: async ({ provider }) => {
+        handleProvider(provider, AGENT_TOOL_OPTIONS);
+        return { text: AGENT_TOOL_TEXT.social(provider) };
+      },
+    },
+  });
 
   // The application name set in the admin panel's Login Appearance.
   const appName = loginAppTheme?.application_name?.trim();
@@ -314,6 +380,7 @@ const SignInFormScreen: FC<TSignIn> = ({
           subtitle: step.kind === 'code' ? 'Enter the code to finish signing in' : 'Follow the link to finish signing in',
         }}
         state={stepState}
+        antiBot={antiBot}
       />
     );
   }
@@ -321,6 +388,7 @@ const SignInFormScreen: FC<TSignIn> = ({
   return (
     <LoginScreen
       chrome={chrome}
+      antiBot={antiBot}
       state={{
         kind: 'credentials',
         methods: loginMethods,
@@ -348,7 +416,7 @@ const SignInFormScreen: FC<TSignIn> = ({
         onPassword: (values) => void handlePassword(values),
         onPasswordless: (values) => void handlePasswordless(values),
         onPasskey: () => void handlePasskey(),
-        onProvider: handleProvider,
+        onProvider: (provider) => handleProvider(provider),
         onReset: reset,
         onStartAgain: () => window.location.assign(urlWithoutParentChallenge(window.location.href)),
       }}

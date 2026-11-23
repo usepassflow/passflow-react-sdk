@@ -1,6 +1,6 @@
 import { type PassflowPasswordPolicySettings, Providers } from '@passflow/core';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { type FC, useState } from 'react';
+import { type FC, type ReactNode, useState } from 'react';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { getTwoFactorEnrollmentScreenProps } from '@/components/flow/two-factor-verify/screen';
 import {
@@ -36,6 +36,7 @@ import {
   twoFactorWrongCodeMessage,
   twoFactorWrongRecoveryCodeMessage,
 } from '@/utils/auth-error';
+import { installFakeAntiBotVendors } from '../anti-bot/fake-vendors';
 import { LoginScreen } from './login-screen';
 import type {
   LoginConsentState,
@@ -307,6 +308,42 @@ export const Submitting: Story = {
       primaryLabel: 'Signing in…',
     }),
   ),
+};
+
+/** A `human_only` app with the built-in check: the sign-in is busy while core solves the proof of work. */
+export const CredentialsHumanOnlyCheckingBrowser: Story = {
+  name: 'Credentials Human Only Checking Browser',
+  args: {
+    ...story(
+      credentials(methods({ emailPassword: true }), {
+        busy: true,
+        primaryLabel: 'Signing in…',
+      }),
+    ),
+    antiBot: { provider: 'builtin', solving: true },
+  },
+};
+
+/** Installs fake vendor globals once, before the check below it mounts its widget: the catalog makes no vendor request. */
+const FakeAntiBotVendors: FC<{ children: ReactNode }> = ({ children }) => {
+  useState(() => installFakeAntiBotVendors());
+  return children;
+};
+
+/** A `human_only` app with Turnstile: the widget's container follows the form (a fake Turnstile marks it here). */
+export const CredentialsHumanOnlyTurnstile: Story = {
+  name: 'Credentials Human Only Turnstile',
+  args: {
+    ...story(credentials(methods({ emailPassword: true }))),
+    antiBot: { provider: 'turnstile', siteKey: 'turnstile-site-key', onReady: fn() },
+  },
+  decorators: [
+    (Story) => (
+      <FakeAntiBotVendors>
+        <Story />
+      </FakeAntiBotVendors>
+    ),
+  ],
 };
 
 export const SubmittingPasskey: Story = {
