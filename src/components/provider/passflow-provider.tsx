@@ -84,6 +84,12 @@ type PassflowProviderProps = PassflowConfig & {
   refreshCoordination?: PassflowConfig['refreshCoordination'];
   /** See `PassflowConfig`. Read once, when the provider mounts. */
   refreshStrikes?: PassflowConfig['refreshStrikes'];
+  /**
+   * See `PassflowConfig`. Same-origin URL of `@passflow/core/anti-bot-worker.js`; the built-in
+   * anti-bot check then runs in a Web Worker instead of the main thread. Read once, when the
+   * provider mounts.
+   */
+  antiBotWorkerUrl?: PassflowConfig['antiBotWorkerUrl'];
   children: ReactNode;
   navigate?: NavigateFunction;
   router?: RouterType;
@@ -896,6 +902,7 @@ export const PassflowProvider: FC<PassflowProviderProps> = ({
     platform: config.platform,
     refreshCoordination: config.refreshCoordination,
     refreshStrikes: config.refreshStrikes,
+    antiBotWorkerUrl: config.antiBotWorkerUrl,
   }));
 
   // OIDC AuthFlow integration: the interceptor injects

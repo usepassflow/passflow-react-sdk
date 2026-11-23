@@ -1,5 +1,6 @@
 import type { PassflowSendPasswordResetEmailPayload } from '@passflow/core';
 import { useCallback, useState } from 'react';
+import { antiBotErrorMessageFrom } from '@/utils';
 import { usePassflow } from './use-passflow';
 
 export type UseForgotPasswordProps = () => {
@@ -24,9 +25,9 @@ export const useForgotPassword: UseForgotPasswordProps = () => {
         setIsLoading(false);
         return true;
       } catch (e) {
+        setIsLoading(false);
         setIsError(true);
-        const error = e as Error;
-        setErrorMessage(error.message);
+        setErrorMessage(antiBotErrorMessageFrom(e) ?? (e as Error).message);
         return false;
       }
     },
