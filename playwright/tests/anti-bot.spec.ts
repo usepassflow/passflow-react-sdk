@@ -29,9 +29,22 @@ async function openStory(page: Page, id: string) {
   return page.locator('#storybook-root');
 }
 
+// Storybook's a11y addon can audit the same frame concurrently. Retry only that
+// transient error and a reloaded frame; real violations still fail.
 async function audit(page: Page) {
-  const { violations } = await new AxeBuilder({ page }).include('#storybook-root').analyze();
-  expect(violations.map(({ id, help }) => `${id}: ${help}`)).toEqual([]);
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      const { violations } = await new AxeBuilder({ page }).include('#storybook-root').analyze();
+      expect(violations.map(({ id, help }) => `${id}: ${help}`)).toEqual([]);
+      return;
+    } catch (error) {
+      const transient =
+        error instanceof Error &&
+        (error.message.includes('Axe is already running') || error.message.includes('Execution context was destroyed'));
+      if (!transient || attempt === 4) throw error;
+      await page.waitForTimeout(200);
+    }
+  }
 }
 
 test('REQ-4 AntiBotCheck · BuiltinIdle · draws no check', async ({ page }) => {
