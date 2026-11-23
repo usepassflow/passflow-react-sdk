@@ -2,6 +2,27 @@
 
 All notable changes to `@passflow/react` are documented in this file.
 
+## [0.30.0] - 2026-11-23
+
+### Added
+
+- Bot mode. On an app whose bot mode is `human_only`, the sign-in, sign-up and forgot-password screens run the human check the app's settings name. The built-in check shows "Checking your browser…" while it solves. Cloudflare Turnstile, hCaptcha and reCAPTCHA v3 load their script once, render with the app's site key and hand out a fresh token for each request. reCAPTCHA v3 uses a score key and the action `passflow_auth`. An app in `bot_friendly` mode renders as before.
+- A failed human check shows one message on every covered screen: "We could not confirm you are human. Try again."
+- `AntiBotCheck` renders that check, with the types `AntiBotCheckProps`, `AntiBotBuiltinCheckProps`, `AntiBotVendorCheckProps`, `AntiBotGetToken` and `AntiBotVendor`. `useAntiBot(appSettings)` returns its props, or `undefined` when the app asks for no check.
+- `PassflowProvider` passes `antiBotWorkerUrl`, the `PassflowConfig` option, to `@passflow/core`. Serve the worker file `@passflow/core/anti-bot-worker.js` (`node_modules/@passflow/core/dist/anti-bot-worker.js`) from the app's own origin and pass its URL. The built-in check then solves in a Web Worker. Without it, the check runs on the main thread.
+- WebMCP tools. On a `bot_friendly` app, `SignIn`/`SignInForm` and `SignUp`/`SignUpForm` register tools for an in-browser agent through `document.modelContext`, or else `navigator.modelContext`: `list_auth_methods`, `get_auth_status`, `sign_in_password` (sign-in) or `sign_up_password` (sign-up), `start_passwordless`, `complete_passwordless`, `start_social` and `sign_in_passkey`. Each is registered only when the app has its method on. `sign_in_passkey` only tells the agent to ask the user to click the passkey button. The tools go away when the form unmounts. Every request a tool sends carries `X-Passflow-Agent-Tool: 1`. No tool is registered on a `human_only` app, or on the device approval, passwordless approval and consent screens.
+
+### Changed
+
+- The minimum `@passflow/core` is now 0.34.0.
+- `useSignIn().fetch`, `useSignUp().fetch` and `usePasswordlessComplete().fetch` take an optional last argument, `options` (`PassflowAuthOptions`), and pass it to core. So do `useProvider`'s `federatedWithPopup` and `federatedWithRedirect`, after `inviteToken`. `{ agentTool: true }` marks a request as sent by an agent tool.
+- `useSignIn`, `useSignUp` and `usePasswordlessComplete` return `readError()`. It returns the error the latest `fetch` set, and you can read it right after `await fetch()`, before the next render.
+
+### Fixed
+
+- `PassflowProvider` accepted `antiBotWorkerUrl` but did not pass it to core, so the built-in check always ran on the main thread.
+- `useForgotPassword` stayed in `isLoading` after a failed request. It now clears `isLoading` on failure.
+
 ## [0.29.0] - 2026-11-22
 
 ### Added
