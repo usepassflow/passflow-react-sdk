@@ -42,9 +42,9 @@ describe('hosted exchange across a Passflow instance rebuild', () => {
 
     const observed = makeObserved();
     const view = renderLanding({ observed, flow: true });
-    await waitFor(() => expect(active.requests.some((request) => request.path === exchangePath)).toBe(true));
+    await waitFor(() => expect(active.requests.some((request) => request.path === '/app/settings')).toBe(true));
     // The children, and the probe with them, unmount while the exchange runs: the replaced instance is seen through
-    // its disposal.
+    // its disposal. The exchange itself waits for the settings, which say whether it needs an anti-bot token.
     const before = observed.current!;
     const disposed = vi.spyOn(before, 'dispose');
 
@@ -54,6 +54,7 @@ describe('hosted exchange across a Passflow instance rebuild', () => {
       defaults: { ...active.settingsData.defaults, scopes: ['openid', 'email', 'offline'] },
     });
     await waitFor(() => expect(disposed).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(active.requests.some((request) => request.path === exchangePath)).toBe(true));
 
     await act(async () => {
       first.resolve({ status: 403, data: { error: 'upgrade_required', acr_values: '2' } });

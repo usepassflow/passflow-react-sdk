@@ -7,10 +7,10 @@ import { phone } from 'phone';
 import { type FC, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import * as Yup from 'yup';
-import { Button, FieldPhone, FieldText, Icon, Link, LoginAlert } from '@/components/ui';
+import { AntiBotCheck, Button, FieldPhone, FieldText, Icon, Link, LoginAlert } from '@/components/ui';
 import { routes, useSearchSource } from '@/context';
 import { withHydration } from '@/hocs/with-hydration';
-import { useAppSettings, useForgotPassword, useNavigation } from '@/hooks';
+import { useAntiBot, useAppSettings, useForgotPassword, useNavigation } from '@/hooks';
 import {
   cn,
   emailRegex,
@@ -80,6 +80,7 @@ const ForgotPasswordScreen: FC<TForgotPassword> = ({
   const { defaultMethod } = params;
 
   const { fetch, error, isError, isLoading } = useForgotPassword();
+  const antiBot = useAntiBot(appSettings);
 
   const onSubmitHanlder = async () => {
     const values = getValues();
@@ -207,6 +208,7 @@ const ForgotPasswordScreen: FC<TForgotPassword> = ({
             )}
           </div>
         </div>
+        {antiBot ? <AntiBotCheck {...antiBot} /> : null}
         <div className='passflow-send-reset-wrapper'>
           <Button
             size='big'

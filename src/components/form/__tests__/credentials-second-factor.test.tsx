@@ -25,6 +25,8 @@ const passflow = { isTwoFactorVerificationRequired: vi.fn() };
 const signIn = vi.fn();
 const signUp = vi.fn();
 
+vi.mock('@/hooks/use-passflow', () => ({ usePassflow: () => passflow }));
+
 vi.mock('@/hooks', () => ({
   usePassflow: () => passflow,
   useNavigation: () => ({ navigate }),
@@ -40,11 +42,14 @@ vi.mock('@/hooks', () => ({
     error: '',
     loginAppTheme: null,
   }),
-  // REQ-20: additive hook contract; credentials are shown only while no email step is active.
+  // REQ-13: these cases drive credential callbacks, without a human check or email-code completion.
+  useAntiBot: () => undefined,
+  usePasswordlessComplete: () => ({ fetch: vi.fn(), readError: () => '' }),
   useSignIn: () => ({
     fetch: signIn,
     isError: false,
     error: '',
+    readError: () => null,
     reset: vi.fn(),
     isLoading: false,
     emailCode: { step: { kind: 'none' } },
@@ -53,6 +58,7 @@ vi.mock('@/hooks', () => ({
     fetch: signUp,
     isError: false,
     error: '',
+    readError: () => null,
     reset: vi.fn(),
     isLoading: false,
     emailCode: { step: { kind: 'none' } },

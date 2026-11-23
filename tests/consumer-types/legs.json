@@ -15,7 +15,7 @@
     "args": ["--profile", "strict", "--exclude-entrypoints", "./dist/style.css"]
   },
   "app": {
-    "@passflow/core": "0.33.0"
+    "@passflow/core": "0.34.0"
   },
   "variants": {
     "react19": {

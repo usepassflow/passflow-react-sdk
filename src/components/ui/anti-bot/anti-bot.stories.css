@@ -1,0 +1,34 @@
+/*
+ * Story-only frame: gives each story a padded column so the harness controls
+ * and the (often empty) check have room, and styles the fake vendors' marker.
+ */
+
+.passflow-anti-bot-story {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--passflow-spacing-3);
+  max-width: var(--passflow-surface-width);
+  margin: 0 auto;
+  padding: var(--passflow-spacing-5);
+  text-align: center;
+  font-family: var(--passflow-font-family);
+  font-size: var(--passflow-body-2);
+  color: var(--passflow-text-color);
+}
+
+.passflow-anti-bot-story-caption {
+  margin: 0;
+  color: var(--passflow-secondary-text-color);
+}
+
+.passflow-anti-bot-story-token {
+  font-family: var(--passflow-font-family-mono);
+}
+
+.passflow-anti-bot-fake-widget {
+  padding: var(--passflow-spacing-2) var(--passflow-spacing-3);
+  border: 1px dashed var(--passflow-input-border-color);
+  border-radius: var(--passflow-radius);
+  color: var(--passflow-secondary-text-color);
+}

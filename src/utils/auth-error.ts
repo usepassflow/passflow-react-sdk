@@ -1,4 +1,13 @@
-import { SERVICE_UNAVAILABLE_ERROR_ID, SERVICE_UNAVAILABLE_MESSAGE } from '@passflow/core';
+import {
+  ANTI_BOT_FAILED_ERROR_ID,
+  ANTI_BOT_PROVIDER_FAILED_ERROR_ID,
+  ANTI_BOT_PROVIDER_MISSING_ERROR_ID,
+  ANTI_BOT_REQUIRED_ERROR_ID,
+  ANTI_BOT_SOLVE_FAILED_ERROR_ID,
+  ANTI_BOT_UNAVAILABLE_ERROR_ID,
+  SERVICE_UNAVAILABLE_ERROR_ID,
+  SERVICE_UNAVAILABLE_MESSAGE,
+} from '@passflow/core';
 import type { AuthFlow, AuthOperation, AuthUiError } from '@/types';
 
 const AUTH_ERROR_COPY: Record<AuthFlow, Record<AuthOperation, AuthUiError>> = {
@@ -109,6 +118,29 @@ export const serverMessageFor = (error: unknown): string | null => {
   return trimmed === '' ? null : trimmed;
 };
 
+/** Shown for every failed anti-bot check, whichever side refused it. */
+export const antiBotErrorMessage = 'We could not confirm you are human. Try again.';
+
+/** The ids of a failed anti-bot check: the server's refusals and core's own provider and solve failures. */
+export const ANTI_BOT_ERROR_IDS: ReadonlySet<string> = new Set([
+  ANTI_BOT_REQUIRED_ERROR_ID,
+  ANTI_BOT_FAILED_ERROR_ID,
+  ANTI_BOT_UNAVAILABLE_ERROR_ID,
+  ANTI_BOT_PROVIDER_MISSING_ERROR_ID,
+  ANTI_BOT_PROVIDER_FAILED_ERROR_ID,
+  ANTI_BOT_SOLVE_FAILED_ERROR_ID,
+]);
+
+/**
+ * {@link antiBotErrorMessage} when the error is a failed anti-bot check, else `null`. An unavailable check means the
+ * server or the vendor is down, not that the user failed it, so it gets core's service-unavailable copy.
+ */
+export const antiBotErrorMessageFrom = (error: unknown): string | null => {
+  const id = readField(readServerError(error), 'id');
+  if (id === ANTI_BOT_UNAVAILABLE_ERROR_ID) return SERVICE_UNAVAILABLE_MESSAGE;
+  return typeof id === 'string' && ANTI_BOT_ERROR_IDS.has(id) ? antiBotErrorMessage : null;
+};
+
 /** A parent challenge the server refused: each id has its own copy, and only starting again can help. */
 const REFUSED_PARENT_COPY: ReadonlyMap<unknown, string> = new Map([
   ['error.auth.flow.parent.expired', 'This sign-in request has expired. Start again.'],
@@ -116,8 +148,11 @@ const REFUSED_PARENT_COPY: ReadonlyMap<unknown, string> = new Map([
   ['error.auth.flow.parent.completed', 'This sign-in request was already completed. Start again.'],
 ]);
 
-/** A hook's display error: a refused parent's copy, the server's message for an allow-listed id, else the operation's fixed copy. */
+/** A hook's display error: the anti-bot message, a refused parent's copy, the server's message for an allow-listed id, else the operation's fixed copy. */
 export const authErrorFrom = (error: unknown, flow: AuthFlow, operation: AuthOperation): AuthUiError => {
+  const antiBotMessage = antiBotErrorMessageFrom(error);
+  if (antiBotMessage !== null) return { message: antiBotMessage, scope: 'form' };
+
   const refusedParent = REFUSED_PARENT_COPY.get(readField(readServerError(error), 'id'));
   if (refusedParent !== undefined) return { message: refusedParent, scope: 'form', startAgain: true };
 
@@ -142,13 +177,15 @@ export const emailCodeUnavailableMessage = "We couldn't check the code. Try agai
 export const emailCodeRestartMessage = "We couldn't verify the code. Go back and start again.";
 
 /**
- * Error copy for the emailed-code step (`/auth/validate`, resend): allow-listed ids (wrong, expired or spent code,
+ * Error copy for the emailed-code step (`/auth/validate`, resend): a failed anti-bot check has its one message; allow-listed ids (wrong, expired or spent code,
  * rate limit, ...) show the server message; Passflow being unavailable shows core's message; `error.not.found`
  * (unknown or spent challenge) asks for a new code; a raw axios failure with no response (offline, CORS, timeout)
  * asks to retry; every other server answer (401, a missing PKCE verifier, an unlisted 4xx or a 5xx) asks to start
  * again, and the screen keeps its way back to the form.
  */
 export const emailCodeErrorMessage = (error: unknown): string => {
+  const antiBotMessage = antiBotErrorMessageFrom(error);
+  if (antiBotMessage !== null) return antiBotMessage;
   const serverMessage = serverMessageFor(error);
   if (serverMessage !== null) return serverMessage;
 

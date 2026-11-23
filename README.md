@@ -19,6 +19,7 @@ This is a SDK for react application.
     - [Login button](#login-button)
     - [Two-factor setup for a signed-in user](#two-factor-setup-for-a-signed-in-user)
     - [Step-up](#step-up)
+    - [Bot mode and WebMCP tools](#bot-mode-and-webmcp-tools)
     - [React Router](#react-router)
     - [Wouter](#wouter)
     - [TanStack Router](#tanstack-router)
@@ -393,6 +394,91 @@ The dialog offers the factors the server lists in `available_factors`, in its or
 ```
 
 The hosted login page never calls `onSignInRequired`. It shows the sign-in form for sign-in required and insufficient, and puts the unsatisfiable and rate-limited messages on the page in place of the form.
+
+### Bot mode and WebMCP tools
+
+Since 0.30.0 (with `@passflow/core` 0.34.0 or later), the forms follow the app's bot mode from its settings:
+
+| Bot mode | Sign-in, sign-up and forgot-password | WebMCP tools |
+|----------|--------------------------------------|--------------|
+| `bot_friendly` (also when unset) | Render as before, with no human check | Registered by `SignIn`/`SignInForm` and `SignUp`/`SignUpForm` when the browser has a model-context API |
+| `human_only` | Run the human check named in the app's settings | Never registered |
+
+**Human check on a `human_only` app.**
+
+The forms render the check for you. The app's settings choose one of four providers:
+
+| Provider | What the user sees | Script the page loads |
+|----------|--------------------|-----------------------|
+| `builtin` | "Checking your browser…" while core solves a proof of work | None |
+| `turnstile` | Cloudflare Turnstile, only if it asks for an interaction | `https://challenges.cloudflare.com/turnstile/v0/api.js` |
+| `hcaptcha` | Invisible hCaptcha, with a challenge only when hCaptcha wants one | `https://js.hcaptcha.com/1/api.js` |
+| `recaptcha` | reCAPTCHA v3 (a score key), with action `passflow_auth` | `https://www.google.com/recaptcha/api.js` |
+
+A vendor check loads its script once per page, renders with the site key from the app's settings and asks for a fresh token on each request. A vendor with no site key in the settings renders nothing, and the request then fails.
+
+When the check fails, the screen shows one message for every cause: "We could not confirm you are human. Try again." When the check is unavailable because the server or the vendor is down, it shows the "temporarily unavailable" message instead.
+
+**Built-in check: serve the worker.** `@passflow/core` ships the worker as `@passflow/core/anti-bot-worker.js`, the file `node_modules/@passflow/core/dist/anti-bot-worker.js`. Serve it from the app's own origin and pass its URL as `antiBotWorkerUrl`. For example, copy it into a Vite or Next.js `public/` folder:
+
+```bash
+cp node_modules/@passflow/core/dist/anti-bot-worker.js public/anti-bot-worker.js
+```
+
+```tsx
+<PassflowProvider url={url} appId={appId} antiBotWorkerUrl='/anti-bot-worker.js'>
+  <App />
+</PassflowProvider>
+```
+
+The provider reads `antiBotWorkerUrl` once, when it mounts. Without it, the proof of work runs on the main thread, and the page can stall while it solves. Copy the file again after you upgrade `@passflow/core`.
+
+**Content Security Policy.** A strict CSP must allow the vendor's hosts in `script-src` and `frame-src`. The script hosts come from the SDK; the rest follow each vendor's CSP guide, which also lists any `connect-src` or `style-src` it needs.
+
+| Provider | `script-src` and `frame-src` |
+|----------|------------------------------|
+| `turnstile` | `https://challenges.cloudflare.com` |
+| `hcaptcha` | `https://js.hcaptcha.com`, `https://*.hcaptcha.com` |
+| `recaptcha` | `https://www.google.com/recaptcha/`, `https://www.gstatic.com/recaptcha/` |
+
+The built-in check needs no extra host. A worker served from your own origin needs `'self'` in `worker-src`, or in `script-src`, which it falls back to.
+
+**Your own form.** `AntiBotCheck` and `useAntiBot` are exported for a screen you build yourself. `useAntiBot(appSettings)` returns the props, or `undefined` when the app asks for no check:
+
+```tsx
+import { AntiBotCheck, useAntiBot, useAppSettings } from '@passflow/react';
+
+const HumanCheck = () => {
+  const { appSettings } = useAppSettings();
+  const antiBot = useAntiBot(appSettings);
+  return antiBot ? <AntiBotCheck {...antiBot} /> : null;
+};
+```
+
+Keep it mounted while your form sends its requests. A vendor check gives core its tokens only while it is mounted.
+
+**WebMCP tools on a `bot_friendly` app.**
+
+WebMCP is a browser draft API that lets an agent in the browser call tools a page registers. The sign-in and sign-up forms look for it at `document.modelContext`, then at `navigator.modelContext`. With neither, they register nothing and work as before.
+
+A form registers only the tools for methods the app has enabled:
+
+| Tool | Read-only | Registered when | What it does |
+|------|-----------|-----------------|--------------|
+| `list_auth_methods` | Yes | Always | Returns the enabled methods as JSON: password identifiers, passwordless methods, passkey and social providers |
+| `get_auth_status` | Yes | Always | Answers "Signed in.", "Not signed in." or that a second factor is pending |
+| `sign_in_password` | No | Sign-in form, password on | Signs in with `identifier` and `password` |
+| `sign_up_password` | No | Sign-up form, password on | Creates an account with `identifier` and `password`, after the app's password rules |
+| `start_passwordless` | No | Email or phone code or link on | Sends a code or a sign-in link to `identifier`. The page does not navigate |
+| `complete_passwordless` | No | Email or phone code on | Finishes with `challenge_id` and `code` |
+| `start_social` | No | Any social provider on | Opens the `provider` sign-in; the user finishes on the provider's page |
+| `sign_in_passkey` | No | Passkey on | Starts nothing. It tells the agent to ask the user to click the passkey button |
+
+An `identifier` is an email when it looks like one, a phone number when it starts with `+` (E.164), and a username otherwise. Each tool checks its own arguments before it sends anything, answers with a short text, and never throws.
+
+The tools run the form's own handlers, so they send exactly the requests a person filling in the form would send. Each one passes `{ agentTool: true }` to core, and core adds the header `X-Passflow-Agent-Tool: 1`. A second factor, an emailed code or a passkey stays with the user on the page.
+
+The form removes its tools when it unmounts. No other screen registers tools: the device approval, passwordless approval and consent screens never do, and neither does forgot-password.
 
 The sections below wire the app's router into the **standalone form components** (`SignIn`, `SignUp`, …) through `PassflowProvider`'s `navigate` and `router` props. `PassflowFlow` does not need them.
 
@@ -787,6 +873,7 @@ The URL and the session exist only in the browser. So the server renders the flo
 | scopes | string[] | Array of required scopes |
 | router | "default" \| "react-router" \| "wouter" \| "tanstack-router" | Router being used (optional) (default is native window navigation) |
 | navigate | (options: NavigateOptions) => void | Navigation function (optional) (default is native window navigation) |
+| antiBotWorkerUrl | string | Same-origin URL of `@passflow/core/anti-bot-worker.js`, for the built-in human check (optional). See [Bot mode and WebMCP tools](#bot-mode-and-webmcp-tools) |
 
 ## Form Components
 
@@ -996,10 +1083,11 @@ The bundled `SignIn` form does this for you: it opens `ForgotPassword` with the 
 
 | Property | Type | Description |
 |----------|------|-------------|
-| fetch | `(payload: PassflowPasskeyAuthenticateStartPayload \| PassflowSignInPayload \| PassflowPasswordlessSignInPayload, type: 'passkey' \| 'password' \| 'passwordless') => Promise<false \| SignInOutcome \| PassflowPasswordlessResponse>` | Sign in function |
+| fetch | `(payload: PassflowPasskeyAuthenticateStartPayload \| PassflowSignInPayload \| PassflowPasswordlessSignInPayload, type: 'passkey' \| 'password' \| 'passwordless', options?: PassflowAuthOptions) => Promise<false \| SignInOutcome \| PassflowPasswordlessResponse>` | Sign in function. `options` goes to core as the request's last argument |
 | isLoading | `boolean` | Loading state |
 | isError | `boolean` | Error state |
 | error | `string` | Error message |
+| readError | `() => AuthUiError \| null` | The error the latest `fetch` set; `null` after a success or `reset()`. Readable right after `await fetch()`, before the next render |
 
 `fetch` resolves one of:
 
@@ -1023,10 +1111,11 @@ const { fetch, isLoading, isError, error } = useSignUp();
 
 | Property | Type | Description |
 |----------|------|-------------|
-| fetch | `(payload: PassflowPasskeyRegisterStartPayload \| PassflowSignUpPayload \| PassflowPasswordlessSignInPayload, type: 'passkey' \| 'password' \| 'passwordless') => Promise<false \| SignInOutcome \| PassflowPasswordlessResponse>` | Sign up function |
+| fetch | `(payload: PassflowPasskeyRegisterStartPayload \| PassflowSignUpPayload \| PassflowPasswordlessSignInPayload, type: 'passkey' \| 'password' \| 'passwordless', options?: PassflowAuthOptions) => Promise<false \| SignInOutcome \| PassflowPasswordlessResponse>` | Sign up function. `options` goes to core as the request's last argument |
 | isLoading | `boolean` | Loading state |
 | isError | `boolean` | Error state |
 | error | `string` | Error message |
+| readError | `() => AuthUiError \| null` | The error the latest `fetch` set; `null` after a success or `reset()`. Readable right after `await fetch()`, before the next render |
 
 `fetch` resolves the same outcomes as `useSignIn().fetch`.
 
@@ -1059,8 +1148,8 @@ const { federatedWithPopup, federatedWithRedirect } = useProvider(redirectUrl);
 
 | Property | Type | Description |
 |----------|------|-------------|
-| federatedWithPopup | `(provider: Providers) => void` | Popup authentication function |
-| federatedWithRedirect | `(provider: Providers) => void` | Redirect authentication function |
+| federatedWithPopup | `(provider: Providers, inviteToken?: string, options?: PassflowAuthOptions) => void` | Popup authentication function |
+| federatedWithRedirect | `(provider: Providers, inviteToken?: string, options?: PassflowAuthOptions) => void` | Redirect authentication function |
 
 ### useResetPassword
 Hook for resetting user password.
@@ -1190,10 +1279,11 @@ const { fetch, isLoading, isError, error } = usePasswordlessComplete();
 
 | Property | Type | Description |
 |----------|------|-------------|
-| fetch | `(payload: PassflowPasswordlessSignInCompletePayload) => Promise<PassflowValidationResponse \| null>` | Complete passwordless auth function |
+| fetch | `(payload: PassflowPasswordlessSignInCompletePayload, options?: PassflowAuthOptions) => Promise<PassflowValidationResponse \| null>` | Complete passwordless auth function |
 | isLoading | `boolean` | Loading state |
 | isError | `boolean` | Error state |
 | error | `string` | Error message |
+| readError | `() => string` | The same text as `error` (`''` when none), readable right after `await fetch()` |
 
 ### useSessionExpired
 Hook for reacting to the end of a session, for example to redirect to your login page.

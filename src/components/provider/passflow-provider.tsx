@@ -1,4 +1,5 @@
 import {
+  ANTI_BOT_HEADER_KEY,
   type ErrorPayload,
   FETCH_PRIORITY_OIDC,
   Passflow,
@@ -84,6 +85,12 @@ type PassflowProviderProps = PassflowConfig & {
   refreshCoordination?: PassflowConfig['refreshCoordination'];
   /** See `PassflowConfig`. Read once, when the provider mounts. */
   refreshStrikes?: PassflowConfig['refreshStrikes'];
+  /**
+   * See `PassflowConfig`. Same-origin URL of `@passflow/core/anti-bot-worker.js`; the built-in
+   * anti-bot check then runs in a Web Worker instead of the main thread. Read once, when the
+   * provider mounts.
+   */
+  antiBotWorkerUrl?: PassflowConfig['antiBotWorkerUrl'];
   children: ReactNode;
   navigate?: NavigateFunction;
   router?: RouterType;
@@ -548,7 +555,7 @@ const useSessionExchangeOnMount = (
 
     const base = baseUrl ?? '';
 
-    const exchange = (): Promise<Response> =>
+    const send = (antiBotToken?: string): Promise<Response> =>
       fetch(`${base}/auth/session/exchange`, {
         method: 'POST',
         credentials: 'include',
@@ -557,9 +564,21 @@ const useSessionExchangeOnMount = (
           // App middleware reads X-Passflow-ClientID; without it the
           // request gets 400 "Application ID is missing from request".
           'X-Passflow-ClientID': appId,
+          ...(antiBotToken ? { [ANTI_BOT_HEADER_KEY]: antiBotToken } : {}),
         },
         body: JSON.stringify({ parent_challenge_id: parentChallengeId }),
       });
+
+    // A human_only app guards the exchange too: it answers 403 `anti_bot.required`, and the exchange goes once more
+    // with a token. Without one, that refusal takes the usual path.
+    const exchange = async (): Promise<Response> => {
+      const res = await send();
+      if (res.status !== 403 || !(await res.clone().text()).includes('anti_bot.required')) return res;
+      const antiBotToken = await currentPassflow()
+        .antiBotToken({ operation: 'session.exchange' })
+        .catch(() => undefined);
+      return antiBotToken ? send(antiBotToken) : res;
+    };
 
     const run = async () => {
       // The parent's metadata: where an error for the relying party goes
@@ -896,6 +915,7 @@ export const PassflowProvider: FC<PassflowProviderProps> = ({
     platform: config.platform,
     refreshCoordination: config.refreshCoordination,
     refreshStrikes: config.refreshStrikes,
+    antiBotWorkerUrl: config.antiBotWorkerUrl,
   }));
 
   // OIDC AuthFlow integration: the interceptor injects

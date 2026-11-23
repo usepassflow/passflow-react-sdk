@@ -1,4 +1,4 @@
-import type { PassflowPasswordlessResponse } from '@passflow/core';
+import { type PassflowPasswordlessResponse, SERVICE_UNAVAILABLE_MESSAGE } from '@passflow/core';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { authErrorFor } from '@/utils';
@@ -25,6 +25,72 @@ describe('useSignUp', () => {
     (usePassflow as any).mockReturnValue(mockPassflow);
   });
 
+  it.each([
+    ['password', 'signUp'],
+    ['passkey', 'passkeyRegister'],
+    ['passwordless', 'passwordlessSignIn'],
+  ] as const)('REQ-13 passes the agent option to core for %s', async (type, method) => {
+    mockPassflow[method].mockResolvedValueOnce(undefined);
+    const { result } = renderHook(() => useSignUp());
+    const payload = { email: 'test@example.com', password: 'test-secret' };
+
+    await act(async () => {
+      await result.current.fetch(payload, type, { agentTool: true });
+    });
+
+    expect(mockPassflow[method].mock.calls[0]?.[0]).toEqual(payload);
+    expect(mockPassflow[method].mock.calls[0]?.at(-1)?.agentTool).toBe(true);
+  });
+
+  it.each([
+    'error.api.anti_bot.required',
+    'error.api.anti_bot.failed',
+    'error.anti_bot.provider_missing',
+    'error.anti_bot.provider_failed',
+    'error.anti_bot.solve_failed',
+  ])('REQ-3 and REQ-13 expose safe anti-bot copy synchronously for %s', async (id) => {
+    mockPassflow.signUp.mockRejectedValueOnce({ id, message: 'Raw vendor error' });
+    const { result } = renderHook(() => useSignUp());
+    const payload = { email: 'test@example.com', password: 'test-secret' };
+    const expected = { message: 'We could not confirm you are human. Try again.', scope: 'form' };
+
+    await act(async () => {
+      const { fetch, readError } = result.current;
+      expect(await fetch(payload, 'password')).toBe(false);
+      expect(readError()).toEqual(expected);
+    });
+    expect(result.current.error).toEqual(expected);
+
+    act(() => result.current.reset());
+    expect(result.current.readError()).toBeNull();
+  });
+
+  it('shows the service-unavailable copy, not the human-check copy, when the anti-bot check is unavailable', async () => {
+    mockPassflow.signUp.mockRejectedValueOnce({ id: 'error.api.anti_bot.unavailable', message: 'Raw vendor error' });
+    const { result } = renderHook(() => useSignUp());
+    await act(async () => {
+      expect(await result.current.fetch({ email: 'test@example.com', password: 'test-secret' }, 'password')).toBe(false);
+    });
+    expect(result.current.error).toEqual({ message: SERVICE_UNAVAILABLE_MESSAGE, scope: 'form' });
+  });
+
+  it('REQ-13 clears readError synchronously after a successful request', async () => {
+    mockPassflow.signUp.mockRejectedValueOnce(new Error('failure')).mockResolvedValueOnce(undefined);
+    const { result } = renderHook(() => useSignUp());
+    const payload = { email: 'test@example.com', password: 'test-secret' };
+
+    await act(async () => {
+      const { fetch, readError } = result.current;
+      expect(await fetch(payload, 'password')).toBe(false);
+      expect(readError()).not.toBeNull();
+    });
+    await act(async () => {
+      const { fetch, readError } = result.current;
+      expect(await fetch(payload, 'password')).toBe('signed-in');
+      expect(readError()).toBeNull();
+    });
+  });
+
   describe('password sign up', () => {
     it('should successfully sign up with password', async () => {
       mockPassflow.signUp.mockResolvedValue(undefined);
@@ -46,7 +112,7 @@ describe('useSignUp', () => {
       });
 
       expect(signUpResult).toBe('signed-in');
-      expect(mockPassflow.signUp).toHaveBeenCalledWith(payload);
+      expect(mockPassflow.signUp).toHaveBeenCalledWith(payload, undefined);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.isError).toBe(false);
       expect(result.current.error).toBeNull();
@@ -132,7 +198,7 @@ describe('useSignUp', () => {
       });
 
       expect(registerResult).toBe('signed-in');
-      expect(mockPassflow.passkeyRegister).toHaveBeenCalledWith(payload);
+      expect(mockPassflow.passkeyRegister).toHaveBeenCalledWith(payload, undefined);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.isError).toBe(false);
     });
@@ -181,7 +247,7 @@ describe('useSignUp', () => {
       });
 
       expect(signUpResult).toEqual(mockResponse);
-      expect(mockPassflow.passwordlessSignIn).toHaveBeenCalledWith(payload);
+      expect(mockPassflow.passwordlessSignIn).toHaveBeenCalledWith(payload, undefined);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.isError).toBe(false);
     });

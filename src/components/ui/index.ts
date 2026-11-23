@@ -1,3 +1,4 @@
+export * from './anti-bot';
 export { Button } from './button';
 export { ContinuingStatus, type ContinuingStatusProps } from './continuing-status';
 export { CountryFlag, type CountryFlagProps } from './country-flag';

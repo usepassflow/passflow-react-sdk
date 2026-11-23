@@ -1,5 +1,6 @@
 import type { PassflowPasswordPolicySettings, Providers } from '@passflow/core';
 import type { AuthUiError, DefaultMethod } from '@/types';
+import type { AntiBotCheckProps } from '../anti-bot';
 
 export type LoginScreenChrome = {
   title: string;
@@ -447,4 +448,9 @@ export type LoginScreenState =
 export type LoginScreenProps = {
   chrome: LoginScreenChrome;
   state: LoginScreenState;
+  /**
+   * The human check of a `human_only` app, drawn after the state's content. It stays the same element while the
+   * state changes (credentials to email code), so a vendor widget keeps working for a resend. Absent: no check.
+   */
+  antiBot?: AntiBotCheckProps;
 };

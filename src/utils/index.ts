@@ -1,5 +1,8 @@
 export {
+  ANTI_BOT_ERROR_IDS,
   type ApprovalError,
+  antiBotErrorMessage,
+  antiBotErrorMessageFrom,
   approvalAlreadyDecidedMessage,
   approvalApprovedMessage,
   approvalAttemptsMessage,
