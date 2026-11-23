@@ -168,8 +168,10 @@ export const useSignIn: UseSignInProps = ({ onPasswordChangeRequired } = {}) => 
     setIsLoading(false);
     setPendingOperation(null);
     setIsError(true);
-    setError({ message: 'Passkey sign-in was cancelled.', scope: authErrorFor('sign-in', 'passkey').scope });
-  }, [setError]);
+    // Shown to the user, but not a failed fetch: readError() stays null.
+    errorRef.current = null;
+    setErrorState({ message: 'Passkey sign-in was cancelled.', scope: authErrorFor('sign-in', 'passkey').scope });
+  }, []);
 
   return { fetch, isLoading, isError, error, readError, reset, cancelPasskey, pendingOperation, emailCode } as const;
 };
