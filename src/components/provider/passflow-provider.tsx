@@ -555,12 +555,8 @@ const useSessionExchangeOnMount = (
 
     const base = baseUrl ?? '';
 
-    const exchange = async (): Promise<Response> => {
-      // A human_only app guards the exchange too. Without a token the server refuses it, and that refusal takes the usual path.
-      const antiBotToken = await currentPassflow()
-        .antiBotToken({ operation: 'session.exchange' })
-        .catch(() => undefined);
-      return fetch(`${base}/auth/session/exchange`, {
+    const send = (antiBotToken?: string): Promise<Response> =>
+      fetch(`${base}/auth/session/exchange`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -572,6 +568,16 @@ const useSessionExchangeOnMount = (
         },
         body: JSON.stringify({ parent_challenge_id: parentChallengeId }),
       });
+
+    // A human_only app guards the exchange too: it answers 403 `anti_bot.required`, and the exchange goes once more
+    // with a token. Without one, that refusal takes the usual path.
+    const exchange = async (): Promise<Response> => {
+      const res = await send();
+      if (res.status !== 403 || !(await res.clone().text()).includes('anti_bot.required')) return res;
+      const antiBotToken = await currentPassflow()
+        .antiBotToken({ operation: 'session.exchange' })
+        .catch(() => undefined);
+      return antiBotToken ? send(antiBotToken) : res;
     };
 
     const run = async () => {
