@@ -1,4 +1,4 @@
-import type { PassflowSendPasswordResetEmailPayload } from '@passflow/core';
+import { type PassflowSendPasswordResetEmailPayload, SERVICE_UNAVAILABLE_MESSAGE } from '@passflow/core';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useForgotPassword } from '../use-forgot-password';
@@ -70,7 +70,6 @@ describe('useForgotPassword', () => {
   it.each([
     'error.api.anti_bot.required',
     'error.api.anti_bot.failed',
-    'error.api.anti_bot.unavailable',
     'error.anti_bot.provider_missing',
     'error.anti_bot.provider_failed',
     'error.anti_bot.solve_failed',
@@ -82,6 +81,18 @@ describe('useForgotPassword', () => {
     });
     expect(result.current.error).toBe('We could not confirm you are human. Try again.');
     expect(result.current.isLoading).toBe(false);
+  });
+
+  it('shows the service-unavailable copy when the anti-bot check is unavailable', async () => {
+    mockPassflow.sendPasswordResetEmail.mockRejectedValueOnce({
+      id: 'error.api.anti_bot.unavailable',
+      message: 'Raw vendor error',
+    });
+    const { result } = renderHook(() => useForgotPassword());
+    await act(async () => {
+      expect(await result.current.fetch({ email: 'test@example.com' })).toBe(false);
+    });
+    expect(result.current.error).toBe(SERVICE_UNAVAILABLE_MESSAGE);
   });
 
   it('should set loading state during password reset email send', async () => {

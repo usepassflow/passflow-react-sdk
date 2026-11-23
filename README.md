@@ -417,7 +417,7 @@ The forms render the check for you. The app's settings choose one of four provid
 
 A vendor check loads its script once per page, renders with the site key from the app's settings and asks for a fresh token on each request. A vendor with no site key in the settings renders nothing, and the request then fails.
 
-When the check fails, the screen shows one message for every cause: "We could not confirm you are human. Try again."
+When the check fails, the screen shows one message for every cause: "We could not confirm you are human. Try again." When the check is unavailable because the server or the vendor is down, it shows the "temporarily unavailable" message instead.
 
 **Built-in check: serve the worker.** `@passflow/core` ships the worker as `@passflow/core/anti-bot-worker.js`, the file `node_modules/@passflow/core/dist/anti-bot-worker.js`. Serve it from the app's own origin and pass its URL as `antiBotWorkerUrl`. For example, copy it into a Vite or Next.js `public/` folder:
 

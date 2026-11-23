@@ -131,9 +131,13 @@ export const ANTI_BOT_ERROR_IDS: ReadonlySet<string> = new Set([
   ANTI_BOT_SOLVE_FAILED_ERROR_ID,
 ]);
 
-/** {@link antiBotErrorMessage} when the error is a failed anti-bot check, else `null`. */
+/**
+ * {@link antiBotErrorMessage} when the error is a failed anti-bot check, else `null`. An unavailable check means the
+ * server or the vendor is down, not that the user failed it, so it gets core's service-unavailable copy.
+ */
 export const antiBotErrorMessageFrom = (error: unknown): string | null => {
   const id = readField(readServerError(error), 'id');
+  if (id === ANTI_BOT_UNAVAILABLE_ERROR_ID) return SERVICE_UNAVAILABLE_MESSAGE;
   return typeof id === 'string' && ANTI_BOT_ERROR_IDS.has(id) ? antiBotErrorMessage : null;
 };
 

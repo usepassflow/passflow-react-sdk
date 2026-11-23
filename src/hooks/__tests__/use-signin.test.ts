@@ -1,4 +1,9 @@
-import { PassflowError, type PassflowPasswordlessResponse, type PassflowSignInPayload } from '@passflow/core';
+import {
+  PassflowError,
+  type PassflowPasswordlessResponse,
+  type PassflowSignInPayload,
+  SERVICE_UNAVAILABLE_MESSAGE,
+} from '@passflow/core';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { authErrorFor } from '@/utils';
@@ -45,7 +50,6 @@ describe('useSignIn', () => {
   it.each([
     'error.api.anti_bot.required',
     'error.api.anti_bot.failed',
-    'error.api.anti_bot.unavailable',
     'error.anti_bot.provider_missing',
     'error.anti_bot.provider_failed',
     'error.anti_bot.solve_failed',
@@ -64,6 +68,15 @@ describe('useSignIn', () => {
 
     act(() => result.current.reset());
     expect(result.current.readError()).toBeNull();
+  });
+
+  it('shows the service-unavailable copy, not the human-check copy, when the anti-bot check is unavailable', async () => {
+    mockPassflow.signIn.mockRejectedValueOnce({ id: 'error.api.anti_bot.unavailable', message: 'Raw vendor error' });
+    const { result } = renderHook(() => useSignIn());
+    await act(async () => {
+      expect(await result.current.fetch({ email: 'test@example.com', password: 'test-secret' }, 'password')).toBe(false);
+    });
+    expect(result.current.error).toEqual({ message: SERVICE_UNAVAILABLE_MESSAGE, scope: 'form' });
   });
 
   it('REQ-13 clears readError synchronously after a successful request', async () => {
