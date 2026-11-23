@@ -12,6 +12,8 @@ All notable changes to `@passflow/react` are documented in this file.
 - `PassflowProvider` passes `antiBotWorkerUrl`, the `PassflowConfig` option, to `@passflow/core`. Serve the worker file `@passflow/core/anti-bot-worker.js` (`node_modules/@passflow/core/dist/anti-bot-worker.js`) from the app's own origin and pass its URL. The built-in check then solves in a Web Worker. Without it, the check runs on the main thread.
 - WebMCP tools. On a `bot_friendly` app, `SignIn`/`SignInForm` and `SignUp`/`SignUpForm` register tools for an in-browser agent through `document.modelContext`, or else `navigator.modelContext`: `list_auth_methods`, `get_auth_status`, `sign_in_password` (sign-in) or `sign_up_password` (sign-up), `start_passwordless`, `complete_passwordless`, `start_social` and `sign_in_passkey`. Each is registered only when the app has its method on. `sign_in_passkey` only tells the agent to ask the user to click the passkey button. The tools go away when the form unmounts. Every request a tool sends carries `X-Passflow-Agent-Tool: 1`. No tool is registered on a `human_only` app, or on the device approval, passwordless approval and consent screens.
 
+- On a `human_only` app, the silent sign-in `PassflowProvider` runs on the login page (`/auth/session/exchange`) sends an anti-bot value from `passflow.antiBotToken({ operation: 'session.exchange' })`. With the built-in check, silent sign-in keeps working. With Turnstile, hCaptcha or reCAPTCHA, no widget is on the page at that point, so the server refuses the exchange. The user then signs in on the page, and a `prompt=none` request ends in `interaction_required`. This is a known limit of vendor captchas.
+
 ### Changed
 
 - The minimum `@passflow/core` is now 0.34.0.
