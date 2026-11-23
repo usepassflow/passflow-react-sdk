@@ -1,0 +1,18 @@
+/*
+ * The anti-bot element only lays out what goes inside it: the built-in status,
+ * or the box a vendor widget draws into. Where it sits is the parent's call.
+ * Turnstile draws only when it needs an interaction and reCAPTCHA v3 never
+ * draws here, so an empty container takes no space.
+ */
+
+.passflow-anti-bot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--passflow-spacing-2);
+  width: 100%;
+}
+
+.passflow-anti-bot:empty {
+  display: none;
+}
