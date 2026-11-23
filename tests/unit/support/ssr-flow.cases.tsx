@@ -1,6 +1,6 @@
 import { PassflowFlow, type PassflowFlowNavigate, PassflowProvider } from '@passflow/react';
 import { act, type ReactNode } from 'react';
-import { hydrateRoot } from 'react-dom/client';
+import { hydrateRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { providerConfig, stubBrowserApis } from './passflow-fixtures';
@@ -15,7 +15,13 @@ export function ssrFlowCases(engine: 'default' | '18.3.1') {
       window.history.replaceState(null, '', '/auth/signin');
     });
 
+    let root: Root | undefined;
+
+    // Unmount before the browser stubs go: a request still open would otherwise
+    // settle against the real APIs and render an error after the test.
     afterEach(() => {
+      act(() => root?.unmount());
+      root = undefined;
       document.body.innerHTML = '';
       vi.restoreAllMocks();
       vi.unstubAllGlobals();
@@ -29,7 +35,7 @@ export function ssrFlowCases(engine: 'default' | '18.3.1') {
       const recoverable: unknown[] = [];
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
       await act(async () => {
-        hydrateRoot(container, <PassflowProvider {...providerConfig}>{page()}</PassflowProvider>, {
+        root = hydrateRoot(container, <PassflowProvider {...providerConfig}>{page()}</PassflowProvider>, {
           onRecoverableError: (error) => recoverable.push(error),
         });
       });
