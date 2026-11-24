@@ -8,6 +8,7 @@ import type {
 /* eslint-disable complexity */
 import { type FC, useEffect, useId, useState } from 'react';
 import { SignInEndingScreen } from '@/components/form/signed-in';
+import { followFormPostAnswer } from '@/components/provider/passflow-provider';
 import { Button, FieldOtp, Icon } from '@/components/ui';
 import { useAppSettings, useNavigation, usePasswordlessComplete, useSignIn, useSignInEnding } from '@/hooks';
 import { useSecondFactorRoute } from '@/hooks/use-second-factor-route';
@@ -93,6 +94,7 @@ export const VerifyChallengeOTPManual: FC<VerifyChallengeOTPManualProps> = ({
         if (response) {
           // The code completed the first factor only: no tokens yet.
           if (routeToSecondFactor()) return;
+          if (followFormPostAnswer(response)) return;
           await finishSignIn(response.redirect_url);
         }
       };

@@ -214,6 +214,22 @@ let oidcRedirectFollowed = false;
 export const hasFollowedOIDCRedirect = (): boolean => oidcRedirectFollowed;
 
 /**
+ * Posts a sign-in answer's `form_post` to the relying party and reports whether the answer had one.
+ * The request interceptor only runs on a page whose URL names the OIDC parent; an emailed link does not, yet the
+ * server still answers with the parent's `form_post`. When the interceptor did follow the answer, nothing is posted
+ * again: the authorization code is single use.
+ */
+export const followFormPostAnswer = (answer: unknown): boolean => {
+  if (typeof answer !== 'object' || answer === null) return false;
+  const formPost = (answer as { form_post?: unknown }).form_post;
+  if (typeof formPost !== 'object' || formPost === null) return false;
+  const { action, fields } = formPost as { action?: unknown; fields?: unknown };
+  if (typeof action !== 'string' || !action || typeof fields !== 'object' || fields === null) return false;
+  if (!oidcRedirectFollowed) submitFormPost(action, fields as Record<string, string>);
+  return true;
+};
+
+/**
  * Install the global OIDC AuthFlow interceptor on `fetch` and
  * `XMLHttpRequest`. The interceptor:
  *
