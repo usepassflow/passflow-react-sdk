@@ -296,3 +296,90 @@ describe('client identity in getConsentLoginScreenProps', () => {
     ]);
   });
 });
+
+describe('a server response for a pasted URL client', () => {
+  // Typed as ConsentInfo with no cast, so a renamed or retyped field fails the type check.
+  const response: ConsentInfo & { request_id: string } = {
+    request_id: '3MXTaXuNmk5tJzTcd9ccKtqRCNQ',
+    client_id: 'https://claude-login.example.com/oauth/client.json',
+    app_name: 'Claude Connector 2',
+    app_logo_url: '',
+    requested_scopes: ['mcp', 'offline_access'],
+    scope_metadata: [
+      { scope: 'mcp', label: 'mcp', description: '' },
+      { scope: 'offline_access', label: 'Offline access', description: 'Stay signed in (refresh tokens)' },
+    ],
+    redirect_uri: 'http://localhost:53111/callback',
+    state: 's1',
+    response_mode: '',
+    first_party: false,
+    csrf_token: 'x',
+    issuer: 'http://localhost:8799',
+    client_kind: 'metadata_document',
+    client_host: 'claude-login.example.com',
+    redirect_host: 'localhost',
+    verified: false,
+    resources: [{ uri: 'http://localhost:8090/mcp', name: 'Sample' }],
+    warnings: [
+      {
+        code: 'brand_lookalike',
+        severity: 'high',
+        message: 'This client looks like Claude, but claude-login.example.com does not belong to it.',
+      },
+      {
+        code: 'localhost_redirect',
+        severity: 'notice',
+        message: 'Access goes to an app on this computer. Allow it only if you started this sign-in yourself.',
+      },
+      {
+        code: 'unverified_client',
+        severity: 'info',
+        message: 'This client is not verified. Check that you know its address before you allow it.',
+      },
+    ],
+  };
+  const stateOf = (body: ConsentInfo) =>
+    consentState(
+      consent({
+        info: body,
+        grantedScopes: [...body.requested_scopes],
+        scopeMetadata: (scope) =>
+          body.scope_metadata.find((meta) => meta.scope === scope) ?? { scope, label: scope, description: '' },
+      }),
+    ).state;
+
+  it('maps every field the screen shows', () => {
+    const state = stateOf(JSON.parse(JSON.stringify(response)) as ConsentInfo);
+
+    expect(state).toMatchObject({
+      appName: 'Claude Connector 2',
+      clientHost: 'claude-login.example.com',
+      redirectHost: 'localhost',
+      redirectLoopback: true,
+      prominentHost: 'client',
+      resources: response.resources,
+      warnings: response.warnings,
+    });
+    expect(state.verified).toBeUndefined();
+    expect(state.scopes.map(({ scope, label, granted }) => [scope, label, granted])).toEqual([
+      ['mcp', 'mcp', true],
+      ['offline_access', 'Offline access', true],
+    ]);
+  });
+
+  it('shows a first-party app as before', () => {
+    const state = stateOf({
+      ...response,
+      client_kind: 'registered',
+      client_host: undefined,
+      redirect_host: undefined,
+      verified: false,
+      resources: [],
+      warnings: [],
+    });
+
+    for (const key of ['clientHost', 'redirectHost', 'prominentHost', 'verified', 'resources', 'warnings'] as const) {
+      expect(state[key], key).toBeUndefined();
+    }
+  });
+});
