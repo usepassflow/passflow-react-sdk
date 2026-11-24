@@ -164,13 +164,13 @@ describe('client identity in getConsentLoginScreenProps', () => {
     [
       'an unverified URL client',
       { ...urlClient, verified: false },
-      { clientHost: 'notes.acme.example', verified: false, prominentHost: 'client' },
+      { clientHost: 'notes.acme.example', verified: undefined, prominentHost: 'client' },
     ],
     ['a URL client without a verified field', urlClient, { verified: undefined, prominentHost: 'client' }],
     [
       'an unverified dynamic client',
       { client_kind: 'dynamic', redirect_host: 'acme.test', verified: false },
-      { clientHost: undefined, redirectHost: 'acme.test', verified: false, prominentHost: 'redirect' },
+      { clientHost: undefined, redirectHost: 'acme.test', verified: undefined, prominentHost: 'redirect' },
     ],
     [
       'a verified dynamic client',
@@ -254,5 +254,38 @@ describe('client identity in getConsentLoginScreenProps', () => {
 
     expect(state.resources).toEqual(resources);
     expect(state.warnings).toEqual(warnings);
+  });
+
+  it.each([['false'], ['true'], [1], [{}], [null], [false]])('does not read verified: %j as verified', (verified) => {
+    const state = stateFor({ ...urlClient, verified: verified as boolean });
+
+    expect(state.verified).toBeUndefined();
+    expect(state.prominentHost).toBe('client');
+  });
+
+  it.each([['text'], [1], [true], [{}], [{ length: 1 }], [[null, 1, {}]]])('reads the list %j as none', (list) => {
+    const state = stateFor({ ...urlClient, resources: list as never, warnings: list as never });
+
+    expect(state.resources).toBeUndefined();
+    expect(state.warnings).toBeUndefined();
+  });
+
+  it('skips unusable items and keeps every warning that has text', () => {
+    const junk = [null, undefined, 1, 'text', [], {}, { uri: {}, message: {} }, { uri: '', message: '' }];
+    const state = stateFor({
+      ...urlClient,
+      resources: [...junk, { uri: 'https://api.example.com', name: {} }] as never,
+      warnings: [
+        ...junk,
+        { code: 'new_code', severity: 'severe', message: 'New.' },
+        { code: {}, message: 'No code.' },
+      ] as never,
+    });
+
+    expect(state.resources).toEqual([{ uri: 'https://api.example.com' }]);
+    expect(state.warnings).toEqual([
+      { code: 'new_code', severity: 'severe', message: 'New.' },
+      { code: 'unknown', severity: 'info', message: 'No code.' },
+    ]);
   });
 });

@@ -425,6 +425,10 @@ test.describe('Consent screen', () => {
       await expect(page.getByRole('checkbox', { name: label })).toBeChecked();
     }
     await expect(page.getByText('Your name and profile picture.')).toBeVisible();
+    for (const testId of ['consent-client-host', 'consent-redirect-host', 'consent-verified', /^consent-warning-/]) {
+      await expect(page.getByTestId(testId)).toHaveCount(0);
+    }
+    await expect(page.getByRole('alert')).toHaveCount(0);
   });
 
   test('Allow and Deny are peers and neither takes initial focus', async ({ page }) => {
