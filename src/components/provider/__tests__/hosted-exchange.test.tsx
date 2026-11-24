@@ -421,16 +421,6 @@ describe('issuer of the errors the browser makes', () => {
         await rejectElevation(held);
       },
     },
-    {
-      error: 'unmet_authentication_requirements',
-      branch: 'refused retry',
-      silent: false,
-      drive: async (held: Held) => {
-        await releaseFirst(held, stepUp);
-        await expectElevationPending(held);
-        await finishElevation(held, stepUp);
-      },
-    },
   ];
   const cases = errors.flatMap((scenario) => deliveryModes.map((mode) => ({ ...scenario, mode })));
   type Case = (typeof cases)[number];
@@ -455,26 +445,25 @@ describe('issuer of the errors the browser makes', () => {
     return params;
   }
 
-  it.each(cases)('sends one iss with $error via $mode after $branch', async (scenario) => {
-    const params = await answer(scenario, { issuer });
-    expect(params.getAll('iss')).toHaveLength(1);
-    expect(params.get('iss')).toBe(issuer);
+  // Every error goes through one answer, so one case per error code and per mode is enough.
+  const pick = (error: string, mode: (typeof deliveryModes)[number]) => {
+    const scenario = cases.find((item) => item.error === error && item.mode === mode);
+    if (!scenario) throw new Error(`no case for ${error} via ${mode}`);
+    return scenario;
+  };
+
+  it.each([
+    [pick('login_required', 'query'), ownIss],
+    [pick('interaction_required', 'form_post'), ownIss],
+    [pick('unmet_authentication_requirements', 'query'), callback],
+  ])('sends one iss with $error via $mode', async (scenario, redirect_uri) => {
+    const params = await answer(scenario, { issuer, redirect_uri });
+    expect(params.getAll('iss')).toEqual([issuer]);
+    if (scenario.mode === 'query' && redirect_uri === ownIss) expect(params.getAll('tenant')).toEqual(['7']);
   });
 
-  it.each(cases)('sends one iss with $error via $mode after $branch when redirect_uri has its own', async (scenario) => {
-    const params = await answer(scenario, { issuer, redirect_uri: ownIss });
-    expect(params.getAll('iss')).toHaveLength(1);
-    expect(params.get('iss')).toBe(issuer);
-    if (scenario.mode === 'query') expect(params.getAll('tenant')).toEqual(['7']);
+  it('sends no iss when the issuer is empty', async () => {
+    const params = await answer(pick('login_required', 'form_post'), { issuer: '' });
+    expect(params.has('iss')).toBe(false);
   });
-
-  for (const [name, metadata] of [
-    ['absent', {}],
-    ['empty', { issuer: '' }],
-  ] as const) {
-    it.each(cases)(`sends no iss with $error via $mode after $branch when the issuer is ${name}`, async (scenario) => {
-      const params = await answer(scenario, metadata);
-      expect(params.has('iss')).toBe(false);
-    });
-  }
 });

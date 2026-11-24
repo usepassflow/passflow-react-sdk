@@ -173,6 +173,11 @@ describe('client identity in getConsentLoginScreenProps', () => {
       { clientHost: undefined, redirectHost: 'acme.test', verified: undefined, prominentHost: 'redirect' },
     ],
     [
+      'an unverified URL client without a client host',
+      { client_kind: 'metadata_document', redirect_host: 'acme.test', verified: false },
+      { clientHost: undefined, redirectHost: 'acme.test', prominentHost: 'redirect' },
+    ],
+    [
       'a verified dynamic client',
       { client_kind: 'dynamic', redirect_host: 'acme.test', verified: true },
       { redirectHost: 'acme.test', prominentHost: undefined },
@@ -279,6 +284,7 @@ describe('client identity in getConsentLoginScreenProps', () => {
         ...junk,
         { code: 'new_code', severity: 'severe', message: 'New.' },
         { code: {}, message: 'No code.' },
+        { code: 'phishing_domain', severity: 'CRITICAL', message: 'Shouted.' },
       ] as never,
     });
 
@@ -286,6 +292,7 @@ describe('client identity in getConsentLoginScreenProps', () => {
     expect(state.warnings).toEqual([
       { code: 'new_code', severity: 'severe', message: 'New.' },
       { code: 'unknown', severity: 'info', message: 'No code.' },
+      { code: 'phishing_domain', severity: 'critical', message: 'Shouted.' },
     ]);
   });
 });

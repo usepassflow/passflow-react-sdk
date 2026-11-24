@@ -35,6 +35,7 @@
     "format:fix": "biome format --write src",
     "preview": "vite preview",
     "test": "playwright install chromium && playwright test --config=playwright/playwright.config.ts",
+    "test:release": "playwright install chromium && playwright test --config=playwright/playwright.release.config.ts",
     "test:ui": "playwright install chromium && playwright test --config=playwright/playwright.ui.config.ts --ui",
     "test:unit": "vitest run && vitest run --config vitest.react18.config.ts",
     "test:unit:react18": "vitest run --config vitest.react18.config.ts",

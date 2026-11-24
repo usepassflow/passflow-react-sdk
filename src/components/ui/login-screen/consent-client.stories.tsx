@@ -89,6 +89,7 @@ export const UnverifiedDynamic: Story = {
   args: story({
     redirectHost: 'a-very-long-subdomain-that-has-to-wrap.notes.acme-login.example',
     prominentHost: 'redirect',
-    warnings: warnings.slice(3),
+    resources: [{ uri: 'https://mcp.acme.example/a-resource-address-without-any-break-that-is-longer-than-the-screen' }],
+    warnings: [...warnings.slice(3), { code: 'long_text', severity: 'notice', message: `Unbroken:${'x'.repeat(80)}` }],
   }),
 };

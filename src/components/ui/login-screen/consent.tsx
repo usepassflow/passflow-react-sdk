@@ -96,14 +96,18 @@ export const LoginConsent: FC<LoginConsentState> = ({
         </div>
       ) : null}
 
-      {warnings?.map(({ code, severity, message }) => (
-        <LoginAlert
-          key={`${code} ${message}`}
-          tone={severity === 'critical' || severity === 'high' ? 'error' : 'info'}
-          message={message}
-          testId={`consent-warning-${code}`}
-        />
-      ))}
+      {warnings?.length ? (
+        <div className='passflow-consent-warnings'>
+          {warnings.map(({ code, severity, message }) => (
+            <LoginAlert
+              key={`${code} ${message}`}
+              tone={severity === 'critical' || severity === 'high' ? 'error' : 'info'}
+              message={message}
+              testId={`consent-warning-${code}`}
+            />
+          ))}
+        </div>
+      ) : null}
 
       <LoginAlert message={error} />
 

@@ -4,11 +4,11 @@ import type { ConsentInfo, ConsentResource, ConsentWarning, UseConsentProps } fr
 // Anchored on the whole host: `127.0.0.1.evil.com` and `localhost.evil.com` are remote.
 const LOOPBACK_HOST = /^(?:(?:(?:[a-z0-9-]+\.)*localhost|127(?:\.\d{1,3}){3}|\[::1\])(?::\d+)?|::1)$/i;
 
-/** The host that identifies an unverified client. A dynamic client has no host of its own, only its redirect's. */
+/** The host that identifies an unverified client. Without a host of its own, its redirect's identifies it. */
 const prominentHost = (info: ConsentInfo): 'client' | 'redirect' | undefined => {
   if (info.verified === true) return undefined;
   if (info.client_host) return 'client';
-  return info.client_kind === 'dynamic' ? 'redirect' : undefined;
+  return info.client_kind === 'dynamic' || info.client_kind === 'metadata_document' ? 'redirect' : undefined;
 };
 
 const isText = (value: unknown): value is string => typeof value === 'string' && value !== '';
@@ -25,7 +25,13 @@ const readResource = ({ uri, name }: Partial<ConsentResource>): ConsentResource 
 
 /** A message alone is enough: a warning with no code or an unknown severity still shows. */
 const readWarning = ({ code, severity, message }: Partial<ConsentWarning>): ConsentWarning | undefined =>
-  isText(message) ? { code: isText(code) ? code : 'unknown', severity: severity ?? 'info', message } : undefined;
+  isText(message)
+    ? {
+        code: isText(code) ? code : 'unknown',
+        severity: (isText(severity) ? severity.toLowerCase() : 'info') as ConsentWarning['severity'],
+        message,
+      }
+    : undefined;
 
 /**
  * Maps consent state onto the shared LoginScreen. Pure — every visual decision
