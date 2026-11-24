@@ -1,6 +1,7 @@
 export { LoginScreen } from './login-screen';
 export { LoginAlert } from './shared';
 export type {
+  LoginAccessScope,
   LoginCodeEntryState,
   LoginConsentResource,
   LoginConsentScope,

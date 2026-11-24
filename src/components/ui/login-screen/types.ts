@@ -30,12 +30,22 @@ export type LoginScreenLink = {
   search?: string;
 };
 
+/** A scope shown for reading only: what the approval grants, with no switch. */
+export type LoginAccessScope = {
+  scope: string;
+  label: string;
+  description?: string;
+};
+
 export type LoginScreenNotice = {
   code?: string;
   appName: string;
   message: string;
   codeTestId?: string;
   appNameTestId?: string;
+  /** What approving gives the app access to. */
+  resources?: LoginConsentResource[];
+  scopes?: LoginAccessScope[];
 };
 
 export type LoginIdentityMethod = {
@@ -173,6 +183,8 @@ export type LoginDeviceApprovalState = {
   kind: 'device-approval';
   appName: string;
   code?: string;
+  resources?: LoginConsentResource[];
+  scopes?: LoginAccessScope[];
   identity?: string | null;
   busy?: boolean;
   error?: string | null;

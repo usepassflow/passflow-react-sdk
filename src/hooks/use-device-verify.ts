@@ -1,5 +1,6 @@
 import type { PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ConsentResource, ConsentScopeMetadata } from '@/hooks/use-consent';
 import type { DeviceError } from '@/types/device-errors';
 import { classifyDeviceError, DeviceApiError } from '@/utils';
 
@@ -39,6 +40,12 @@ export type DeviceVerifyInfo = {
   /** Absent for `passkey` mode, by design — see device_page.go. */
   user_code?: string;
   app_name: string;
+  /** What approving gives access to; older servers send none. */
+  resources?: ConsentResource[] | null;
+  /** The scopes the token will hold, the defaults a resource adds included. */
+  scopes?: string[] | null;
+  /** One entry per scope, in the same order: how the consent screen names it. */
+  scope_metadata?: ConsentScopeMetadata[] | null;
   csrf_token: string;
   methods: {
     password: boolean;
