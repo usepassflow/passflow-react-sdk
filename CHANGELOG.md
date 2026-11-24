@@ -2,7 +2,7 @@
 
 All notable changes to `@passflow/react` are documented in this file.
 
-## [Unreleased]
+## [0.31.0] - 2026-11-24
 
 ### Added
 
