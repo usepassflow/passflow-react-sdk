@@ -2,6 +2,19 @@
 
 All notable changes to `@passflow/react` are documented in this file.
 
+## [0.32.0] - 2026-11-25
+
+### Changed
+
+- The minimum `@passflow/core` is now 0.35.0.
+- A new session (a sign-in, tokens in the URL, `passflow.setTokens()`) replaces the stored tokens. An app that calls `setTokens()` with only a new access token loses the stored refresh token, ID token and scopes. Pass every token you want to keep.
+- A tab that holds a refresh token is signed out when another tab replaces the session with one that has no refresh token.
+- `getTokens(true)` gives `undefined` tokens for an expired access token with no refresh token.
+
+### Fixed
+
+- A session with an access token and no refresh token stays signed in when the page becomes visible again and when another tab signs the same user in. Before, `isSignedIn` turned `false`.
+
 ## [0.31.0] - 2026-11-24
 
 ### Added
