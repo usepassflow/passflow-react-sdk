@@ -1,5 +1,6 @@
 import type { LoginScreenProps } from '@/components/ui';
-import type { ConsentInfo, ConsentResource, ConsentWarning, UseConsentProps } from '@/hooks/use-consent';
+import type { ConsentInfo, ConsentWarning, UseConsentProps } from '@/hooks/use-consent';
+import { isText, readResource, usable } from '../access-lists';
 
 // Anchored on the whole host: `127.0.0.1.evil.com` and `localhost.evil.com` are remote.
 const LOOPBACK_HOST = /^(?:(?:(?:[a-z0-9-]+\.)*localhost|127(?:\.\d{1,3}){3}|\[::1\])(?::\d+)?|::1)$/i;
@@ -10,18 +11,6 @@ const prominentHost = (info: ConsentInfo): 'client' | 'redirect' | undefined => 
   if (info.client_host) return 'client';
   return info.client_kind === 'dynamic' || info.client_kind === 'metadata_document' ? 'redirect' : undefined;
 };
-
-const isText = (value: unknown): value is string => typeof value === 'string' && value !== '';
-
-/** The items the screen can show, or undefined when there are none. The response body is not checked before this. */
-const usable = <T>(list: unknown, read: (item: Partial<T>) => T | undefined): T[] | undefined => {
-  if (!Array.isArray(list)) return undefined;
-  const items = list.flatMap((item) => read(item ?? {}) ?? []);
-  return items.length ? items : undefined;
-};
-
-const readResource = ({ uri, name }: Partial<ConsentResource>): ConsentResource | undefined =>
-  isText(uri) ? { uri, name: isText(name) ? name : undefined } : undefined;
 
 /** A message alone is enough: a warning with no code or an unknown severity still shows. */
 const readWarning = ({ code, severity, message }: Partial<ConsentWarning>): ConsentWarning | undefined =>

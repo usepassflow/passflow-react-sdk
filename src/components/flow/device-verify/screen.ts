@@ -2,6 +2,7 @@ import type { LoginMethodConfig, LoginScreenProps } from '@/components/ui';
 import type { UseDeviceVerifyProps } from '@/hooks/use-device-verify';
 import type { AuthUiError, DeviceError } from '@/types';
 import { deviceErrorOfType } from '@/utils';
+import { readAccessScopes, readResource, usable } from '../access-lists';
 
 const getDeviceLoginMethods = (device: UseDeviceVerifyProps): LoginMethodConfig => ({
   identities: device.info?.methods.password
@@ -29,10 +30,17 @@ const toCredentialsError = (error: DeviceError | null): AuthUiError | null => {
   };
 };
 
+/** What approving gives the app, as the server lists it. An older server lists nothing. */
+const deviceAccess = (info: NonNullable<UseDeviceVerifyProps['info']>) => ({
+  resources: usable(info.resources, readResource),
+  scopes: readAccessScopes(info.scopes, info.scope_metadata),
+});
+
 const deviceNotice = (device: UseDeviceVerifyProps) => {
   if (!device.info) return undefined;
 
   return {
+    ...deviceAccess(device.info),
     code: device.info.user_code,
     appName: device.info.app_name,
     message: "requested this sign-in. Confirm that the code matches your terminal. If it doesn't, close this page.",
@@ -166,6 +174,7 @@ export const getDeviceLoginScreenProps = (device: UseDeviceVerifyProps): LoginSc
         state: {
           kind: 'device-approval',
           appName: device.info.app_name,
+          ...deviceAccess(device.info),
           code: device.info.user_code,
           identity: device.email,
           busy,

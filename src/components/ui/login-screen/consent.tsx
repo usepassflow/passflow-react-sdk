@@ -2,7 +2,7 @@ import type { FC } from 'react';
 import { Button } from '../button';
 import { Icon } from '../icon';
 import { Switch } from '../switch';
-import { LoginAlert, LoginProgress, LoginScreenNotice } from './shared';
+import { LoginAlert, LoginProgress, LoginResources, LoginScreenNotice } from './shared';
 import type { LoginConsentState } from './types';
 
 /**
@@ -80,21 +80,7 @@ export const LoginConsent: FC<LoginConsentState> = ({
         </p>
       ) : null}
 
-      {resources?.length ? (
-        <div className='passflow-consent-resources'>
-          <p id='passflow-consent-resources-label' className='passflow-login-screen-text'>
-            Resources it will access
-          </p>
-          <ul className='passflow-consent-scopes' aria-labelledby='passflow-consent-resources-label'>
-            {resources.map(({ uri, name }) => (
-              <li key={uri} className='passflow-consent-scope'>
-                {name ? <p className='passflow-login-screen-text'>{name}</p> : null}
-                <p className='passflow-consent-scope-description passflow-consent-resource-uri'>{uri}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      {resources?.length ? <LoginResources resources={resources} /> : null}
 
       {warnings?.length ? (
         <div className='passflow-consent-warnings'>

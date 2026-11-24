@@ -185,3 +185,63 @@ describe('getDeviceLoginScreenProps', () => {
     expect(getDeviceLoginScreenProps(device({ status: 'loading', info: null }))).toBeNull();
   });
 });
+
+describe('what approving a device grants', () => {
+  // A GET /oidc/device/info body from a server that lists the access.
+  const info = {
+    mode: 'consent' as const,
+    user_code: 'WDJB-MJHT',
+    app_name: 'Passflow CLI',
+    csrf_token: 'csrf-token',
+    methods: { password: true, passkey: true },
+    resources: [{ uri: 'http://localhost:8090/mcp', name: 'Sample' }],
+    scopes: ['openid', 'mcp', 'offline_access'],
+    scope_metadata: [
+      { scope: 'openid', label: 'Sign in', description: 'Confirm your identity' },
+      { scope: 'mcp', label: 'mcp', description: '' },
+      { scope: 'offline_access', label: 'Offline access', description: 'Stay signed in (refresh tokens)' },
+    ],
+  };
+  const access = {
+    resources: [{ uri: 'http://localhost:8090/mcp', name: 'Sample' }],
+    scopes: [
+      { scope: 'openid', label: 'Sign in', description: 'Confirm your identity' },
+      { scope: 'mcp', label: 'mcp', description: undefined },
+      { scope: 'offline_access', label: 'Offline access', description: 'Stay signed in (refresh tokens)' },
+    ],
+  };
+  const noticeOf = (value: UseDeviceVerifyProps) => {
+    const screen = getDeviceLoginScreenProps(value);
+    if (screen?.state.kind !== 'credentials') throw new Error('expected credentials state');
+    return screen.state.notice;
+  };
+
+  it('lists each resource and every scope, with the consent labels, before a one-tap approval', () => {
+    expect(noticeOf(device({ info: JSON.parse(JSON.stringify(info)) }))).toMatchObject(access);
+  });
+
+  it('lists them on both full-login screens, before signing in and on the approval', () => {
+    const fullLogin = { ...info, mode: 'full_login' as const };
+    expect(noticeOf(device({ info: fullLogin }))).toMatchObject(access);
+
+    const approval = getDeviceLoginScreenProps(device({ info: fullLogin, isAuthenticated: true }));
+    if (approval?.state.kind !== 'device-approval') throw new Error('expected approval state');
+    expect(approval.state).toMatchObject(access);
+  });
+
+  it('names a scope by itself when the server sends no label for it', () => {
+    const notice = noticeOf(device({ info: { ...info, scope_metadata: undefined } }));
+    expect(notice?.scopes).toEqual(info.scopes.map((scope) => ({ scope, label: scope, description: undefined })));
+  });
+
+  it('shows an older server, and unusable lists, as before', () => {
+    const { resources: _r, scopes: _s, scope_metadata: _m, ...older } = info;
+    const junk = { ...info, resources: 'none', scopes: [null, 7, ''], scope_metadata: 'x' } as unknown as typeof info;
+
+    for (const body of [older, junk]) {
+      const notice = noticeOf(device({ info: body }));
+      expect(notice?.resources).toBeUndefined();
+      expect(notice?.scopes).toBeUndefined();
+    }
+  });
+});

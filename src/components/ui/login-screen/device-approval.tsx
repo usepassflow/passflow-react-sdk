@@ -7,6 +7,8 @@ import type { LoginDeviceApprovalState } from './types';
 export const LoginDeviceApproval: FC<LoginDeviceApprovalState> = ({
   appName,
   code,
+  resources,
+  scopes,
   identity,
   busy = false,
   error,
@@ -25,6 +27,8 @@ export const LoginDeviceApproval: FC<LoginDeviceApprovalState> = ({
       message='requested this sign-in. Confirm that the code matches your terminal.'
       codeTestId={codeTestId}
       appNameTestId={appNameTestId}
+      resources={resources}
+      scopes={scopes}
     />
     <div className='passflow-form-container passflow-login-screen-centered'>
       <div className='passflow-login-screen-success' role='status' aria-live='polite'>

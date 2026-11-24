@@ -370,6 +370,7 @@ describe('a server response for a pasted URL client', () => {
   it('shows a first-party app as before', () => {
     const state = stateOf({
       ...response,
+      first_party: true,
       client_kind: 'registered',
       client_host: undefined,
       redirect_host: undefined,

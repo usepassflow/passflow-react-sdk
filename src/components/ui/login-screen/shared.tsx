@@ -2,7 +2,7 @@ import type { FC, PropsWithChildren } from 'react';
 import { useEffect, useRef } from 'react';
 import { Button } from '../button';
 import { Icon } from '../icon';
-import type { LoginScreenNotice as LoginScreenNoticeProps } from './types';
+import type { LoginAccessScope, LoginConsentResource, LoginScreenNotice as LoginScreenNoticeProps } from './types';
 import './login-screen.css';
 
 /** `error` is the default; `info` is a neutral note that is not announced as an alert. */
@@ -73,7 +73,49 @@ export const LoginProgress: FC<{ message: string; onCancel?: () => void }> = ({ 
   );
 };
 
-export const LoginScreenNotice: FC<LoginScreenNoticeProps> = ({ code, appName, message, codeTestId, appNameTestId }) => (
+/** The resources an approval gives access to: each name with its address. */
+export const LoginResources: FC<{ resources: LoginConsentResource[] }> = ({ resources }) => (
+  <div className='passflow-consent-resources' data-testid='access-resources'>
+    <p id='passflow-consent-resources-label' className='passflow-login-screen-text'>
+      Resources it will access
+    </p>
+    <ul className='passflow-consent-scopes' aria-labelledby='passflow-consent-resources-label'>
+      {resources.map(({ uri, name }) => (
+        <li key={uri} className='passflow-consent-scope'>
+          {name ? <p className='passflow-login-screen-text'>{name}</p> : null}
+          <p className='passflow-consent-scope-description passflow-consent-resource-uri'>{uri}</p>
+        </li>
+      ))}
+    </ul>
+  </div>
+);
+
+/** The scopes an approval grants, for reading: nothing here can be switched off. */
+export const LoginAccessScopes: FC<{ scopes: LoginAccessScope[] }> = ({ scopes }) => (
+  <div className='passflow-consent-resources' data-testid='access-scopes'>
+    <p id='passflow-access-scopes-label' className='passflow-login-screen-text'>
+      Access it will get
+    </p>
+    <ul className='passflow-consent-scopes' aria-labelledby='passflow-access-scopes-label'>
+      {scopes.map(({ scope, label, description }) => (
+        <li key={scope} className='passflow-consent-scope' data-testid={`access-scope-${scope}`}>
+          <p className='passflow-login-screen-text'>{label}</p>
+          {description ? <p className='passflow-consent-scope-description'>{description}</p> : null}
+        </li>
+      ))}
+    </ul>
+  </div>
+);
+
+export const LoginScreenNotice: FC<LoginScreenNoticeProps> = ({
+  code,
+  appName,
+  message,
+  codeTestId,
+  appNameTestId,
+  resources,
+  scopes,
+}) => (
   <div className='passflow-login-screen-notice' role='note'>
     {code ? (
       <div className='passflow-login-screen-code' data-testid={codeTestId}>
@@ -86,5 +128,7 @@ export const LoginScreenNotice: FC<LoginScreenNoticeProps> = ({ code, appName, m
       </span>{' '}
       {message}
     </p>
+    {resources?.length ? <LoginResources resources={resources} /> : null}
+    {scopes?.length ? <LoginAccessScopes scopes={scopes} /> : null}
   </div>
 );

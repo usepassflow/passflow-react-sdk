@@ -154,3 +154,24 @@ test('the badge names a loopback redirect, and a dynamic client has a prominent 
     expect(await text.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
   }
 });
+
+test('a device approval lists its resources and scopes before the approval', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openStory(page, 'components-loginscreen-device-access--one-tap-approval');
+  const resources = page.getByTestId('access-resources');
+  await expect(resources.getByText('Sample', { exact: true })).toBeVisible();
+  await expect(resources.getByText('http://localhost:8090/mcp', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('access-scope-offline_access')).toHaveText(/^Offline accessStay signed in/);
+  await expect(page.getByTestId('access-scope-mcp')).toHaveText('mcp');
+  await expect(page.getByTestId('access-scopes').getByRole('switch')).toHaveCount(0);
+  await expectStacked([page.getByTestId('access-scopes'), page.getByRole('button', { name: 'Approve', exact: true })]);
+  await expectAccessible(page);
+
+  await switchStory(page, 'components-loginscreen-device-access--signed-in-approval');
+  const long = page.getByText(/^https:\/\/mcp\.acme\.example\/x+$/);
+  await expect(long).toBeVisible();
+  expect(await long.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
+  await expectStacked([page.getByTestId('access-scopes'), page.getByRole('button', { name: 'Approve this device' })]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await expectAccessible(page);
+});
