@@ -140,4 +140,17 @@ test('the badge names a loopback redirect, and a dynamic client has a prominent 
   await settleTheme(page);
   expect(await typography(redirect)).toEqual(await typography(title(page)));
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  // Unbroken server text wraps inside its own box, and the box stays on the screen.
+  for (const text of [
+    page.getByTestId('consent-warning-unverified_client'),
+    page.getByTestId('consent-warning-long_text'),
+    page.getByText(/^https:\/\/mcp\.acme\.example\//),
+  ]) {
+    const box = await text.boundingBox();
+    if (!box) throw new Error('expected rendered text');
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+    expect(await text.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
+  }
 });
