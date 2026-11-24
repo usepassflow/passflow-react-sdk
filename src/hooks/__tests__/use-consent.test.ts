@@ -43,8 +43,8 @@ describe('useConsent', () => {
     Object.defineProperty(window, 'location', { value: { search, href: '' }, writable: true });
   };
 
-  const mountReady = async () => {
-    fetchMock.mockResolvedValueOnce(reply(info));
+  const mountReady = async (body: ConsentInfo = info) => {
+    fetchMock.mockResolvedValueOnce(reply(body));
     const hook = renderHook(() => useConsent());
     await waitFor(() => expect(hook.result.current.status).toBe('ready'));
     return hook;
@@ -95,6 +95,38 @@ describe('useConsent', () => {
 
       expect(result.current.info).toEqual(info);
       expect(result.current.grantedScopes).toEqual(['openid', 'profile', 'email']);
+    });
+
+    it('hands over what the server says about the client', async () => {
+      const extended: ConsentInfo = {
+        ...info,
+        issuer: 'https://auth.example.com',
+        client_kind: 'metadata_document',
+        client_host: 'claude.ai',
+        redirect_host: 'localhost',
+        verified: true,
+        resources: [{ uri: 'https://mcp.example.com/mcp', name: 'Example MCP' }],
+        warnings: [{ code: 'localhost_redirect', severity: 'notice', message: 'Runs on this computer.' }],
+      };
+      const { result } = await mountReady(extended);
+
+      expect(result.current.info).toEqual(extended);
+    });
+
+    it.each<[string, Partial<ConsentInfo>]>([
+      ['without the client fields', {}],
+      ['with null lists', { resources: null, warnings: null }],
+    ])('accepts a response %s and can still be allowed', async (_name, fields) => {
+      const body = { ...info, ...fields };
+      const { result } = await mountReady(body);
+      expect(result.current.info).toEqual(body);
+      expect(result.current.error).toBeNull();
+      fetchMock.mockResolvedValueOnce(reply({ kind: 'redirect', url: 'https://acme.test/callback?code=1' }));
+
+      await act(async () => result.current.allow());
+
+      expect(lastPost().body).toEqual({ granted_scopes: ['openid', 'profile', 'email'] });
+      expect(result.current.status).toBe('redirecting');
     });
 
     it('turns a rejected id into a terminal invalid state with the server description', async () => {

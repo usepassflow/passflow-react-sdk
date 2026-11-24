@@ -146,3 +146,113 @@ describe('getConsentLoginScreenProps', () => {
     expect(value.deny).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('client identity in getConsentLoginScreenProps', () => {
+  const stateFor = (fields: Partial<ConsentInfo>) => consentState(consent({ info: { ...info, ...fields } })).state;
+  const urlClient: Partial<ConsentInfo> = {
+    client_kind: 'metadata_document',
+    client_host: 'notes.acme.example',
+    redirect_host: 'notes.acme.example',
+  };
+
+  it.each<[string, Partial<ConsentInfo>, Record<string, unknown>]>([
+    [
+      'a verified URL client',
+      { ...urlClient, verified: true },
+      { clientHost: 'notes.acme.example', redirectHost: 'notes.acme.example', verified: true, prominentHost: undefined },
+    ],
+    [
+      'an unverified URL client',
+      { ...urlClient, verified: false },
+      { clientHost: 'notes.acme.example', verified: false, prominentHost: 'client' },
+    ],
+    ['a URL client without a verified field', urlClient, { verified: undefined, prominentHost: 'client' }],
+    [
+      'an unverified dynamic client',
+      { client_kind: 'dynamic', redirect_host: 'acme.test', verified: false },
+      { clientHost: undefined, redirectHost: 'acme.test', verified: false, prominentHost: 'redirect' },
+    ],
+    [
+      'a verified dynamic client',
+      { client_kind: 'dynamic', redirect_host: 'acme.test', verified: true },
+      { redirectHost: 'acme.test', prominentHost: undefined },
+    ],
+    [
+      'a registered client',
+      { client_kind: 'registered', redirect_host: 'acme.test', verified: false },
+      { clientHost: undefined, redirectHost: 'acme.test', prominentHost: undefined },
+    ],
+  ])('maps %s', (_name, fields, expected) => {
+    const state = stateFor(fields);
+
+    for (const [key, value] of Object.entries(expected)) expect(state[key as keyof typeof state], key).toBe(value);
+  });
+
+  it.each([
+    ['localhost', true],
+    ['localhost:8080', true],
+    ['app.localhost', true],
+    ['127.0.0.1', true],
+    ['127.0.0.1:3000', true],
+    ['127.255.10.1', true],
+    ['::1', true],
+    ['[::1]', true],
+    ['[::1]:3000', true],
+    ['127.0.0.1.evil.com', false],
+    ['localhost.evil.com', false],
+    ['notlocalhost', false],
+    ['evil127.0.0.1', false],
+    ['127.evil.com', false],
+    ['128.0.0.1', false],
+    ['::2', false],
+    ['com.example.app', false],
+    ['acme.test', false],
+  ])('reads the redirect host %s as loopback: %s', (redirect_host, loopback) => {
+    const state = stateFor({ ...urlClient, verified: true, redirect_host });
+
+    expect(Boolean(state.redirectLoopback)).toBe(loopback);
+    expect(state.redirectHost).toBe(redirect_host);
+  });
+
+  it('leaves every new prop undefined for a server that sends none of the fields', () => {
+    const state = stateFor({});
+    const keys = [
+      'clientHost',
+      'redirectHost',
+      'prominentHost',
+      'verified',
+      'redirectLoopback',
+      'resources',
+      'warnings',
+    ] as const;
+
+    for (const key of keys) expect(state[key], key).toBeUndefined();
+  });
+
+  it.each<[string, null | []]>([
+    ['null', null],
+    ['empty', []],
+  ])('maps %s lists to undefined', (_name, list) => {
+    const state = stateFor({ ...urlClient, resources: list, warnings: list });
+
+    expect(state.resources).toBeUndefined();
+    expect(state.warnings).toBeUndefined();
+  });
+
+  it('passes resources and warnings through in server order', () => {
+    const resources: ConsentInfo['resources'] = [
+      { uri: 'https://mcp.example.com/mcp', name: 'Example MCP' },
+      { uri: 'https://api.example.com' },
+    ];
+    const warnings: ConsentInfo['warnings'] = [
+      { code: 'phishing_domain', severity: 'critical', message: 'Critical.' },
+      { code: 'brand_lookalike', severity: 'high', message: 'High.' },
+      { code: 'localhost_redirect', severity: 'notice', message: 'Notice.' },
+      { code: 'unverified_client', severity: 'info', message: '<b>Info.</b>' },
+    ];
+    const state = stateFor({ ...urlClient, resources, warnings });
+
+    expect(state.resources).toEqual(resources);
+    expect(state.warnings).toEqual(warnings);
+  });
+});

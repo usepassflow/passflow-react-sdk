@@ -2,6 +2,14 @@
 
 All notable changes to `@passflow/react` are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- The consent screen shows which client asks and where the user is sent: the client host, a "Verified client" badge, "You'll be sent to" with the redirect host, the resources, and the server's warnings above the scopes. An unverified client's host is as large as the title. Critical and high warnings are alerts; no warning disables Allow. A server that sends none of these fields gets the same screen as before.
+- `ConsentInfo` has the optional fields `issuer`, `client_kind`, `client_host`, `redirect_host`, `verified`, `resources` and `warnings`, with the types `ConsentResource` and `ConsentWarning`.
+- The OIDC errors `PassflowProvider` sends to the relying party itself carry `iss` (RFC 9207), in the query and in `form_post`, when the server names its `issuer`.
+
 ## [0.30.1] - 2026-11-23
 
 ### Changed

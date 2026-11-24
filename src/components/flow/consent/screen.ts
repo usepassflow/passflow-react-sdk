@@ -1,5 +1,15 @@
 import type { LoginScreenProps } from '@/components/ui';
-import type { UseConsentProps } from '@/hooks/use-consent';
+import type { ConsentInfo, UseConsentProps } from '@/hooks/use-consent';
+
+// Anchored on the whole host: `127.0.0.1.evil.com` and `localhost.evil.com` are remote.
+const LOOPBACK_HOST = /^(?:(?:(?:[a-z0-9-]+\.)*localhost|127(?:\.\d{1,3}){3}|\[::1\])(?::\d+)?|::1)$/i;
+
+/** The host that identifies an unverified client. A dynamic client has no host of its own, only its redirect's. */
+const prominentHost = (info: ConsentInfo): 'client' | 'redirect' | undefined => {
+  if (info.verified) return undefined;
+  if (info.client_host) return 'client';
+  return info.client_kind === 'dynamic' ? 'redirect' : undefined;
+};
 
 /**
  * Maps consent state onto the shared LoginScreen. Pure — every visual decision
@@ -61,6 +71,13 @@ export const getConsentLoginScreenProps = (consent: UseConsentProps): LoginScree
     state: {
       kind: 'consent',
       appName,
+      clientHost: info.client_host || undefined,
+      redirectHost: info.redirect_host || undefined,
+      prominentHost: prominentHost(info),
+      verified: info.verified,
+      redirectLoopback: info.redirect_host ? LOOPBACK_HOST.test(info.redirect_host) : undefined,
+      resources: info.resources?.length ? info.resources : undefined,
+      warnings: info.warnings?.length ? info.warnings : undefined,
       scopes: info.requested_scopes.map((scope) => {
         const meta = consent.scopeMetadata(scope);
         return {

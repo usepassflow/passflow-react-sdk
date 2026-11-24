@@ -40,6 +40,7 @@ import { installFakeAntiBotVendors } from '../anti-bot/fake-vendors';
 import { LoginScreen } from './login-screen';
 import type {
   LoginConsentState,
+  LoginConsentWarning,
   LoginCredentialsState,
   LoginEmailCodeState,
   LoginMethodConfig,
@@ -912,6 +913,111 @@ export const ConsentError: Story = {
 
 export const ConsentAppLogo: Story = {
   args: story(consent(), { ...consentChrome, customLogo: consentLogo, customLogoAlt: 'Acme Notes logo' }),
+};
+
+const consentWarnings: Record<LoginConsentWarning['severity'], LoginConsentWarning> = {
+  critical: {
+    code: 'phishing_domain',
+    severity: 'critical',
+    message: 'notes.acme-login.example is reported as a phishing site. Deny this request unless you are sure.',
+  },
+  high: {
+    code: 'brand_lookalike',
+    severity: 'high',
+    message: 'This application uses the name of a well-known brand but its host does not belong to that brand.',
+  },
+  notice: {
+    code: 'localhost_redirect',
+    severity: 'notice',
+    message: 'This application runs on your computer. Continue only if you started it.',
+  },
+  info: {
+    code: 'unverified_client',
+    severity: 'info',
+    message: 'This application is not verified. Check its host before you allow access.',
+  },
+};
+
+const unverifiedClient: Partial<LoginConsentState> = {
+  clientHost: 'notes.acme-login.example',
+  redirectHost: 'notes.acme-login.example',
+  prominentHost: 'client',
+  verified: false,
+};
+
+const verifiedClient: Partial<LoginConsentState> = {
+  clientHost: 'notes.acme.example',
+  redirectHost: 'notes.acme.example',
+  verified: true,
+  resources: [
+    { uri: 'https://mcp.acme.example/mcp', name: 'Acme MCP' },
+    { uri: 'https://api.acme.example/a-resource-without-a-name/that-has-a-long-address' },
+  ],
+};
+
+export const ConsentVerifiedClient: Story = {
+  args: story(consent(verifiedClient), consentChrome),
+};
+
+export const ConsentVerifiedLoopback: Story = {
+  args: story(
+    consent({
+      ...verifiedClient,
+      redirectHost: 'localhost',
+      redirectLoopback: true,
+      warnings: [consentWarnings.notice],
+    }),
+    consentChrome,
+  ),
+};
+
+/** The name is the client's own claim, so its host is drawn as prominently. */
+export const ConsentUnverifiedClient: Story = {
+  args: story(consent(unverifiedClient), consentChrome),
+};
+
+/** A client with no host of its own: the redirect host identifies it. */
+export const ConsentUnverifiedDynamicClient: Story = {
+  args: story(
+    consent({
+      redirectHost: 'a-very-long-subdomain-that-has-to-wrap.notes.acme-login.example',
+      prominentHost: 'redirect',
+      verified: false,
+      warnings: [consentWarnings.info],
+    }),
+    consentChrome,
+  ),
+};
+
+export const ConsentWarningCritical: Story = {
+  args: story(consent({ ...unverifiedClient, warnings: [consentWarnings.critical] }), consentChrome),
+};
+
+export const ConsentWarningHigh: Story = {
+  args: story(consent({ ...unverifiedClient, warnings: [consentWarnings.high] }), consentChrome),
+};
+
+export const ConsentWarningNotice: Story = {
+  args: story(
+    consent({ ...unverifiedClient, redirectHost: 'localhost', redirectLoopback: true, warnings: [consentWarnings.notice] }),
+    consentChrome,
+  ),
+};
+
+export const ConsentWarningInfo: Story = {
+  args: story(consent({ ...unverifiedClient, warnings: [consentWarnings.info] }), consentChrome),
+};
+
+export const ConsentAllWarnings: Story = {
+  args: story(
+    consent({
+      ...unverifiedClient,
+      redirectHost: 'localhost',
+      redirectLoopback: true,
+      warnings: Object.values(consentWarnings),
+    }),
+    consentChrome,
+  ),
 };
 
 // The static stories above fix `granted`; this one owns it, so the switches can actually be driven.

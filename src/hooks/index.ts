@@ -6,8 +6,10 @@ export { useAuthCloudRedirect } from './use-auth-cloud-redirect';
 export {
   type ConsentError,
   type ConsentInfo,
+  type ConsentResource,
   type ConsentScopeMetadata,
   type ConsentStatus,
+  type ConsentWarning,
   type UseConsentProps,
   useConsent,
 } from './use-consent';

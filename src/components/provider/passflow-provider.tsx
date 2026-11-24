@@ -408,6 +408,7 @@ type ParentChallengeMeta = {
   redirect_uri?: string;
   state?: string;
   response_mode?: string;
+  issuer?: string;
   // The OIDC directives the parent carries. `prompt=login` and `max_age` are
   // enforced by the server at /auth/session/exchange, which answers 403 when
   // the hosted session does not satisfy them; `prompt=none` is the SDK's to
@@ -450,6 +451,7 @@ const answerRelyingParty = (meta: ParentChallengeMeta | undefined, error: Relyin
   if (!meta?.redirect_uri) return false;
   const fields: Record<string, string> = { error, error_description: relyingPartyErrorDescriptions[error] };
   if (meta.state) fields.state = meta.state;
+  if (meta.issuer) fields.iss = meta.issuer;
   if (meta.response_mode === 'form_post') {
     submitFormPost(meta.redirect_uri, fields);
     return true;
