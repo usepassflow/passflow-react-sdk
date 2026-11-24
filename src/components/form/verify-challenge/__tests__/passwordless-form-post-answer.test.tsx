@@ -19,6 +19,7 @@ const exchangePath = '/auth/session/exchange';
 const pagePath = '/web/verify-challenge-otp';
 const callback = 'https://rp.example.com/callback';
 const destination = `${callback}?code=c&state=s`;
+const appTarget = 'https://app.example.com/after-signin';
 const fields = { code: 'code +/&=<>"', state: 'state +/&=<>"' };
 const formPostAnswer: HttpReply = { data: { form_post: { action: callback, fields } } };
 const linkSearch = `?app_id=${appId}&otp=123456&challenge_id=challenge-1`;
@@ -106,6 +107,7 @@ async function openPage(
 type Page = Awaited<ReturnType<typeof openPage>>;
 
 const completions = (active: Network) => active.requests.filter((request) => request.path === completePath);
+const checks = (active: Network) => active.requests.filter((request) => request.path === checkPath);
 
 async function typeCode() {
   fireEvent.change(await screen.findByLabelText('Verification code'), { target: { value: '123456' } });
@@ -178,21 +180,8 @@ describe('a form_post answer to a typed one-time code', () => {
   });
 });
 
-describe('answers to an emailed sign-in link that carry no form_post', () => {
-  it('checks a redirect_url answer with the server and goes there, without a form', async () => {
-    const page = await openPage(linkSearch, { data: { redirect_url: destination } });
-
-    await waitFor(() => expect(page.active.forwards).toEqual([destination]));
-    await settle(page);
-    const checks = page.active.requests.filter((request) => request.path === checkPath);
-    expect(checks.map((request) => request.body)).toEqual([{ redirect_url: destination }]);
-    expect(page.active.forwards).toEqual([destination]);
-    expect(submitted).toEqual([]);
-    expectNoSignedInEnding();
-    expect(completions(page.active)).toHaveLength(1);
-  });
-
-  it('tells the user they are signed in after a token answer, without a form or a navigation', async () => {
+describe('a token answer to an emailed sign-in link', () => {
+  it('tells the user they are signed in, without a form or a navigation', async () => {
     const page = await openPage(linkSearch, { data: authTokens() });
 
     expect(await screen.findByTestId('signed-in')).toBeInTheDocument();
@@ -202,9 +191,79 @@ describe('answers to an emailed sign-in link that carry no form_post', () => {
     expect(page.active.forwards).toEqual([]);
     expect(completions(page.active)).toHaveLength(1);
   });
+
+  it('checks the redirect_url that comes with tokens before going there', async () => {
+    const page = await openPage(linkSearch, { data: { ...authTokens(), redirect_url: appTarget } });
+    page.active.endpoints.set(checkPath, { data: { redirect_url: appTarget } });
+
+    await waitFor(() => expect(checks(page.active).map((request) => request.body)).toEqual([{ redirect_url: appTarget }]));
+    await waitFor(() => expect(page.active.forwards).toHaveLength(1));
+    expect(new URL(page.active.forwards[0]!).origin).toBe(new URL(appTarget).origin);
+    expect(submitted).toEqual([]);
+    expect(completions(page.active)).toHaveLength(1);
+  });
 });
 
-// Last in the file: once an OIDC parent's answer is followed, that holds for the rest of the page's life.
+describe('a cookie-delivery answer to an emailed sign-in link', () => {
+  it('checks its redirect_url before going there', async () => {
+    const page = await openPage(linkSearch, { data: { token_delivery: 'cookie', redirect_url: appTarget } });
+    page.active.endpoints.set(checkPath, { data: { redirect_url: appTarget } });
+
+    await waitFor(() => expect(checks(page.active).map((request) => request.body)).toEqual([{ redirect_url: appTarget }]));
+    expect(submitted).toEqual([]);
+    expect(completions(page.active)).toHaveLength(1);
+  });
+});
+
+describe('a redirect_url answer with no tokens', () => {
+  it('is followed to a page on the login origin, with no signed-in ending', async () => {
+    const askAgain = '/web/signin?parent_challenge_id=parent-1';
+    const page = await openPage(linkSearch, { data: { redirect_url: askAgain } });
+
+    await waitFor(() => expect(page.active.forwards).toEqual([askAgain]));
+    await settle(page);
+    expect(page.active.forwards).toEqual([askAgain]);
+    expect(checks(page.active)).toEqual([]);
+    expectNoSignedInEnding();
+  });
+
+  it('is not followed to a script address: the server is asked first', async () => {
+    const script = 'JavaScript:void(0)';
+    const page = await openPage(linkSearch, { data: { redirect_url: script } });
+
+    await waitFor(() => expect(checks(page.active).map((request) => request.body)).toEqual([{ redirect_url: script }]));
+    expect(submitted).toEqual([]);
+  });
+
+  it('is followed from the emailed link without asking the server to check it', async () => {
+    const page = await openPage(linkSearch, { data: { redirect_url: destination } });
+
+    await waitFor(() => expect(page.active.forwards).toEqual([destination]));
+    await settle(page);
+    expect(page.active.forwards).toEqual([destination]);
+    expect(checks(page.active)).toEqual([]);
+    expect(submitted).toEqual([]);
+    expectNoSignedInEnding();
+    expect(completions(page.active)).toHaveLength(1);
+  });
+
+  it('is followed once under an OIDC parent, by the request interceptor alone', async () => {
+    const page = await openPage(
+      `${linkSearch}&parent_challenge_id=parent-1`,
+      { data: { redirect_url: destination } },
+      { throughXhr: true, parent: 'parent-1' },
+    );
+    await waitFor(() => expect(completions(page.active)).toHaveLength(1));
+    expect(completions(page.active)[0]!.body.parent_challenge_id).toBe('parent-1');
+    await waitFor(() => expect(page.active.forwards).toHaveLength(1));
+    await settle(page);
+    expect(page.active.forwards).toEqual([destination]);
+    expect(checks(page.active)).toEqual([]);
+    expect(submitted).toEqual([]);
+    expectNoSignedInEnding();
+  });
+});
+
 describe('a form_post answer to an emailed sign-in link under an OIDC parent', () => {
   it('is posted once, by the request interceptor alone', async () => {
     const page = await openPage(`${linkSearch}&parent_challenge_id=parent-1`, formPostAnswer, {
