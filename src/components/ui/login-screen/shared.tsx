@@ -6,23 +6,24 @@ import type { LoginScreenNotice as LoginScreenNoticeProps } from './types';
 import './login-screen.css';
 
 /** `error` is the default; `info` is a neutral note that is not announced as an alert. */
-export const LoginAlert: FC<{ message?: string | null; id?: string; tone?: 'error' | 'info' }> = ({
+export const LoginAlert: FC<{ message?: string | null; id?: string; tone?: 'error' | 'info'; testId?: string }> = ({
   message,
   id,
   tone = 'error',
+  testId,
 }) => {
   if (!message) return null;
 
   if (tone === 'info') {
     return (
-      <div id={id} className='passflow-login-screen-note' role='status'>
+      <div id={id} className='passflow-login-screen-note' role='status' data-testid={testId}>
         {message}
       </div>
     );
   }
 
   return (
-    <div id={id} className='passflow-form-error' role='alert'>
+    <div id={id} className='passflow-form-error' role='alert' data-testid={testId}>
       <Icon size='small' id='warning' type='general' className='icon-warning' decorative />
       <span className='passflow-form-error-text'>{message}</span>
     </div>

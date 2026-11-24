@@ -341,9 +341,32 @@ export type LoginConsentScope = {
   granted: boolean;
 };
 
+export type LoginConsentResource = {
+  uri: string;
+  name?: string;
+};
+
+export type LoginConsentWarning = {
+  code: string;
+  /** `critical` and `high` are announced as alerts. */
+  severity: 'critical' | 'high' | 'notice' | 'info';
+  message: string;
+};
+
 export type LoginConsentState = {
   kind: 'consent';
   appName: string;
+  clientHost?: string;
+  /** Where the decision sends the user. */
+  redirectHost?: string;
+  /** The host drawn like the title, when it says more about the application than its name does. */
+  prominentHost?: 'client' | 'redirect';
+  verified?: boolean;
+  /** The redirect goes to an app on the user's own computer. */
+  redirectLoopback?: boolean;
+  resources?: LoginConsentResource[];
+  /** Shown in the given order. They never lock Allow. */
+  warnings?: LoginConsentWarning[];
   scopes: LoginConsentScope[];
   prompt?: string;
   busy?: boolean;

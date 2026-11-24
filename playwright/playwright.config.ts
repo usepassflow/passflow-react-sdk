@@ -11,6 +11,8 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests',
+  /* `*.release.spec.ts` runs before a release only (playwright.release.config.ts), never on a pull request. */
+  testIgnore: '**/*.release.spec.ts',
   snapshotPathTemplate: '{testDir}/{testFilePath}-snapshots/{arg}{ext}',
   /* Run tests in files in parallel */
   fullyParallel: true,

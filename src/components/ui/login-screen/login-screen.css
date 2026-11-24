@@ -88,7 +88,8 @@
   text-align: center;
 }
 
-.passflow-form-title {
+.passflow-form-title,
+.passflow-consent-prominent-host {
   color: var(--passflow-text-color);
   font-size: var(--passflow-h2);
   font-weight: var(--passflow-bold);
@@ -298,6 +299,47 @@
   flex-direction: column;
   align-items: center;
   gap: var(--passflow-spacing-3);
+}
+
+.passflow-consent-client {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--passflow-spacing-2);
+  text-align: center;
+}
+
+.passflow-consent-host {
+  color: var(--passflow-secondary-text-color);
+  font-size: var(--passflow-body-2);
+  font-weight: var(--passflow-medium);
+}
+
+.passflow-consent-host,
+.passflow-consent-prominent-host,
+.passflow-consent-redirect,
+.passflow-consent-resource-uri {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.passflow-consent-redirect .passflow-consent-prominent-host {
+  display: block;
+}
+
+.passflow-consent-resources {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--passflow-spacing-2);
+  overflow-wrap: anywhere;
+}
+
+/* Groups the warnings without a box of its own, so they keep the container's spacing. Server text can be one long word. */
+.passflow-consent-warnings {
+  display: contents;
+  overflow-wrap: anywhere;
 }
 
 .passflow-consent-scopes {

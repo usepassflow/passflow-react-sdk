@@ -85,13 +85,13 @@ function expectExchanges(active: Network, count: number) {
   expect(active.requests.filter((request) => request.path === '/auth/refresh')).toEqual([]);
 }
 
-function submittedFields() {
+function submittedFields(action: string = callback) {
   expect(submitted).toHaveLength(1);
   const submission = submitted[0]!;
   expect(submission.attached).toBe(true);
   expect(submission.hidden).toBe(true);
   expect(submission.form.method.toUpperCase()).toBe('POST');
-  expect(submission.form.action).toBe(callback);
+  expect(submission.form.action).toBe(action);
   const inputs = Array.from(submission.form.querySelectorAll('input'));
   for (const input of inputs) expect(input.type).toBe('hidden');
   const fields = Object.fromEntries(inputs.map((input) => [input.name, input.value]));
@@ -391,5 +391,79 @@ describe('RP error fallback without a destination', () => {
     await expectSignIn(held.active);
     expectExchanges(held.active, 1);
     expect(screen.queryByTestId('upgrade-dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('issuer of the errors the browser makes', () => {
+  const issuer = 'https://auth.example.com/realm?a=1&b=2';
+  const ownIss = `${callback}?tenant=7&iss=https%3A%2F%2Fother.example`;
+  const stepUp = { status: 403, data: { error: 'upgrade_required', acr_values: '2' } };
+  const errors = [
+    {
+      error: 'login_required',
+      branch: 'silent 401',
+      silent: true,
+      drive: (held: Held) => releaseFirst(held, { status: 401, data: { error: 'login_required' } }),
+    },
+    {
+      error: 'interaction_required',
+      branch: 'silent 403',
+      silent: true,
+      drive: (held: Held) => releaseFirst(held, stepUp),
+    },
+    {
+      error: 'unmet_authentication_requirements',
+      branch: 'cancelled elevation',
+      silent: false,
+      drive: async (held: Held) => {
+        await releaseFirst(held, stepUp);
+        await expectElevationPending(held);
+        await rejectElevation(held);
+      },
+    },
+  ];
+  const cases = errors.flatMap((scenario) => deliveryModes.map((mode) => ({ ...scenario, mode })));
+  type Case = (typeof cases)[number];
+
+  async function answer({ error, mode, silent, drive }: Case, metadata: Record<string, unknown>) {
+    const held = await mountHeld({ ...parent, response_mode: mode, oidc_prompt_none: silent, ...metadata });
+    await drive(held);
+    let params = new URLSearchParams();
+    if (mode === 'query') {
+      await waitFor(() => expect(held.active.forwards).toHaveLength(1));
+      expect(submitted).toEqual([]);
+      params = new URL(held.active.forwards[0]!).searchParams;
+    } else {
+      await waitFor(() => expect(submitted).toHaveLength(1));
+      expect(held.active.forwards).toEqual([]);
+      // submittedFields checks that the action is the unchanged redirect URI and that no field repeats.
+      const fields = submittedFields(String(metadata.redirect_uri ?? callback));
+      for (const [name, value] of Object.entries(fields)) params.append(name, value);
+    }
+    expect(params.getAll('error')).toEqual([error]);
+    expect(params.getAll('state')).toEqual([state]);
+    return params;
+  }
+
+  // Every error goes through one answer, so one case per error code and per mode is enough.
+  const pick = (error: string, mode: (typeof deliveryModes)[number]) => {
+    const scenario = cases.find((item) => item.error === error && item.mode === mode);
+    if (!scenario) throw new Error(`no case for ${error} via ${mode}`);
+    return scenario;
+  };
+
+  it.each([
+    [pick('login_required', 'query'), ownIss],
+    [pick('interaction_required', 'form_post'), ownIss],
+    [pick('unmet_authentication_requirements', 'query'), callback],
+  ])('sends one iss with $error via $mode', async (scenario, redirect_uri) => {
+    const params = await answer(scenario, { issuer, redirect_uri });
+    expect(params.getAll('iss')).toEqual([issuer]);
+    if (scenario.mode === 'query' && redirect_uri === ownIss) expect(params.getAll('tenant')).toEqual(['7']);
+  });
+
+  it('sends no iss when the issuer is empty', async () => {
+    const params = await answer(pick('login_required', 'form_post'), { issuer: '' });
+    expect(params.has('iss')).toBe(false);
   });
 });

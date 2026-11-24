@@ -27,6 +27,19 @@ export type ConsentScopeMetadata = {
   description: string;
 };
 
+/** An API the application asks to reach. */
+export type ConsentResource = {
+  uri: string;
+  name?: string;
+};
+
+/** What the server found out about the application. `message` is localized and ready to show. */
+export type ConsentWarning = {
+  code: string;
+  severity: 'critical' | 'high' | 'notice' | 'info';
+  message: string;
+};
+
 /** What GET /oidc/requests/{consent_challenge_id} hands the page to render itself. */
 export type ConsentInfo = {
   client_id: string;
@@ -39,6 +52,16 @@ export type ConsentInfo = {
   response_mode: '' | 'query' | 'form_post';
   first_party: boolean;
   csrf_token: string;
+  issuer?: string;
+  client_kind?: 'registered' | 'dynamic' | 'metadata_document';
+  /** The host of the URL that identifies the client. Only a `metadata_document` client has one. */
+  client_host?: string;
+  /** The host of `redirect_uri`, or its scheme when the scheme is a custom one. */
+  redirect_host?: string;
+  verified?: boolean;
+  resources?: ConsentResource[] | null;
+  /** Most severe first. */
+  warnings?: ConsentWarning[] | null;
 };
 
 type DecisionResponse =
