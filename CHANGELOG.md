@@ -2,6 +2,12 @@
 
 All notable changes to `@passflow/react` are documented in this file.
 
+## [0.32.2] - 2026-11-25
+
+### Fixed
+
+- An OIDC sign-in whose answer from the server cannot be followed ends in an error message. Before, the page could stay on "Continuing…" or say the user was signed in. This covers the hosted session exchange, a sign-in form under an OIDC request, the consent page, and the emailed-link and typed-code pages.
+
 ## [0.32.1] - 2026-11-25
 
 ### Fixed

@@ -292,3 +292,40 @@ export const writeOidcSlot = ({ state, expired = false }: { state: string; expir
       expiresAt: expired ? Date.now() - 1000 : Date.now() + 600_000,
     }),
   );
+
+type AxiosAnswer = (config: InternalAxiosRequestConfig) => Promise<AxiosResponse>;
+
+/**
+ * Sends core's requests through `XMLHttpRequest`, as axios does in a browser, and answers them from the stubbed
+ * endpoints. The stubbed transport skips XHR, so without this nothing that patches XHR sees a request. Call it
+ * after the environment is installed and before the provider renders.
+ */
+export function sendAxiosThroughXhr() {
+  const answer = axios.defaults.adapter as AxiosAnswer;
+  class AnsweredXhr extends EventTarget {
+    status = 0;
+    responseText = '';
+    config?: InternalAxiosRequestConfig;
+    settle?: { resolve: (response: AxiosResponse) => void; reject: (reason: unknown) => void };
+    open(_method: string, _url: string) {}
+    send(body?: string) {
+      if (!this.config || !this.settle) throw new Error('XHR sent outside the axios transport');
+      const { resolve, reject } = this.settle;
+      void answer({ ...this.config, data: body }).then((response) => {
+        this.status = response.status;
+        this.responseText = JSON.stringify(response.data);
+        this.dispatchEvent(new Event('load'));
+        resolve(response);
+      }, reject);
+    }
+  }
+  vi.stubGlobal('XMLHttpRequest', AnsweredXhr);
+  axios.defaults.adapter = (config) =>
+    new Promise<AxiosResponse>((resolve, reject) => {
+      const xhr = new AnsweredXhr();
+      xhr.config = config;
+      xhr.settle = { resolve, reject };
+      xhr.open((config.method ?? 'get').toUpperCase(), new URL(config.url ?? '/', config.baseURL).href);
+      xhr.send(config.data);
+    });
+}

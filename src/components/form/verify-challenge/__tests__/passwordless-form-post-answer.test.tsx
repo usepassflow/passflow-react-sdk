@@ -1,5 +1,4 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
-import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import { StrictMode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -11,6 +10,7 @@ import {
   makeObserved,
   type Network,
   renderLanding,
+  sendAxiosThroughXhr,
 } from '@/components/provider/__tests__/support/federated-harness';
 import { authRedirectErrorMessage } from '@/utils';
 
@@ -36,42 +36,6 @@ afterEach(() => {
   network = undefined;
   submitted = [];
 });
-
-type AxiosAnswer = (config: InternalAxiosRequestConfig) => Promise<AxiosResponse>;
-
-/**
- * Sends core's requests through `XMLHttpRequest`, as axios does in a browser, and answers them from the stubbed
- * endpoints. The stubbed transport skips XHR, so without this nothing that patches XHR sees a request.
- */
-function sendAxiosThroughXhr() {
-  const answer = axios.defaults.adapter as AxiosAnswer;
-  class AnsweredXhr extends EventTarget {
-    status = 0;
-    responseText = '';
-    config?: InternalAxiosRequestConfig;
-    settle?: { resolve: (response: AxiosResponse) => void; reject: (reason: unknown) => void };
-    open(_method: string, _url: string) {}
-    send(body?: string) {
-      if (!this.config || !this.settle) throw new Error('XHR sent outside the axios transport');
-      const { resolve, reject } = this.settle;
-      void answer({ ...this.config, data: body }).then((response) => {
-        this.status = response.status;
-        this.responseText = JSON.stringify(response.data);
-        this.dispatchEvent(new Event('load'));
-        resolve(response);
-      }, reject);
-    }
-  }
-  vi.stubGlobal('XMLHttpRequest', AnsweredXhr);
-  axios.defaults.adapter = (config) =>
-    new Promise<AxiosResponse>((resolve, reject) => {
-      const xhr = new AnsweredXhr();
-      xhr.config = config;
-      xhr.settle = { resolve, reject };
-      xhr.open((config.method ?? 'get').toUpperCase(), new URL(config.url ?? '/', config.baseURL).href);
-      xhr.send(config.data);
-    });
-}
 
 // The emailed link completes as soon as the page mounts, so the completion's answer is set before the render.
 async function openPage(
@@ -192,6 +156,31 @@ describe('a form_post answer whose action is a script address', () => {
     expect(submitted).toEqual([]);
     expect(page.active.forwards).toEqual([]);
     expectNoSignedInEnding();
+  });
+});
+
+describe('a form_post answer that cannot be posted', () => {
+  it.each([
+    ['an empty action', { form_post: { action: '', fields }, redirect_url: destination }],
+    ['no action', { form_post: { fields }, redirect_url: destination }],
+    ['no fields', { form_post: { action: callback } }],
+  ])('ends in the page error and goes nowhere (%s)', async (_name, data) => {
+    const page = await openPage(linkSearch, { data });
+
+    await expectRefusedEnding();
+    await settle(page);
+    expect(submitted).toEqual([]);
+    expect(page.active.forwards).toEqual([]);
+    expect(checks(page.active)).toEqual([]);
+    expectNoSignedInEnding();
+  });
+
+  it('beside tokens is not an answer for a parent: the user is signed in', async () => {
+    const page = await openPage(linkSearch, { data: { ...authTokens(), form_post: { action: '' } } });
+
+    expect(await screen.findByTestId('signed-in')).toBeInTheDocument();
+    expect(submitted).toEqual([]);
+    expect(page.active.forwards).toEqual([]);
   });
 });
 

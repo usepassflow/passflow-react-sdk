@@ -272,6 +272,21 @@ describe('useConsent', () => {
       expect(result.current.error).toEqual({ message: 'Unexpected response from server.' });
     });
 
+    it.each([
+      ['a redirect decision with an empty address', { kind: 'redirect', url: '' }],
+      ['a form_post decision with an empty action', { kind: 'form_post', action: '', fields: { code: 'c-1' } }],
+    ])('does not follow %s', async (_name, decision) => {
+      const { result } = await mountReady();
+      const submit = vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(() => {});
+      fetchMock.mockResolvedValueOnce(reply(decision));
+
+      await act(async () => result.current.allow());
+
+      expect(submit).not.toHaveBeenCalled();
+      expect(window.location.href).toBe('');
+      expect(result.current.error).toEqual({ message: 'Unexpected response from server.' });
+    });
+
     it("follows a redirect decision to an app's own scheme", async () => {
       const { result } = await mountReady();
       fetchMock.mockResolvedValueOnce(reply({ kind: 'redirect', url: 'com.example.app:/oauth?code=1' }));
