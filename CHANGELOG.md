@@ -2,6 +2,25 @@
 
 All notable changes to `@passflow/react` are documented in this file.
 
+## [0.33.0] - 2026-11-26
+
+### Changed
+
+- The consent screen shows a scope the server marks `required` as a plain line with no switch. It is always granted. Every other scope is a switch, and all switches line up in one column on the right edge.
+- Each resource card lists that resource's scopes from `resources[].scopes`: required ones as plain lines, the others as switches that start in the server's `default_on` state.
+- The scopes below the resources share one card, in the order the server lists them in `scope_metadata`. A requested scope the server lists nowhere is not shown and stays granted. A description line shows only when the server sends one.
+- The server's warnings open the card, above "You'll be sent to".
+- Allow sends the requested scopes except the switches that are off.
+- A server that sends neither `required` nor `resources[].scopes` gets the same screen as before: every listed scope is a switch, and resource cards show only the resource.
+
+### Added
+
+- `ConsentScopeMetadata` has the optional field `required`. `ConsentResource` has the optional field `scopes`, with the new type `ConsentResourceScope`.
+
+### Fixed
+
+- The "Verified client" check stays beside its text when the badge wraps on a phone.
+
 ## [0.32.2] - 2026-11-25
 
 ### Fixed
