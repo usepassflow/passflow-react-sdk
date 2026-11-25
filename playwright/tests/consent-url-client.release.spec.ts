@@ -103,9 +103,9 @@ test('an unverified client under every warning: literal text, a prominent host, 
   await expectStacked([
     title(page),
     host,
+    ...warnings,
     page.getByTestId('consent-redirect-host'),
     page.getByText(html('uri'), { exact: true }),
-    ...warnings,
     page.getByTestId('consent-scope-openid'),
   ]);
   await expect(page.locator('[data-injected]')).toHaveCount(0);

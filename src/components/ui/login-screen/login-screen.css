@@ -409,6 +409,17 @@
   margin-top: var(--passflow-spacing-3);
 }
 
+.passflow-consent-scope-rows {
+  margin: 0;
+  list-style: none;
+  gap: 0;
+}
+
+.passflow-consent-scope-rows > .passflow-consent-resource-scope:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
 .passflow-consent-scope-description {
   margin: 0;
   color: var(--passflow-secondary-text-color);

@@ -54,6 +54,21 @@ for (const viewport of [
   });
 }
 
+test('warnings come first, and the items below the resources share one card', async ({ page }) => {
+  await openStory(page, 'components-loginscreen-consent-client--mcp-unverified-with-warnings');
+
+  const lastWarning = await page.getByTestId('consent-warning-unverified_client').boundingBox();
+  const redirect = await page.getByTestId('consent-redirect-host').boundingBox();
+  if (!lastWarning || !redirect) throw new Error('expected rendered warnings and redirect');
+  expect(lastWarning.y + lastWarning.height).toBeLessThanOrEqual(redirect.y);
+
+  const cards = await page
+    .locator('[data-testid="consent-scope-openid"], [data-testid="consent-scope-offline_access"], [data-testid="consent-scope-email"]')
+    .evaluateAll((rows) => rows.map((row) => row.closest('.passflow-consent-scope')));
+  expect(cards).toHaveLength(3);
+  expect(new Set(cards).size).toBe(1);
+});
+
 test('a switch inside a resource card toggles its own scope', async ({ page }) => {
   await openStory(page, 'components-loginscreen-consent-client--mcp-verified-local-client');
 

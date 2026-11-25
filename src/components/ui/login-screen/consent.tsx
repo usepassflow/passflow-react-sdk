@@ -64,7 +64,8 @@ const ConsentResources: FC<ScopeControl & { resources: LoginConsentResource[] }>
  * A required scope is a plain line: it is always granted. Every other scope is
  * a switch, starting in the state the server gives it, and the Allow button
  * submits the required scopes plus the switches that are still on. Resources
- * carry their own scopes inside their cards; the list below them holds the rest. Deny is a peer of Allow, not a hidden link: a
+ * carry their own scopes inside their cards; one card below them holds the rest.
+ * Warnings come first, so they are read before anything they warn about. Deny is a peer of Allow, not a hidden link: a
  * consent screen where refusing is harder than accepting is a dark pattern.
  * For the same reason neither button takes initial focus: a bare Enter on a
  * freshly loaded screen must not grant every requested scope.
@@ -121,6 +122,19 @@ export const LoginConsent: FC<LoginConsentState> = ({
     <LoginScreenNotice appName={appName} message={prompt} appNameTestId={appNameTestId} />
 
     <div className='passflow-form-container'>
+      {warnings?.length ? (
+        <div className='passflow-consent-warnings'>
+          {warnings.map(({ code, severity, message }) => (
+            <LoginAlert
+              key={`${code} ${message}`}
+              tone={severity === 'critical' || severity === 'high' ? 'error' : 'info'}
+              message={message}
+              testId={`consent-warning-${code}`}
+            />
+          ))}
+        </div>
+      ) : null}
+
       {redirectHost ? (
         <p className='passflow-login-screen-text passflow-consent-redirect'>
           You'll be sent to{' '}
@@ -135,29 +149,18 @@ export const LoginConsent: FC<LoginConsentState> = ({
 
       {resources?.length ? <ConsentResources resources={resources} busy={busy} onToggleScope={onToggleScope} /> : null}
 
-      {warnings?.length ? (
-        <div className='passflow-consent-warnings'>
-          {warnings.map(({ code, severity, message }) => (
-            <LoginAlert
-              key={`${code} ${message}`}
-              tone={severity === 'critical' || severity === 'high' ? 'error' : 'info'}
-              message={message}
-              testId={`consent-warning-${code}`}
-            />
-          ))}
-        </div>
-      ) : null}
-
       <LoginAlert message={error} />
 
       {scopes.length ? (
-        <ul className='passflow-consent-scopes'>
-          {scopes.map((item) => (
-            <li key={item.scope} className='passflow-consent-scope' data-testid={`consent-scope-${item.scope}`}>
-              <ConsentScopeLine item={item} busy={busy} onToggleScope={onToggleScope} />
-            </li>
-          ))}
-        </ul>
+        <div className='passflow-consent-scopes'>
+          <ul className='passflow-consent-scope passflow-consent-scope-rows'>
+            {scopes.map((item) => (
+              <li key={item.scope} className='passflow-consent-resource-scope' data-testid={`consent-scope-${item.scope}`}>
+                <ConsentScopeLine item={item} busy={busy} onToggleScope={onToggleScope} />
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : resources?.some((resource) => resource.scopes?.length) ? null : (
         <p className='passflow-login-screen-hint'>This application is not requesting access to any of your data.</p>
       )}
