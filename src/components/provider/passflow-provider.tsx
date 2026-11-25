@@ -214,6 +214,35 @@ let oidcRedirectFollowed = false;
 export const hasFollowedOIDCRedirect = (): boolean => oidcRedirectFollowed;
 
 /**
+ * Follows the answer an OIDC parent gives to a completed sign-in, and reports whether the answer was one.
+ * Such an answer is `form_post` alone or `redirect_url` alone: the relying party's callback with its code, and never
+ * tokens. The request interceptor only runs on a page whose URL names the parent; an emailed link does not, yet the
+ * server still answers for the parent the challenge was started under. When the interceptor did follow the answer,
+ * nothing is followed again: the authorization code is single use.
+ */
+export const followParentAnswer = (answer: unknown): boolean => {
+  if (typeof answer !== 'object' || answer === null) return false;
+  const { form_post: formPost, redirect_url: redirectUrl, ...rest } = answer as Record<string, unknown>;
+  if (typeof formPost === 'object' && formPost !== null) {
+    const { action, fields } = formPost as { action?: unknown; fields?: unknown };
+    if (typeof action === 'string' && action && typeof fields === 'object' && fields !== null) {
+      if (!oidcRedirectFollowed) submitFormPost(action, fields as Record<string, string>);
+      return true;
+    }
+  }
+  // Anything that makes a session of its own (tokens in the body or in cookies, a code, a pending factor) is not a
+  // parent's answer: its `redirect_url` is a target the server has to check first.
+  const ownSession = ['access_token', 'id_token', 'refresh_token', 'code', 'tfa_token', 'token_delivery'].some((key) =>
+    Boolean(rest[key]),
+  );
+  if (typeof redirectUrl !== 'string' || !redirectUrl || ownSession) return false;
+  // Never a script or document address. It goes the checked way, where the server refuses it.
+  if (/^\s*(javascript|data|vbscript|file|blob|about|filesystem):/i.test(redirectUrl)) return false;
+  if (!oidcRedirectFollowed) window.location.assign(redirectUrl);
+  return true;
+};
+
+/**
  * Install the global OIDC AuthFlow interceptor on `fetch` and
  * `XMLHttpRequest`. The interceptor:
  *

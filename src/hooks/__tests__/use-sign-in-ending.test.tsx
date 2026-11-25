@@ -234,7 +234,8 @@ describe('an emailed link landing with no settings loaded in context', () => {
     });
 
   beforeEach(() => {
-    passflow.passwordlessSignInComplete.mockResolvedValue({ redirect_url: REQUESTED });
+    // A completion that signs the user in comes back with its tokens beside the redirect.
+    passflow.passwordlessSignInComplete.mockResolvedValue({ ...storedTokens(), redirect_url: REQUESTED });
   });
 
   it('Simple app: the landing carries tokens', async () => {
