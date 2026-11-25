@@ -7,6 +7,7 @@ export {
   type ConsentError,
   type ConsentInfo,
   type ConsentResource,
+  type ConsentResourceScope,
   type ConsentScopeMetadata,
   type ConsentStatus,
   type ConsentWarning,

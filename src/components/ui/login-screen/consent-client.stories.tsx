@@ -1,9 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useState } from 'react';
 import { fn } from 'storybook/test';
 import { LoginScreen } from './login-screen';
-import type { LoginConsentState } from './types';
+import type { LoginConsentScope, LoginConsentState, LoginScreenProps } from './types';
 
-/** Who asks on the consent screen, where the user is sent, and what the server warns about. */
+/**
+ * Who asks on the consent screen, where the user is sent, what the server warns
+ * about, and what the user can switch off. Required scopes are plain lines;
+ * every other scope is a switch, and all switches share one column on the
+ * right, in the list and inside resource cards alike. The switches work: each
+ * story holds its own selection.
+ */
 const meta = {
   title: 'Components/LoginScreen/Consent Client',
   component: LoginScreen,
@@ -11,20 +18,51 @@ const meta = {
     layout: 'fullscreen',
     controls: { disable: true },
   },
+  render: function Render(args) {
+    const [toggled, setToggled] = useState<ReadonlySet<string>>(new Set());
+    if (args.state.kind !== 'consent') return <LoginScreen {...args} />;
+
+    const flip = (item: LoginConsentScope): LoginConsentScope =>
+      toggled.has(item.scope) ? { ...item, granted: !item.granted } : item;
+    const state = args.state;
+    return (
+      <LoginScreen
+        chrome={args.chrome}
+        state={{
+          ...state,
+          scopes: state.scopes.map(flip),
+          resources: state.resources?.map((resource) => ({ ...resource, scopes: resource.scopes?.map(flip) })),
+          onToggleScope: (scope) => {
+            state.onToggleScope(scope);
+            setToggled((previous) => {
+              const next = new Set(previous);
+              if (next.has(scope)) next.delete(scope);
+              else next.add(scope);
+              return next;
+            });
+          },
+        }}
+      />
+    );
+  },
 } satisfies Meta<typeof LoginScreen>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const story = (client: Partial<LoginConsentState>): Story['args'] => ({
+const story = (client: Partial<LoginConsentState>, appName = 'Acme Notes'): LoginScreenProps => ({
   chrome: {
-    title: 'Allow Acme Notes to access your account?',
+    title: `Allow ${appName} to access your account?`,
     subtitle: 'Choose what this application may use, then allow or deny.',
   },
   state: {
     kind: 'consent',
-    appName: 'Acme Notes',
+    appName,
     scopes: [{ scope: 'profile', label: 'View your profile', description: 'Your name and profile picture.', granted: true }],
+    testId: 'consent-screen',
+    allowTestId: 'consent-allow',
+    denyTestId: 'consent-deny',
+    appNameTestId: 'consent-app-name',
     onToggleScope: fn(),
     onAllow: fn(),
     onDeny: fn(),
@@ -54,6 +92,96 @@ const warnings: LoginConsentState['warnings'] = [
     message: 'This application is not verified. Check its host before you allow access.',
   },
 ];
+
+/** What a current server lists below the resources for an MCP request. */
+const mcpScopes: LoginConsentScope[] = [
+  { scope: 'openid', label: 'Confirm who you are', description: "Lets the app know it's you", required: true, granted: true },
+  {
+    scope: 'offline_access',
+    label: 'Stay connected',
+    description: "Keep access when you're not using it, until you remove it",
+    required: true,
+    granted: true,
+  },
+  { scope: 'email', label: 'See your email address', granted: true },
+];
+
+/** One resource with a required, an on and an off scope of its own. */
+const notesResource: NonNullable<LoginConsentState['resources']>[number] = {
+  uri: 'https://notes.example/mcp',
+  name: 'Sample notes',
+  scopes: [
+    { scope: 'notes:read', label: 'Read your notes', required: true, granted: true },
+    { scope: 'notes:write', label: 'Write and change your notes', granted: true },
+    { scope: 'notes:share', label: 'Share your notes with other people', granted: false },
+  ],
+};
+
+/** An MCP client on the user's own computer: the redirect goes to localhost. */
+export const McpVerifiedLocalClient: Story = {
+  args: story(
+    {
+      clientHost: 'claude.ai',
+      redirectHost: 'localhost',
+      redirectLoopback: true,
+      verified: true,
+      resources: [notesResource],
+      scopes: mcpScopes,
+    },
+    'Claude Code',
+  ),
+};
+
+/** An MCP client that runs on the web: the redirect goes back to its own site. */
+export const McpVerifiedWebClient: Story = {
+  args: story(
+    {
+      clientHost: 'chatgpt.com',
+      redirectHost: 'chatgpt.com',
+      verified: true,
+      resources: [notesResource],
+      scopes: mcpScopes,
+    },
+    'ChatGPT',
+  ),
+};
+
+/** An unverified MCP client under every warning: its host is drawn as prominently as the title. */
+export const McpUnverifiedWithWarnings: Story = {
+  args: story({
+    clientHost: 'notes.acme-login.example',
+    redirectHost: 'localhost',
+    redirectLoopback: true,
+    prominentHost: 'client',
+    warnings,
+    resources: [notesResource],
+    scopes: mcpScopes,
+  }),
+};
+
+/**
+ * A server that predates required scopes and resource scopes: every requested
+ * scope is a switch in the list, with the server's older wording, and the
+ * resource card shows only the resource.
+ */
+export const OldServer: Story = {
+  args: story(
+    {
+      clientHost: 'claude.ai',
+      redirectHost: 'localhost',
+      redirectLoopback: true,
+      verified: true,
+      resources: [{ uri: 'https://notes.example/mcp', name: 'Sample notes' }],
+      scopes: [
+        { scope: 'openid', label: 'Sign in', description: 'Confirm your identity', granted: true },
+        { scope: 'email', label: 'Email', description: 'View your email address', granted: true },
+        { scope: 'offline_access', label: 'Offline access', description: 'Stay signed in (refresh tokens)', granted: true },
+        { scope: 'mcp', label: 'mcp', granted: true },
+      ],
+    },
+    'Claude Code',
+  ),
+};
 
 const verifiedClient: Partial<LoginConsentState> = {
   clientHost: 'notes.acme.example',

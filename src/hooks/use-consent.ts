@@ -26,12 +26,25 @@ export type ConsentScopeMetadata = {
   scope: string;
   label: string;
   description: string;
+  /** Always granted, with no switch. A server that does not send it means a switch. */
+  required?: boolean;
+};
+
+/** A scope the application asks for on one resource. */
+export type ConsentResourceScope = {
+  scope: string;
+  label: string;
+  description?: string;
+  required?: boolean;
+  /** Where the switch starts. Only `false` starts it off. */
+  default_on?: boolean;
 };
 
 /** An API the application asks to reach. */
 export type ConsentResource = {
   uri: string;
   name?: string;
+  scopes?: ConsentResourceScope[] | null;
 };
 
 /** What the server found out about the application. `message` is localized and ready to show. */
@@ -107,6 +120,14 @@ export type UseConsentProps = {
   deny: () => Promise<void>;
 };
 
+/** A resource scope that is optional and that the server says starts switched off. */
+const startsOff = (info: ConsentInfo, scope: string): boolean =>
+  (Array.isArray(info.resources) ? info.resources : []).some(
+    (resource) =>
+      Array.isArray(resource?.scopes) &&
+      resource.scopes.some((item) => item?.scope === scope && item.required !== true && item.default_on === false),
+  );
+
 const readConsentChallengeId = (): string => new URLSearchParams(window.location.search).get('consent_challenge_id') ?? '';
 
 const requestPath = (consentChallengeId: string): string => `/oidc/requests/${encodeURIComponent(consentChallengeId)}`;
@@ -156,10 +177,11 @@ export const useConsent = (): UseConsentProps => {
         if (cancelled) return;
 
         setInfo(data);
-        // Everything asked for starts granted; the user switches OFF what they
-        // do not want. Starting from none would train people to hit Allow on an
-        // empty grant and wonder why the app is broken.
-        setGranted(new Set(data.requested_scopes));
+        // Everything asked for starts granted, except a resource scope the
+        // server starts off; the user switches OFF what they do not want.
+        // Starting from none would train people to hit Allow on an empty grant
+        // and wonder why the app is broken.
+        setGranted(new Set(data.requested_scopes.filter((scope) => !startsOff(data, scope))));
         setStatus('ready');
       } catch (err) {
         if (cancelled) return;

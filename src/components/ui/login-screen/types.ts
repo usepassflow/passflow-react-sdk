@@ -350,12 +350,16 @@ export type LoginConsentScope = {
   scope: string;
   label: string;
   description?: string;
+  /** Always granted: drawn as a plain line, with no switch. */
+  required?: boolean;
   granted: boolean;
 };
 
 export type LoginConsentResource = {
   uri: string;
   name?: string;
+  /** What the application may do with this resource, drawn inside its card. */
+  scopes?: LoginConsentScope[];
 };
 
 export type LoginConsentWarning = {

@@ -831,6 +831,35 @@ body {
   font-weight: var(--passflow-medium);
 }
 
+.passflow-switch-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--passflow-spacing-1);
+}
+
+.passflow-switch-description {
+  color: var(--passflow-secondary-text-color);
+  font-size: var(--passflow-caption);
+  font-weight: var(--passflow-normal);
+  line-height: 1.5;
+}
+
+.passflow-switch-wrapper--row {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: var(--passflow-spacing-4);
+}
+
+.passflow-switch-wrapper--row .passflow-switch-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.passflow-switch-track {
+  flex-shrink: 0;
+}
+
 .passflow-switch-input {
   position: absolute;
   width: 1px;

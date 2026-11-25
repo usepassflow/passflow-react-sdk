@@ -16,7 +16,7 @@ export const usable = <T>(list: unknown, read: (item: Partial<T>) => T | undefin
   return items.length ? items : undefined;
 };
 
-export const readResource = ({ uri, name }: Partial<ConsentResource>): ConsentResource | undefined =>
+export const readResource = ({ uri, name }: Partial<ConsentResource>): Pick<ConsentResource, 'uri' | 'name'> | undefined =>
   isText(uri) ? { uri, name: isText(name) ? name : undefined } : undefined;
 
 /** Each scope named as the consent screen names it: the server's label, or the scope itself. */
