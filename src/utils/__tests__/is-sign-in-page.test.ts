@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { inAppPath, isSignInPage } from '../is-sign-in-page';
+import { inAppPath, isSameOriginPath, isSignInPage } from '../is-sign-in-page';
 
 describe('isSignInPage', () => {
   afterEach(() => window.history.replaceState(null, '', '/'));
@@ -36,5 +36,15 @@ describe('inAppPath', () => {
   it('gives nothing for another origin or a non-web address', () => {
     expect(inAppPath('https://app.example.test/account')).toBeNull();
     expect(inAppPath('javascript:alert(1)')).toBeNull();
+  });
+});
+
+describe('a target on another scheme that names this origin', () => {
+  it.each([
+    ['a blob address', () => `blob:${window.location.origin}/3f2a`],
+    ['a blob address with a tab inside the scheme', () => `bl\tob:${window.location.origin}/3f2a`],
+  ])('%s is not a path on this origin', (_name, target) => {
+    expect(isSameOriginPath(target())).toBe(false);
+    expect(inAppPath(target())).toBeNull();
   });
 });

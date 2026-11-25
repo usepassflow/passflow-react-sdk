@@ -1,6 +1,8 @@
 import { Passflow } from '@passflow/core';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { authRedirectErrorMessage } from '@/utils';
 import {
   appId,
   deferred,
@@ -11,6 +13,7 @@ import {
   makeObserved,
   type Network,
   renderLanding,
+  sendAxiosThroughXhr,
 } from './support/federated-harness';
 
 const exchangePath = '/auth/session/exchange';
@@ -115,8 +118,9 @@ async function expectRpError(active: Network, error: string, mode: DeliveryMode)
   expectNoSignIn();
 }
 
-async function mountHeld(metadata: Record<string, unknown> = parent, metadataStatus = 200) {
+async function mountHeld(metadata: Record<string, unknown> = parent, metadataStatus = 200, throughXhr = false) {
   const active = installHosted(metadata, metadataStatus);
+  if (throughXhr) sendAxiosThroughXhr();
   const first = deferred<HttpReply>();
   active.endpoints.set(exchangePath, first.promise);
   const observed = makeObserved();
@@ -471,21 +475,44 @@ describe('issuer of the errors the browser makes', () => {
 describe('an address the browser would run or open as a document', () => {
   const script = 'java\tscript:void(0)';
 
-  it('is not followed from a redirect answer', async () => {
-    const held = await mountHeld();
-    await releaseFirst(held, { data: { redirect_url: script } });
-    await act(async () => {});
+  async function expectRefused(held: Held) {
+    expect(await screen.findByText(authRedirectErrorMessage)).toBeVisible();
+    expect(screen.queryByText(/continuing/i)).not.toBeInTheDocument();
+    expectNoSignIn();
     expect(held.active.forwards).toEqual([]);
     expect(assigned).toEqual([]);
     expect(submitted).toEqual([]);
+  }
+
+  it.each([
+    ['a redirect answer to a script address', { redirect_url: script }],
+    ['a form_post answer to a script address', { form_post: { action: script, fields: { code: 'c', state } } }],
+    [
+      'a form_post answer with an empty action',
+      { form_post: { action: '', fields: { code: 'c', state } }, redirect_url: destination },
+    ],
+    ['a form_post answer with no action', { form_post: { fields: { code: 'c', state } }, redirect_url: destination }],
+    ['a form_post answer with no fields', { form_post: { action: callback } }],
+  ])('%s is not followed, and the page ends in its error', async (_name, data) => {
+    const held = await mountHeld();
+    await releaseFirst(held, { data });
+    await expectRefused(held);
   });
 
-  it('is not posted to from a form_post answer', async () => {
-    const held = await mountHeld();
-    await releaseFirst(held, { data: { form_post: { action: script, fields: { code: 'c', state } } } });
-    await act(async () => {});
-    expect(submitted).toEqual([]);
-    expect(held.active.forwards).toEqual([]);
+  it('a password sign-in answered with a script address ends in the error, not signed in', async () => {
+    const held = await mountHeld(parent, 200, true);
+    await releaseFirst(held, { status: 401, data: { error: 'login_required' } });
+    const user = userEvent.setup();
+    await user.type(await screen.findByRole('textbox', { name: /email/i }), 'hosted@example.com');
+    await user.type(screen.getByLabelText(/password/i, { selector: 'input' }), 'test-password');
+    held.active.endpoints.set('/auth/login', { data: { redirect_url: script } });
+
+    await user.click(screen.getByRole('button', { name: /^sign in$/i }));
+
+    await waitFor(() => expect(held.active.requests.some((request) => request.path === '/auth/login')).toBe(true));
+    await expectRefused(held);
+    expect(screen.queryByText(/you're signed in/i)).not.toBeInTheDocument();
+    expect(held.active.requests.filter((request) => request.path === '/auth/redirect/check')).toEqual([]);
   });
 
   for (const mode of deliveryModes) {

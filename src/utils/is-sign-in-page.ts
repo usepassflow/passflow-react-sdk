@@ -7,7 +7,9 @@ const withoutTrailingSlash = (path: string) => path.replace(/\/+$/, '') || '/';
 export const isSameOriginPath = (target: string): boolean => {
   if (isValidUrl(target)) return false;
   try {
-    return new URL(target, window.location.href).origin === window.location.origin;
+    const url = new URL(target, window.location.href);
+    // An address on another scheme can still name this origin, as a blob address does.
+    return (url.protocol === 'http:' || url.protocol === 'https:') && url.origin === window.location.origin;
   } catch {
     return false;
   }

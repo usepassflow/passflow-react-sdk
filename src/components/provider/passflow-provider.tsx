@@ -36,7 +36,7 @@ import {
   routes,
 } from '@/context';
 import { useHydrated } from '@/hooks/use-hydrated';
-import { passwordlessSignInFailedMessage } from '@/utils/auth-error';
+import { authRedirectErrorMessage, passwordlessSignInFailedMessage } from '@/utils/auth-error';
 import { submitFormPost } from '@/utils/form-post';
 import { startHostedSignIn, takeReturnPath } from '@/utils/hosted-sign-in';
 import { isSafeTarget } from '@/utils/safe-target';
@@ -57,6 +57,14 @@ const SignInReturnFailed: FC<{ onSignInAgain: () => void }> = ({ onSignInAgain }
       testId: 'sign-in-return-failed',
       primaryAction: { label: 'Sign in again', onClick: onSignInAgain },
     }}
+  />
+);
+
+/** A parent's answer that could not be followed: the page shows this instead of a form or a status. */
+const AnswerRefused: FC = () => (
+  <LoginScreen
+    chrome={{ title: 'Something went wrong' }}
+    state={{ kind: 'status', tone: 'error', message: authRedirectErrorMessage, testId: 'oidc-answer-refused' }}
   />
 );
 
@@ -228,18 +236,19 @@ export type ParentAnswer = 'followed' | 'refused' | 'none';
 export const followParentAnswer = (answer: unknown): ParentAnswer => {
   if (typeof answer !== 'object' || answer === null) return 'none';
   const { form_post: formPost, redirect_url: redirectUrl, ...rest } = answer as Record<string, unknown>;
+  // Anything that makes a session of its own (tokens in the body or in cookies, a code, a pending factor) is not a
+  // parent's answer: its `redirect_url` is a target the server has to check first.
+  const ownSession = ['access_token', 'id_token', 'refresh_token', 'code', 'tfa_token', 'token_delivery'].some((key) =>
+    Boolean(rest[key]),
+  );
+  if (ownSession) return 'none';
   if (typeof formPost === 'object' && formPost !== null) {
     const { action, fields } = formPost as { action?: unknown; fields?: unknown };
     if (typeof action !== 'string' || !isSafeTarget(action) || typeof fields !== 'object' || fields === null) return 'refused';
     if (!oidcRedirectFollowed) submitFormPost(action, fields as Record<string, string>);
     return 'followed';
   }
-  // Anything that makes a session of its own (tokens in the body or in cookies, a code, a pending factor) is not a
-  // parent's answer: its `redirect_url` is a target the server has to check first.
-  const ownSession = ['access_token', 'id_token', 'refresh_token', 'code', 'tfa_token', 'token_delivery'].some((key) =>
-    Boolean(rest[key]),
-  );
-  if (typeof redirectUrl !== 'string' || !redirectUrl || ownSession) return 'none';
+  if (typeof redirectUrl !== 'string' || !redirectUrl) return 'none';
   if (!isSafeTarget(redirectUrl)) return 'refused';
   if (!oidcRedirectFollowed) window.location.assign(redirectUrl);
   return 'followed';
@@ -269,7 +278,7 @@ export const followParentAnswer = (answer: unknown): ParentAnswer => {
  * Moved into the SDK so any Passflow consumer that mounts
  * `<PassflowProvider>` gets full OIDC RP integration automatically.
  */
-const useOIDCInterceptor = (parentChallengeId: string | undefined): void => {
+const useOIDCInterceptor = (parentChallengeId: string | undefined, onRefused: () => void): void => {
   useEffect(() => {
     if (!parentChallengeId || typeof window === 'undefined') {
       return;
@@ -301,21 +310,29 @@ const useOIDCInterceptor = (parentChallengeId: string | undefined): void => {
         // stop JavaScript: the credential form's own success handler runs right
         // after this and would otherwise navigate on top of us. See
         // `hasFollowedOIDCRedirect` for why that is fatal, not cosmetic.
+        // An answer that cannot be followed is claimed too: nothing may navigate in its place, and the page ends
+        // in an error.
+        const refuse = (): void => {
+          oidcRedirectFollowed = true;
+          onRefused();
+        };
         const formPost = obj.form_post;
-        if (
-          typeof formPost === 'object' &&
-          formPost !== null &&
-          typeof formPost.action === 'string' &&
-          isSafeTarget(formPost.action) &&
-          typeof formPost.fields === 'object' &&
-          formPost.fields !== null
-        ) {
+        if (typeof formPost === 'object' && formPost !== null) {
+          const { action, fields } = formPost;
+          if (typeof action !== 'string' || !isSafeTarget(action) || typeof fields !== 'object' || fields === null) {
+            refuse();
+            return;
+          }
           // response_mode=form_post: the RP takes the code as a POST body.
           oidcRedirectFollowed = true;
-          submitFormPost(formPost.action, formPost.fields as Record<string, string>);
+          submitFormPost(action, fields as Record<string, string>);
           return;
         }
-        if (typeof obj.redirect_url === 'string' && obj.redirect_url && isSafeTarget(obj.redirect_url)) {
+        if (typeof obj.redirect_url === 'string' && obj.redirect_url) {
+          if (!isSafeTarget(obj.redirect_url)) {
+            refuse();
+            return;
+          }
           oidcRedirectFollowed = true;
           window.location.assign(obj.redirect_url);
         }
@@ -426,7 +443,7 @@ const useOIDCInterceptor = (parentChallengeId: string | undefined): void => {
       XMLHttpRequest.prototype.open = OriginalXHROpen;
       XMLHttpRequest.prototype.send = OriginalXHRSend;
     };
-  }, [parentChallengeId]);
+  }, [parentChallengeId, onRefused]);
 };
 
 /**
@@ -957,7 +974,10 @@ export const PassflowProvider: FC<PassflowProviderProps> = ({
   // server-returned redirect_url; the exchange-on-mount probe decides
   // whether to render login form vs auto-exchange. See ADR-2.
   const parentChallengeId = useMemo(() => readParentChallengeIdFromURL() ?? bootParentChallengeId, []);
-  useOIDCInterceptor(parentChallengeId);
+  // A parent's answer the interceptor could not follow: the page says so in place of whatever was showing.
+  const [answerRefused, setAnswerRefused] = useState(false);
+  const refuseAnswer = useCallback(() => setAnswerRefused(true), []);
+  useOIDCInterceptor(parentChallengeId, refuseAnswer);
   // Assigned below in every render, before any effect reads it.
   const passflowRef = useRef<Passflow | undefined>(undefined);
   const currentPassflow = useCallback(() => passflowRef.current as Passflow, []);
@@ -1136,6 +1156,8 @@ export const PassflowProvider: FC<PassflowProviderProps> = ({
             >
               {signInReturnFailed ? (
                 <SignInReturnFailed onSignInAgain={() => void startHostedSignIn(passflow).catch(() => undefined)} />
+              ) : answerRefused ? (
+                <AnswerRefused />
               ) : (exchangeState === 'unsatisfiable' || exchangeState === 'rate_limited') && stepUpFailure ? (
                 <StepUpFailed message={stepUpFailure} testId={`exchange-${exchangeState.replace('_', '-')}`} />
               ) : showContinuing ? (
