@@ -213,6 +213,17 @@ let oidcRedirectFollowed = false;
  */
 export const hasFollowedOIDCRedirect = (): boolean => oidcRedirectFollowed;
 
+const UNSAFE_SCHEMES = new Set(['javascript:', 'data:', 'vbscript:', 'file:', 'blob:', 'about:', 'filesystem:']);
+
+/** Whether the browser may be sent to an address from a sign-in answer: never one it would run or open as a document. */
+const isSafeTarget = (address: string): boolean => {
+  try {
+    return !UNSAFE_SCHEMES.has(new URL(address, window.location.href).protocol);
+  } catch {
+    return false;
+  }
+};
+
 /**
  * Follows the answer an OIDC parent gives to a completed sign-in, and reports whether the answer was one.
  * Such an answer is `form_post` alone or `redirect_url` alone: the relying party's callback with its code, and never
@@ -225,7 +236,7 @@ export const followParentAnswer = (answer: unknown): boolean => {
   const { form_post: formPost, redirect_url: redirectUrl, ...rest } = answer as Record<string, unknown>;
   if (typeof formPost === 'object' && formPost !== null) {
     const { action, fields } = formPost as { action?: unknown; fields?: unknown };
-    if (typeof action === 'string' && action && typeof fields === 'object' && fields !== null) {
+    if (typeof action === 'string' && action && isSafeTarget(action) && typeof fields === 'object' && fields !== null) {
       if (!oidcRedirectFollowed) submitFormPost(action, fields as Record<string, string>);
       return true;
     }
@@ -236,8 +247,8 @@ export const followParentAnswer = (answer: unknown): boolean => {
     Boolean(rest[key]),
   );
   if (typeof redirectUrl !== 'string' || !redirectUrl || ownSession) return false;
-  // Never a script or document address. It goes the checked way, where the server refuses it.
-  if (/^\s*(javascript|data|vbscript|file|blob|about|filesystem):/i.test(redirectUrl)) return false;
+  // An address that is not safe goes the checked way, where the server refuses it.
+  if (!isSafeTarget(redirectUrl)) return false;
   if (!oidcRedirectFollowed) window.location.assign(redirectUrl);
   return true;
 };

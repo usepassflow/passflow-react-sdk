@@ -2,6 +2,12 @@
 
 All notable changes to `@passflow/react` are documented in this file.
 
+## [0.32.1] - 2026-11-25
+
+### Fixed
+
+- An email-link sign-in for an OIDC request completes for an app without PKCE, in query mode and with `response_mode=form_post`. Before, the page the emailed link opens did not return the user to the relying party.
+
 ## [0.32.0] - 2026-11-25
 
 ### Changed

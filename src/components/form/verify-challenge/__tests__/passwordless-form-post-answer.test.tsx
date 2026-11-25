@@ -164,6 +164,19 @@ describe('a form_post answer to an emailed sign-in link', () => {
   });
 });
 
+describe('a form_post answer whose action is a script address', () => {
+  it.each([
+    ['plain', 'javascript:void(0)'],
+    ['with a tab inside the scheme', 'java\tscript:void(0)'],
+  ])('is not posted (%s)', async (_name, action) => {
+    const page = await openPage(linkSearch, { data: { form_post: { action, fields } } });
+    await waitFor(() => expect(completions(page.active)).toHaveLength(1));
+    await settle(page);
+    expect(submitted).toEqual([]);
+    expect(page.active.forwards).toEqual([]);
+  });
+});
+
 describe('a form_post answer to a typed one-time code', () => {
   it('posts the answer to the relying party once and shows no signed-in ending', async () => {
     const page = await openPage(typedCodeSearch, formPostAnswer);
@@ -227,12 +240,40 @@ describe('a redirect_url answer with no tokens', () => {
     expectNoSignedInEnding();
   });
 
-  it('is not followed to a script address: the server is asked first', async () => {
-    const script = 'JavaScript:void(0)';
-    const page = await openPage(linkSearch, { data: { redirect_url: script } });
+  it.each([
+    ['a script address', 'JavaScript:void(0)'],
+    ['a script address with a tab inside the scheme', 'java\tscript:void(0)'],
+    ['a script address with a line break inside the scheme', 'java\nscript:void(0)'],
+    ['a script address after a control character', '\u0001javascript:void(0)'],
+    ['a document address', 'data:text/html,hello'],
+    ['an address that cannot be read', 'https://'],
+  ])('is not followed to %s: the server is asked first', async (_name, address) => {
+    const page = await openPage(linkSearch, { data: { redirect_url: address } });
 
-    await waitFor(() => expect(checks(page.active).map((request) => request.body)).toEqual([{ redirect_url: script }]));
+    await waitFor(() => expect(checks(page.active).map((request) => request.body)).toEqual([{ redirect_url: address }]));
     expect(submitted).toEqual([]);
+  });
+
+  it("is followed to an app's own scheme", async () => {
+    const appCallback = 'com.example.app:/oauth?code=c&state=s';
+    const page = await openPage(linkSearch, { data: { redirect_url: appCallback } });
+
+    await waitFor(() => expect(page.active.forwards).toEqual([appCallback]));
+    expect(checks(page.active)).toEqual([]);
+    expectNoSignedInEnding();
+  });
+
+  it('is followed from a typed one-time code without asking the server to check it', async () => {
+    const page = await openPage(typedCodeSearch, { data: { redirect_url: destination } });
+    await typeCode();
+
+    await waitFor(() => expect(page.active.forwards).toEqual([destination]));
+    await settle(page);
+    expect(page.active.forwards).toEqual([destination]);
+    expect(checks(page.active)).toEqual([]);
+    expect(submitted).toEqual([]);
+    expectNoSignedInEnding();
+    expect(completions(page.active)).toHaveLength(1);
   });
 
   it('is followed from the emailed link without asking the server to check it', async () => {
