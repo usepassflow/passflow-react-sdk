@@ -12,6 +12,7 @@ import {
   type Network,
   renderLanding,
 } from '@/components/provider/__tests__/support/federated-harness';
+import { authRedirectErrorMessage } from '@/utils';
 
 const completePath = '/auth/passwordless/complete';
 const checkPath = '/auth/redirect/check';
@@ -131,6 +132,10 @@ function expectNoSignedInEnding() {
   expect(screen.queryByTestId('signed-in')).not.toBeInTheDocument();
 }
 
+async function expectRefusedEnding() {
+  expect(await screen.findByText(authRedirectErrorMessage)).toBeInTheDocument();
+}
+
 // A second render and a flushed task queue: anything still owed after the answer has happened by now.
 // It keeps the first render's wrapper: a different root would mount the page again and open the link a second time.
 async function settle({ observed, view }: Page, strict = false) {
@@ -168,12 +173,25 @@ describe('a form_post answer whose action is a script address', () => {
   it.each([
     ['plain', 'javascript:void(0)'],
     ['with a tab inside the scheme', 'java\tscript:void(0)'],
-  ])('is not posted (%s)', async (_name, action) => {
+  ])('is not posted, and the page ends in its error (%s)', async (_name, action) => {
     const page = await openPage(linkSearch, { data: { form_post: { action, fields } } });
-    await waitFor(() => expect(completions(page.active)).toHaveLength(1));
+
+    await expectRefusedEnding();
     await settle(page);
     expect(submitted).toEqual([]);
     expect(page.active.forwards).toEqual([]);
+    expect(checks(page.active)).toEqual([]);
+    expectNoSignedInEnding();
+  });
+
+  it('is not posted from a typed one-time code, and the page ends in its error', async () => {
+    const page = await openPage(typedCodeSearch, { data: { form_post: { action: 'javascript:void(0)', fields } } });
+    await typeCode();
+
+    await expectRefusedEnding();
+    expect(submitted).toEqual([]);
+    expect(page.active.forwards).toEqual([]);
+    expectNoSignedInEnding();
   });
 });
 
@@ -247,11 +265,25 @@ describe('a redirect_url answer with no tokens', () => {
     ['a script address after a control character', '\u0001javascript:void(0)'],
     ['a document address', 'data:text/html,hello'],
     ['an address that cannot be read', 'https://'],
-  ])('is not followed to %s: the server is asked first', async (_name, address) => {
+  ])('is not followed to %s: the page ends in its error', async (_name, address) => {
     const page = await openPage(linkSearch, { data: { redirect_url: address } });
 
-    await waitFor(() => expect(checks(page.active).map((request) => request.body)).toEqual([{ redirect_url: address }]));
+    await expectRefusedEnding();
+    await settle(page);
+    expect(page.active.forwards).toEqual([]);
+    expect(checks(page.active)).toEqual([]);
     expect(submitted).toEqual([]);
+    expectNoSignedInEnding();
+  });
+
+  it('is not followed to a script address from a typed one-time code: the page ends in its error', async () => {
+    const page = await openPage(typedCodeSearch, { data: { redirect_url: 'java\tscript:void(0)' } });
+    await typeCode();
+
+    await expectRefusedEnding();
+    expect(page.active.forwards).toEqual([]);
+    expect(checks(page.active)).toEqual([]);
+    expectNoSignedInEnding();
   });
 
   it("is followed to an app's own scheme", async () => {

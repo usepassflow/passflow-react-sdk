@@ -3,7 +3,7 @@ import { SignInEndingScreen } from '@/components/form/signed-in';
 import { followParentAnswer } from '@/components/provider/passflow-provider';
 import { usePasswordlessComplete, useSignInEnding } from '@/hooks';
 import { useSecondFactorRoute } from '@/hooks/use-second-factor-route';
-import { verificationLinkErrorMessage, verificationRequestErrorMessage } from '@/utils';
+import { authRedirectErrorMessage, verificationLinkErrorMessage, verificationRequestErrorMessage } from '@/utils';
 
 type VerifyChallengeOTPRedirectProps = {
   appId: string | null;
@@ -42,7 +42,9 @@ export const VerifyChallengeOTPRedirect = ({
       if (response) {
         // The link completed the first factor only: no tokens yet.
         if (routeToSecondFactor()) return;
-        if (followParentAnswer(response)) return;
+        const parentAnswer = followParentAnswer(response);
+        if (parentAnswer === 'refused') setParamsError(authRedirectErrorMessage);
+        if (parentAnswer !== 'none') return;
         await finishSignIn(response.redirect_url);
       } else {
         setParamsError(verificationRequestErrorMessage);

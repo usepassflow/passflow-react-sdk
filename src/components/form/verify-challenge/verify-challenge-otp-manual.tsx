@@ -12,7 +12,7 @@ import { followParentAnswer } from '@/components/provider/passflow-provider';
 import { Button, FieldOtp, Icon } from '@/components/ui';
 import { useAppSettings, useNavigation, usePasswordlessComplete, useSignIn, useSignInEnding } from '@/hooks';
 import { useSecondFactorRoute } from '@/hooks/use-second-factor-route';
-import { useUrlParams } from '@/utils';
+import { authRedirectErrorMessage, useUrlParams } from '@/utils';
 import { Wrapper } from '../wrapper';
 import { TimerButton } from './timer-button';
 
@@ -94,7 +94,9 @@ export const VerifyChallengeOTPManual: FC<VerifyChallengeOTPManualProps> = ({
         if (response) {
           // The code completed the first factor only: no tokens yet.
           if (routeToSecondFactor()) return;
-          if (followParentAnswer(response)) return;
+          const parentAnswer = followParentAnswer(response);
+          if (parentAnswer === 'refused') setParamsError(authRedirectErrorMessage);
+          if (parentAnswer !== 'none') return;
           await finishSignIn(response.redirect_url);
         }
       };

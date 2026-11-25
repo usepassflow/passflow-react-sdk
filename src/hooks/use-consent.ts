@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { submitFormPost } from '@/utils/form-post';
+import { isSafeTarget } from '@/utils/safe-target';
 
 /**
  * The OIDC consent decision, as a hook.
@@ -225,13 +226,13 @@ export const useConsent = (): UseConsentProps => {
 
         const data = (await res.json()) as DecisionResponse;
 
-        if (data.kind === 'redirect') {
+        if (data.kind === 'redirect' && isSafeTarget(data.url)) {
           setStatus('redirecting');
           window.location.href = data.url;
           return;
         }
 
-        if (data.kind === 'form_post') {
+        if (data.kind === 'form_post' && isSafeTarget(data.action)) {
           setStatus('redirecting');
           submitFormPost(data.action, data.fields);
           return;

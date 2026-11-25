@@ -2,7 +2,7 @@ import { SERVICE_UNAVAILABLE_ERROR_ID } from '@passflow/core';
 import { useContext, useRef, useState } from 'react';
 import { hasFollowedOIDCRedirect } from '@/components/provider/passflow-provider';
 import { PassflowContext } from '@/context';
-import { getUrlWithTokens, isSameOriginPath, isSignInPage } from '@/utils';
+import { getUrlWithTokens, isSafeTarget, isSameOriginPath, isSignInPage } from '@/utils';
 import { useNavigation } from './use-navigation';
 import { usePassflow } from './use-passflow';
 
@@ -34,6 +34,10 @@ export const useSignInEnding = () => {
   latestSignInPath.current = signInPath;
 
   const handOver = async (address: string) => {
+    if (!isSafeTarget(address)) {
+      setEnding('refused');
+      return;
+    }
     setEnding('checking');
     let pkceEnabled: boolean | undefined;
     try {
