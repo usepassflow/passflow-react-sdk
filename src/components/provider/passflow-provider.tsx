@@ -39,6 +39,7 @@ import { useHydrated } from '@/hooks/use-hydrated';
 import { passwordlessSignInFailedMessage } from '@/utils/auth-error';
 import { submitFormPost } from '@/utils/form-post';
 import { startHostedSignIn, takeReturnPath } from '@/utils/hosted-sign-in';
+import { isSafeTarget } from '@/utils/safe-target';
 import { signInSearch, twoFactorTokenAppId, urlCarriesAccessToken, urlCarriesTwoFactorToken } from '@/utils/second-factor';
 import { readParentChallengeIdFromURL } from '@/utils/url-params';
 import '@/styles/index.css';
@@ -213,44 +214,35 @@ let oidcRedirectFollowed = false;
  */
 export const hasFollowedOIDCRedirect = (): boolean => oidcRedirectFollowed;
 
-const UNSAFE_SCHEMES = new Set(['javascript:', 'data:', 'vbscript:', 'file:', 'blob:', 'about:', 'filesystem:']);
-
-/** Whether the browser may be sent to an address from a sign-in answer: never one it would run or open as a document. */
-const isSafeTarget = (address: string): boolean => {
-  try {
-    return !UNSAFE_SCHEMES.has(new URL(address, window.location.href).protocol);
-  } catch {
-    return false;
-  }
-};
+/** What became of a completed sign-in's answer: followed for the parent, refused as a parent's answer, or not one. */
+export type ParentAnswer = 'followed' | 'refused' | 'none';
 
 /**
- * Follows the answer an OIDC parent gives to a completed sign-in, and reports whether the answer was one.
+ * Follows the answer an OIDC parent gives to a completed sign-in, and reports what became of it.
  * Such an answer is `form_post` alone or `redirect_url` alone: the relying party's callback with its code, and never
  * tokens. The request interceptor only runs on a page whose URL names the parent; an emailed link does not, yet the
  * server still answers for the parent the challenge was started under. When the interceptor did follow the answer,
- * nothing is followed again: the authorization code is single use.
+ * nothing is done twice. A parent's answer that cannot be posted, or whose address is not safe, is `refused`: there is
+ * no session to end in, so the caller shows an error.
  */
-export const followParentAnswer = (answer: unknown): boolean => {
-  if (typeof answer !== 'object' || answer === null) return false;
+export const followParentAnswer = (answer: unknown): ParentAnswer => {
+  if (typeof answer !== 'object' || answer === null) return 'none';
   const { form_post: formPost, redirect_url: redirectUrl, ...rest } = answer as Record<string, unknown>;
   if (typeof formPost === 'object' && formPost !== null) {
     const { action, fields } = formPost as { action?: unknown; fields?: unknown };
-    if (typeof action === 'string' && action && isSafeTarget(action) && typeof fields === 'object' && fields !== null) {
-      if (!oidcRedirectFollowed) submitFormPost(action, fields as Record<string, string>);
-      return true;
-    }
+    if (typeof action !== 'string' || !isSafeTarget(action) || typeof fields !== 'object' || fields === null) return 'refused';
+    if (!oidcRedirectFollowed) submitFormPost(action, fields as Record<string, string>);
+    return 'followed';
   }
   // Anything that makes a session of its own (tokens in the body or in cookies, a code, a pending factor) is not a
   // parent's answer: its `redirect_url` is a target the server has to check first.
   const ownSession = ['access_token', 'id_token', 'refresh_token', 'code', 'tfa_token', 'token_delivery'].some((key) =>
     Boolean(rest[key]),
   );
-  if (typeof redirectUrl !== 'string' || !redirectUrl || ownSession) return false;
-  // An address that is not safe goes the checked way, where the server refuses it.
-  if (!isSafeTarget(redirectUrl)) return false;
+  if (typeof redirectUrl !== 'string' || !redirectUrl || ownSession) return 'none';
+  if (!isSafeTarget(redirectUrl)) return 'refused';
   if (!oidcRedirectFollowed) window.location.assign(redirectUrl);
-  return true;
+  return 'followed';
 };
 
 /**
@@ -314,7 +306,7 @@ const useOIDCInterceptor = (parentChallengeId: string | undefined): void => {
           typeof formPost === 'object' &&
           formPost !== null &&
           typeof formPost.action === 'string' &&
-          formPost.action &&
+          isSafeTarget(formPost.action) &&
           typeof formPost.fields === 'object' &&
           formPost.fields !== null
         ) {
@@ -323,7 +315,7 @@ const useOIDCInterceptor = (parentChallengeId: string | undefined): void => {
           submitFormPost(formPost.action, formPost.fields as Record<string, string>);
           return;
         }
-        if (typeof obj.redirect_url === 'string' && obj.redirect_url) {
+        if (typeof obj.redirect_url === 'string' && obj.redirect_url && isSafeTarget(obj.redirect_url)) {
           oidcRedirectFollowed = true;
           window.location.assign(obj.redirect_url);
         }
@@ -485,10 +477,10 @@ const relyingPartyErrorDescriptions: Record<RelyingPartyError, string> = {
  * Sends an OIDC error to the parent's `redirect_uri`, in the parent's
  * `response_mode`: a hidden POST form for `form_post`, a query-string
  * navigation otherwise. Returns false when the metadata has no `redirect_uri`
- * (its fetch failed), leaving the caller to render the form.
+ * (its fetch failed) or one that is not safe, leaving the caller to render the form.
  */
 const answerRelyingParty = (meta: ParentChallengeMeta | undefined, error: RelyingPartyError): boolean => {
-  if (!meta?.redirect_uri) return false;
+  if (!meta?.redirect_uri || !isSafeTarget(meta.redirect_uri)) return false;
   const fields: Record<string, string> = { error, error_description: relyingPartyErrorDescriptions[error] };
   if (meta.state) fields.state = meta.state;
   if (meta.issuer) fields.iss = meta.issuer;

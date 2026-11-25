@@ -249,6 +249,38 @@ describe('useConsent', () => {
       for (const input of submitted?.querySelectorAll('input') ?? []) expect(input.type).toBe('hidden');
     });
 
+    it('does not follow a redirect decision to a script address', async () => {
+      const { result } = await mountReady();
+      fetchMock.mockResolvedValueOnce(reply({ kind: 'redirect', url: 'java\tscript:void(0)' }));
+
+      await act(async () => result.current.allow());
+
+      expect(window.location.href).toBe('');
+      expect(result.current.status).toBe('ready');
+      expect(result.current.error).toEqual({ message: 'Unexpected response from server.' });
+    });
+
+    it('does not post a form_post decision to a script address', async () => {
+      const { result } = await mountReady();
+      const submit = vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(() => {});
+      fetchMock.mockResolvedValueOnce(reply({ kind: 'form_post', action: 'javascript:void(0)', fields: { code: 'c-1' } }));
+
+      await act(async () => result.current.allow());
+
+      expect(submit).not.toHaveBeenCalled();
+      expect(result.current.status).toBe('ready');
+      expect(result.current.error).toEqual({ message: 'Unexpected response from server.' });
+    });
+
+    it("follows a redirect decision to an app's own scheme", async () => {
+      const { result } = await mountReady();
+      fetchMock.mockResolvedValueOnce(reply({ kind: 'redirect', url: 'com.example.app:/oauth?code=1' }));
+
+      await act(async () => result.current.allow());
+
+      expect(window.location.href).toBe('com.example.app:/oauth?code=1');
+    });
+
     it('is working while the decision is in flight and clears the previous error', async () => {
       const { result } = await mountReady();
       const request = deferred();

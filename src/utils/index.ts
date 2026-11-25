@@ -59,6 +59,7 @@ export { getUrlWithTokens, type TokenUrlFormat } from './get-url-with-tokens';
 export { startHostedSignIn, takeReturnPath } from './hosted-sign-in';
 export { getInvitationAuthChrome, type InvitationAuthIntent } from './invitation-auth-chrome';
 export { inAppPath, isSameOriginPath, isSignInPage } from './is-sign-in-page';
+export { isSafeTarget } from './safe-target';
 export { routeToSecondFactor, signInSearch, urlCarriesTwoFactorToken } from './second-factor';
 export { TwoFactorLoopPrevention } from './two-factor-loop-prevention';
 export { undefinedOnCatch } from './undefined-on-catch';

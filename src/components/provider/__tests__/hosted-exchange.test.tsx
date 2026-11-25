@@ -467,3 +467,40 @@ describe('issuer of the errors the browser makes', () => {
     expect(params.has('iss')).toBe(false);
   });
 });
+
+describe('an address the browser would run or open as a document', () => {
+  const script = 'java\tscript:void(0)';
+
+  it('is not followed from a redirect answer', async () => {
+    const held = await mountHeld();
+    await releaseFirst(held, { data: { redirect_url: script } });
+    await act(async () => {});
+    expect(held.active.forwards).toEqual([]);
+    expect(assigned).toEqual([]);
+    expect(submitted).toEqual([]);
+  });
+
+  it('is not posted to from a form_post answer', async () => {
+    const held = await mountHeld();
+    await releaseFirst(held, { data: { form_post: { action: script, fields: { code: 'c', state } } } });
+    await act(async () => {});
+    expect(submitted).toEqual([]);
+    expect(held.active.forwards).toEqual([]);
+  });
+
+  for (const mode of deliveryModes) {
+    it(`gets no relying-party error via ${mode}: sign-in renders`, async () => {
+      const held = await mountHeld({ ...parent, redirect_uri: script, oidc_prompt_none: true, response_mode: mode });
+      await releaseFirst(held, { status: 401, data: { error: 'login_required' } });
+      await expectSignIn(held.active);
+      expect(assigned).toEqual([]);
+    });
+  }
+
+  it("does not stop a redirect answer to an app's own scheme", async () => {
+    const appCallback = 'com.example.app:/oauth?code=exchanged';
+    const held = await mountHeld();
+    await releaseFirst(held, { data: { redirect_url: appCallback } });
+    await waitFor(() => expect(held.active.forwards).toEqual([appCallback]));
+  });
+});

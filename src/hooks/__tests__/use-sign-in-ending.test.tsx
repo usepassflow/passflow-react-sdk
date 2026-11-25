@@ -176,6 +176,31 @@ describe('useSignInEnding to an external target', () => {
     expect(forwards).toEqual(['https://rp.example.com/registered']);
   });
 
+  it.each([
+    ['SDK app', sdk],
+    ['Simple app', simple],
+  ])('%s: a checked target that is a script address is refused, and nothing is sent', async (_case, mode) => {
+    mode();
+    passflow.checkRedirectUrl.mockResolvedValue('java\tscript:void(0)');
+    const { result } = renderEnding();
+
+    await act(() => result.current.finishSignIn(REQUESTED));
+
+    expect(forwards).toEqual([]);
+    expect(passflow.getTokens).not.toHaveBeenCalled();
+    expect(result.current.ending).toBe('refused');
+  });
+
+  it("a checked target on an app's own scheme is followed", async () => {
+    sdk();
+    passflow.checkRedirectUrl.mockResolvedValue('com.example.app:/oauth');
+    const { result } = renderEnding();
+
+    await act(() => result.current.finishSignIn(REQUESTED));
+
+    expect(forwards).toEqual(['com.example.app:/oauth']);
+  });
+
   it('requested target: an unreadable mode is unavailable, and retry checks and leaves', async () => {
     passflow.getAppSettings.mockRejectedValueOnce(new Error('settings unavailable'));
     const { result } = renderEnding();
