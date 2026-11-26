@@ -2,6 +2,18 @@
 
 All notable changes to `@passflow/react` are documented in this file.
 
+## [0.33.1] - 2026-11-26
+
+### Fixed
+
+- The sign-in form shows its loading state inside the button that was pressed again. It no longer adds a "Signing in…" block above the form. The pressed button shows a spinner before its label, looks disabled, and ignores further presses. It keeps focus, because it is `aria-disabled` rather than natively disabled. The other controls are disabled until the request ends.
+- While a passkey sign-in waits, Cancel is a link under the passkey button. It abandons a prompt that never answers, as before.
+- The password button says "Signing in…" only during a password sign-in.
+
+### Added
+
+- `Button` takes `loading`: a spinner before the label, `aria-busy` and `aria-disabled`, and presses are ignored.
+
 ## [0.33.0] - 2026-11-26
 
 ### Changed
