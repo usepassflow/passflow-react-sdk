@@ -300,14 +300,6 @@
   }
 }
 
-.passflow-login-screen-progress {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--passflow-spacing-2);
-}
-
 .passflow-login-screen-status {
   width: 100%;
   display: flex;

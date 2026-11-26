@@ -88,6 +88,20 @@ export const Dark: Story = {
   args: { variant: 'dark', children: 'Continue' },
 };
 
+/** The action this button started is in flight: the spinner leads the label and further presses are ignored. */
+export const PrimaryLoading: Story = {
+  args: { variant: 'primary', children: 'Signing in…', loading: true },
+  play: async ({ args, canvasElement }) => {
+    const button = within(canvasElement).getByRole('button', { name: 'Signing in…' });
+    await userEvent.click(button);
+    await expect(args.onClick).not.toHaveBeenCalled();
+  },
+};
+
+export const DarkLoading: Story = {
+  args: { variant: 'dark', children: 'Sign In with a Passkey', loading: true, withIcon: true },
+};
+
 export const Provider: Story = {
   args: { variant: 'provider', children: 'Continue with Google' },
 };

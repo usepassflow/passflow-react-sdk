@@ -9,9 +9,10 @@ type TProvidersBox = {
   providers: Providers[];
   onClick: (provider: Providers) => void;
   className?: string;
+  disabled?: boolean;
 };
 
-export const ProvidersBox: FC<TProvidersBox> = ({ providers, onClick, className = '' }) => {
+export const ProvidersBox: FC<TProvidersBox> = ({ providers, onClick, className = '', disabled = false }) => {
   const styles = {
     'passflow-providers-box--grid': providers.length > 1,
   };
@@ -26,6 +27,7 @@ export const ProvidersBox: FC<TProvidersBox> = ({ providers, onClick, className 
           type='button'
           key={provider}
           withIcon
+          disabled={disabled}
           className='passflow-provider-item'
         >
           <Icon size='small' type='providers' id={provider} decorative={providers.length <= 2} />

@@ -54,6 +54,12 @@ type TButton = PropsWithChildren &
      * "selected" looks like.
      */
     pressed?: boolean;
+    /**
+     * The action this button started is in flight: a spinner leads the label, and
+     * the button looks disabled and ignores presses. It is `aria-disabled`, not
+     * natively disabled, so it keeps focus.
+     */
+    loading?: boolean;
   };
 
 export const Button: FC<TButton> = ({
@@ -68,6 +74,7 @@ export const Button: FC<TButton> = ({
   withRipple = true,
   description,
   pressed,
+  loading = false,
   ...rest
 }) => {
   const [ripples, setRipples] = useState<JSX.Element[]>();
@@ -87,6 +94,7 @@ export const Button: FC<TButton> = ({
     'passflow-button--link': variant === 'link',
     'passflow-button--with-icon': withIcon,
     'passflow-button--as-icon': asIcon,
+    'passflow-button--loading': loading,
   };
 
   // `aria-disabled` is the focusable disabled state: the button keeps focus (so a
@@ -95,7 +103,7 @@ export const Button: FC<TButton> = ({
   const ariaDisabled = rest['aria-disabled'] === true || rest['aria-disabled'] === 'true';
 
   const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
-    if (ariaDisabled) {
+    if (ariaDisabled || loading) {
       e.preventDefault();
       return;
     }
@@ -122,7 +130,16 @@ export const Button: FC<TButton> = ({
   }, [ripples]);
 
   return (
-    <button className={cn(styles, className)} type={type} aria-pressed={pressed} onClick={handleClick} {...rest}>
+    <button
+      className={cn(styles, className)}
+      type={type}
+      aria-pressed={pressed}
+      aria-busy={loading || undefined}
+      aria-disabled={loading || undefined}
+      onClick={handleClick}
+      {...rest}
+    >
+      {loading ? <span className='passflow-button__spinner' aria-hidden='true' /> : null}
       {variant === 'option' ? (
         // WCAG 2.5.3 (Label in Name): the button is named from its content, so
         // both visible lines are in the name ("label hint") and a voice user can

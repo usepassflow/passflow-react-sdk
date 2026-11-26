@@ -249,6 +249,12 @@ body {
   color: var(--passflow-grey-two);
 }
 
+.passflow-button--provider:disabled,
+.passflow-button--provider[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .passflow-button--clean:disabled,
 .passflow-button--clean[aria-disabled="true"] {
   cursor: not-allowed;
@@ -259,6 +265,37 @@ body {
 /* Button modifiers */
 .passflow-button--with-icon {
   gap: var(--passflow-spacing-2);
+}
+
+.passflow-button--loading {
+  gap: var(--passflow-spacing-2);
+}
+
+.passflow-button--loading:hover,
+.passflow-button--loading:focus-visible {
+  opacity: 1;
+}
+
+.passflow-button__spinner {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: passflow-button-spin 0.8s linear infinite;
+}
+
+@keyframes passflow-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .passflow-button__spinner {
+    animation-duration: 3s;
+  }
 }
 
 .passflow-button--as-icon {
@@ -580,6 +617,11 @@ body {
   background-color: var(--passflow-card-color);
 }
 
+.passflow-button.passflow-field-label-button:disabled {
+  color: var(--passflow-grey-two);
+  opacity: 1;
+}
+
 .passflow-field-input {
   width: 100%;
   min-height: 48px;
@@ -591,6 +633,12 @@ body {
   line-height: 18px;
   font-weight: var(--passflow-medium);
   outline: 1px solid var(--passflow-input-border-color);
+}
+
+.passflow-field-input:disabled,
+.passflow-field-phone-input:disabled {
+  color: var(--passflow-grey-two);
+  cursor: not-allowed;
 }
 
 .passflow-field-input--with-icon {
@@ -901,7 +949,7 @@ body {
 
 .passflow-switch-wrapper--disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.4;
 }
 
 .passflow-switch-input:checked + .passflow-switch-track {
@@ -1177,6 +1225,14 @@ body {
   font-size: var(--passflow-body-2);
   line-height: 18px;
   font-weight: var(--passflow-semibold);
+}
+
+/* A disabled `Link`: it outranks the class that gives the link its colour. */
+.passflow-link--disabled[aria-disabled="true"],
+.passflow-link--disabled[aria-disabled="true"]:hover {
+  cursor: not-allowed;
+  color: var(--passflow-grey-two);
+  text-decoration: none;
 }
 
 /* HAVE/DONT HAVE ACCOUNT */

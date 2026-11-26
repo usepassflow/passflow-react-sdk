@@ -211,7 +211,14 @@ test.describe('LoginScreen Storybook catalog', () => {
     const bounds = await reveal.boundingBox();
 
     await expect(form).toHaveAttribute('aria-busy', 'true');
-    await expect(page.getByRole('status').filter({ hasText: 'Signing in…' })).toBeVisible();
+    const signIn = page.getByRole('button', { name: 'Signing in…' });
+    await expect(signIn).toHaveAttribute('aria-busy', 'true');
+    await expect(signIn.locator('.passflow-button__spinner')).toBeVisible();
+    // Screen readers hear the hidden status; no visible progress block is drawn.
+    await expect(page.getByRole('status')).toHaveText('Signing in…');
+    await expect(page.getByRole('status')).toHaveClass('passflow-visually-hidden');
+    await expect(page.locator('.passflow-login-screen-status')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Sign In with a Passkey' })).toBeDisabled();
     await expect(reveal).toBeDisabled();
     expect(bounds).not.toBeNull();
     if (!bounds) throw new Error('expected password reveal bounds');
@@ -219,11 +226,48 @@ test.describe('LoginScreen Storybook catalog', () => {
     expect(bounds.height).toBeGreaterThanOrEqual(28);
   });
 
-  test('offers an enabled Cancel while a passkey prompt is open', async ({ page }) => {
+  test('a request the form did not start spins the first action, even after a cancelled passkey', async ({ page }) => {
+    await openStory(page, 'components-loginscreen--credentials-busy-interactive');
+    const passkey = page.getByRole('button', { name: 'Sign In with a Passkey' });
+    const signIn = page.getByRole('button', { name: 'Sign In', exact: true });
+
+    await passkey.click();
+    await expect(passkey).toHaveAttribute('aria-busy', 'true');
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect(passkey).not.toHaveAttribute('aria-busy');
+
+    await page.getByRole('button', { name: 'Start a request without a press' }).click();
+    await expect(signIn).toHaveAttribute('aria-busy', 'true');
+    await expect(passkey).not.toHaveAttribute('aria-busy');
+  });
+
+  test('disables the links and social buttons while a sign-in is in flight', async ({ page }) => {
+    await openStory(page, 'components-loginscreen--submitting-with-providers');
+
+    await expect(page.getByRole('button', { name: 'Signing in…' })).toHaveAttribute('aria-busy', 'true');
+    for (const name of ['Sign Up', 'Forgot Password?']) {
+      const link = page.getByRole('link', { name });
+      await expect(link).toHaveAttribute('aria-disabled', 'true');
+      await expect(link).not.toHaveAttribute('href');
+    }
+    const social = page.locator('.passflow-provider-item');
+    await expect(social).toHaveCount(2);
+    for (const button of await social.all()) await expect(button).toBeDisabled();
+  });
+
+  test('shows the spinner in the passkey button and an enabled Cancel while a passkey prompt is open', async ({ page }) => {
     await openStory(page, 'components-loginscreen--submitting-passkey');
 
     await expect(page.locator('form.passflow-form')).toHaveAttribute('aria-busy', 'true');
-    await expect(page.getByRole('status').filter({ hasText: 'Signing in…' })).toBeVisible();
+    const passkey = page.getByRole('button', { name: 'Sign In with a Passkey' });
+    await expect(passkey).toHaveAttribute('aria-busy', 'true');
+    await expect(passkey).toHaveAttribute('aria-disabled', 'true');
+    await expect(passkey).not.toHaveAttribute('disabled');
+    await expect(passkey.locator('.passflow-button__spinner')).toBeVisible();
+    // Screen readers hear the hidden status; no visible progress block is drawn.
+    await expect(page.getByRole('status')).toHaveText('Signing in…');
+    await expect(page.getByRole('status')).toHaveClass('passflow-visually-hidden');
+    await expect(page.locator('.passflow-login-screen-status')).toHaveCount(0);
     const cancel = page.getByRole('button', { name: 'Cancel' });
     await expect(cancel).toBeVisible();
     await expect(cancel).toBeEnabled();

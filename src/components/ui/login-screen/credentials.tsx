@@ -12,8 +12,11 @@ import { Icon } from '../icon';
 import { Link } from '../link';
 import { ProvidersBox } from '../providers-box';
 import { Switch } from '../switch';
-import { LoginActionStack, LoginAlert, LoginDivider, LoginProgress, LoginScreenNotice } from './shared';
+import { VisuallyHidden } from '../visually-hidden';
+import { LoginActionStack, LoginAlert, LoginDivider, LoginScreenNotice } from './shared';
 import type { LoginCredentialsState, LoginCredentialsValues } from './types';
+
+type CredentialsAction = 'password' | 'passwordless' | 'passkey';
 
 type LoginFormValues = {
   email_or_username: string;
@@ -39,6 +42,7 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
   const computedDefaultMethod = getDefaultMethod(state);
   const [defaultMethod, setDefaultMethod] = useState<DefaultMethod | null>(computedDefaultMethod);
   const [passkeyOnly, setPasskeyOnly] = useState(Boolean(state.forcePasskey));
+  const [pressedAction, setPressedAction] = useState<CredentialsAction | null>(null);
   const previousComputedMethod = useRef(computedDefaultMethod);
   const previousForcePasskey = useRef(Boolean(state.forcePasskey));
   const {
@@ -61,6 +65,12 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
     reset(initialValues);
   }, [computedDefaultMethod, reset]);
 
+  // A press only names the request it starts. Once that request ends, a later one this form did not start (an agent
+  // tool) shows the spinner on the first action.
+  useEffect(() => {
+    if (!state.busy) setPressedAction(null);
+  }, [state.busy]);
+
   useEffect(() => {
     const nextForcePasskey = Boolean(state.forcePasskey);
     if (previousForcePasskey.current === nextForcePasskey) return;
@@ -77,6 +87,12 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
   const showStandalonePasskey = hasPasskey && (passkeyOnly || !hasIdentity);
   const hasCredentialActions = hasPassword || hasPasswordless || hasPasskey;
   const controlsDisabled = Boolean(state.busy || state.disabled);
+  // While busy, the button that started the request shows the spinner. A request started without a press here (an
+  // agent tool, or a screen that opened busy) shows it on the form's first action.
+  const primaryAction: CredentialsAction =
+    showCredentialFields && hasPassword ? 'password' : showCredentialFields && hasPasswordless ? 'passwordless' : 'passkey';
+  const loadingAction = state.busy ? (pressedAction ?? primaryAction) : null;
+  const passkeyLoading = loadingAction === 'passkey';
   const errorScope = state.error?.scope;
   const hasIdentityError = errorScope === 'identity' || errorScope === 'credentials';
   const hasPasswordError = errorScope === 'password' || errorScope === 'credentials';
@@ -121,18 +137,51 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
 
   const submitCurrentMethod = handleSubmit((values) => {
     if (hasPassword) {
+      setPressedAction('password');
       state.onPassword?.(toCredentials(values));
       return;
     }
-    if (hasPasswordless) state.onPasswordless?.(toCredentials(values));
+    if (hasPasswordless) {
+      setPressedAction('passwordless');
+      state.onPasswordless?.(toCredentials(values));
+    }
   });
 
   const submitPasswordless = async () => {
     if (!defaultMethod || !state.onPasswordless) return;
     const identityField = defaultMethod === 'phone' ? 'phone' : 'email_or_username';
     if (!(await trigger(identityField))) return;
+    setPressedAction('passwordless');
     state.onPasswordless(toCredentials(getValues()));
   };
+  const startPasskey = () => {
+    setPressedAction('passkey');
+    state.onPasskey?.();
+  };
+  const passkeyAction = state.onPasskey ? (
+    <>
+      <Button
+        size='big'
+        variant='dark'
+        type='button'
+        className='passflow-button-passkey'
+        withIcon
+        loading={passkeyLoading}
+        disabled={controlsDisabled && !passkeyLoading}
+        onClick={startPasskey}
+      >
+        {passkeyLoading ? null : (
+          <Icon id='key' size='small' type='general' className='passflow-button-passkey-icon' decorative matchTextColor />
+        )}
+        {state.passkeyLabel ?? 'Sign In with a Passkey'}
+      </Button>
+      {passkeyLoading && state.onCancel ? (
+        <Button size='small' variant='link' type='button' onClick={state.onCancel}>
+          Cancel
+        </Button>
+      ) : null}
+    </>
+  ) : null;
   const selectedIdentityValue = defaultMethod === 'phone' ? watch('phone') : watch('email_or_username');
   const alternateIdentity = methods.identities.find((method) => method.id !== defaultMethod);
   const formAlert =
@@ -166,7 +215,7 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
         aria-busy={controlsDisabled && Boolean(state.busy)}
         onSubmit={submitCurrentMethod}
       >
-        {state.busy ? <LoginProgress message={state.primaryLabel ?? 'Signing in…'} onCancel={state.onCancel} /> : null}
+        <VisuallyHidden live>{state.busy ? (state.busyLabel ?? 'Signing in…') : ''}</VisuallyHidden>
         {showCredentialFields ? (
           <>
             <div className='passflow-form-container'>
@@ -283,6 +332,7 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
                         to={state.forgotPassword.to}
                         search={state.forgotPassword.getSearch?.(defaultMethod)}
                         className='passflow-field-label-button'
+                        disabled={controlsDisabled}
                       >
                         Forgot Password?
                       </Link>
@@ -325,7 +375,8 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
                   size='big'
                   variant='primary'
                   type='submit'
-                  disabled={controlsDisabled || !isDirty || !isValid}
+                  loading={loadingAction === 'password'}
+                  disabled={loadingAction !== 'password' && (controlsDisabled || !isDirty || !isValid)}
                   className='passflow-button-signin'
                   data-testid={state.primaryTestId}
                 >
@@ -340,33 +391,14 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
                   className={cn('passflow-button-passwordless', {
                     'passflow-button-passwordless--active': hasPassword,
                   })}
-                  disabled={controlsDisabled || selectedIdentityValue.trim().length === 0}
+                  loading={loadingAction === 'passwordless'}
+                  disabled={loadingAction !== 'passwordless' && (controlsDisabled || selectedIdentityValue.trim().length === 0)}
                   onClick={() => void submitPasswordless()}
                 >
                   {state.passwordlessLabelPrefix ?? 'Sign In with'} {currentIdentity?.passwordlessLabel}
                 </Button>
               ) : null}
-              {hasPasskey && state.onPasskey ? (
-                <Button
-                  size='big'
-                  variant='dark'
-                  type='button'
-                  className='passflow-button-passkey'
-                  withIcon
-                  disabled={controlsDisabled}
-                  onClick={state.onPasskey}
-                >
-                  <Icon
-                    id='key'
-                    size='small'
-                    type='general'
-                    className='passflow-button-passkey-icon'
-                    decorative
-                    matchTextColor
-                  />
-                  {state.passkeyLabel ?? 'Sign In with a Passkey'}
-                </Button>
-              ) : null}
+              {hasPasskey ? passkeyAction : null}
             </LoginActionStack>
           </>
         ) : null}
@@ -374,29 +406,7 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
         {showStandalonePasskey ? (
           <>
             {formAlert}
-            {state.onPasskey ? (
-              <LoginActionStack>
-                <Button
-                  size='big'
-                  variant='dark'
-                  type='button'
-                  className='passflow-button-passkey'
-                  withIcon
-                  disabled={controlsDisabled}
-                  onClick={state.onPasskey}
-                >
-                  <Icon
-                    id='key'
-                    size='small'
-                    type='general'
-                    className='passflow-button-passkey-icon'
-                    decorative
-                    matchTextColor
-                  />
-                  {state.passkeyLabel ?? 'Sign In with a Passkey'}
-                </Button>
-              </LoginActionStack>
-            ) : null}
+            {passkeyAction ? <LoginActionStack>{passkeyAction}</LoginActionStack> : null}
           </>
         ) : null}
 
@@ -404,7 +414,7 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
           <div className={cn('passflow-form-actions', { 'passflow-form-actions--top-space': hasCredentialActions })}>
             <p className='passflow-dont-have-account'>
               {state.footer.prompt}{' '}
-              <Link to={state.footer.to} search={state.footer.search} className='passflow-link'>
+              <Link to={state.footer.to} search={state.footer.search} className='passflow-link' disabled={controlsDisabled}>
                 {state.footer.label}
               </Link>
             </p>
@@ -414,7 +424,7 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
         {methods.providers.length > 0 && state.onProvider ? (
           <div className='passflow-form-providers'>
             {hasCredentialActions ? <LoginDivider label='Or continue with' /> : null}
-            <ProvidersBox providers={methods.providers} onClick={state.onProvider} />
+            <ProvidersBox providers={methods.providers} onClick={state.onProvider} disabled={controlsDisabled} />
           </div>
         ) : null}
       </form>

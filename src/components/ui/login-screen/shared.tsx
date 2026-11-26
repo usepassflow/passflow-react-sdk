@@ -1,6 +1,5 @@
 import type { FC, PropsWithChildren } from 'react';
 import { useEffect, useRef } from 'react';
-import { Button } from '../button';
 import { Icon } from '../icon';
 import type { LoginAccessScope, LoginConsentResource, LoginScreenNotice as LoginScreenNoticeProps } from './types';
 import './login-screen.css';
@@ -55,23 +54,12 @@ export const LoginActionStack: FC<PropsWithChildren> = ({ children }) => (
   <div className='passflow-login-screen-actions'>{children}</div>
 );
 
-export const LoginProgress: FC<{ message: string; onCancel?: () => void }> = ({ message, onCancel }) => {
-  const status = (
-    <div className='passflow-login-screen-status' role='status' aria-live='polite'>
-      <div className='passflow-login-screen-spinner passflow-login-screen-spinner--small' aria-hidden='true' />
-      <p className='passflow-login-screen-text passflow-login-screen-centered-text'>{message}</p>
-    </div>
-  );
-  if (!onCancel) return status;
-  return (
-    <div className='passflow-login-screen-progress'>
-      {status}
-      <Button size='small' variant='link' type='button' onClick={onCancel}>
-        Cancel
-      </Button>
-    </div>
-  );
-};
+export const LoginProgress: FC<{ message: string }> = ({ message }) => (
+  <div className='passflow-login-screen-status' role='status' aria-live='polite'>
+    <div className='passflow-login-screen-spinner passflow-login-screen-spinner--small' aria-hidden='true' />
+    <p className='passflow-login-screen-text passflow-login-screen-centered-text'>{message}</p>
+  </div>
+);
 
 /** The resources an approval gives access to: each name with its address. */
 export const LoginResources: FC<{ resources: LoginConsentResource[] }> = ({ resources }) => (

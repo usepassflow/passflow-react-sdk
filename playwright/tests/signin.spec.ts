@@ -184,13 +184,27 @@ test.describe('passkey sign-in with a prompt that never settles', () => {
 
   test('cancel returns to the form, and the hook ignores the late passkey result', async ({ page }) => {
     const passkey = page.getByRole('button', { name: 'Sign In with a Passkey' });
-    const progress = page.getByRole('status').filter({ hasText: 'Signing in…' });
+    let starts = 0;
+    page.on('request', (request) => {
+      if (request.url().includes('/auth/passkey/authenticate/start')) starts += 1;
+    });
     const start = page.waitForResponse('**/auth/passkey/authenticate/start');
     await passkey.click();
     await start;
 
-    await expect(progress).toBeVisible();
-    await expect(passkey).toBeDisabled();
+    await expect(passkey).toHaveAttribute('aria-busy', 'true');
+    await expect(passkey).toHaveAttribute('aria-disabled', 'true');
+    // A press on the spinning button starts no second passkey request.
+    await passkey.click({ force: true });
+    await page.evaluate(() => new Promise((done) => setTimeout(done, 300)));
+    expect(starts).toBe(1);
+    await expect(passkey.locator('.passflow-button__spinner')).toBeVisible();
+    await expect(passkey).toBeFocused();
+    // Screen readers hear the hidden status; no visible progress block is drawn.
+    await expect(page.getByRole('status')).toHaveText('Signing in…');
+    await expect(page.getByRole('status')).toHaveClass('passflow-visually-hidden');
+    await expect(page.locator('.passflow-login-screen-status')).toHaveCount(0);
+    await expect(page.getByRole('switch', { name: 'Passwordless experience' })).toBeDisabled();
 
     const cancel = page.getByRole('button', { name: 'Cancel' });
     await expect(cancel).toBeVisible();
@@ -199,6 +213,8 @@ test.describe('passkey sign-in with a prompt that never settles', () => {
     await expect(page.getByRole('alert')).toHaveText('Passkey sign-in was cancelled.');
     await expect(page.getByText('Signing in…')).toHaveCount(0);
     await expect(passkey).toBeEnabled();
+    await expect(passkey).not.toHaveAttribute('aria-busy');
+    await expect(page.getByRole('status')).toHaveText('');
 
     await page.evaluate(() => {
       (window as StuckPasskeyWindow).__settlePasskey?.((_resolve, reject) =>
@@ -211,6 +227,50 @@ test.describe('passkey sign-in with a prompt that never settles', () => {
     await expect(page.getByRole('alert')).toHaveText('Passkey sign-in was cancelled.');
     await expect(page.getByText('Signing in…')).toHaveCount(0);
     await expect(passkey).toBeEnabled();
+  });
+
+  test('while the passkey prompt waits, only Cancel works; after Cancel the form works with its values', async ({ page }) => {
+    const toggle = page.getByRole('switch', { name: 'Passwordless experience' });
+    if (await toggle.isChecked()) await page.getByText('Passwordless experience').click();
+    await expect(toggle).not.toBeChecked();
+    const email = page.getByLabel('Email');
+    await email.fill('jane@example.com');
+
+    const passkey = page.getByRole('button', { name: 'Sign In with a Passkey' });
+    const start = page.waitForResponse('**/auth/passkey/authenticate/start');
+    await passkey.click();
+    await start;
+    await expect(passkey).toHaveAttribute('aria-busy', 'true');
+
+    const signUp = page.getByRole('link', { name: 'Sign Up' });
+    const forgot = page.getByRole('link', { name: 'Forgot Password?' });
+    await expect(email).toBeDisabled();
+    await expect(page.getByLabel('Password', { exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Show password' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Use phone' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Sign In with email link' })).toBeDisabled();
+    await expect(toggle).toBeDisabled();
+    await expect(signUp).toHaveAttribute('aria-disabled', 'true');
+    await expect(signUp).not.toHaveAttribute('href');
+    await expect(forgot).toHaveAttribute('aria-disabled', 'true');
+
+    const signInUrl = page.url();
+    await signUp.click({ force: true });
+    await forgot.click({ force: true });
+    await toggle.click({ force: true });
+    await email.press('a', { timeout: 1000 }).catch(() => undefined);
+    await expect(page).toHaveURL(signInUrl);
+    await expect(toggle).not.toBeChecked();
+    await expect(email).toHaveValue('jane@example.com');
+
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByRole('alert')).toHaveText('Passkey sign-in was cancelled.');
+    await expect(email).toBeEnabled();
+    await expect(email).toHaveValue('jane@example.com');
+    await expect(toggle).toBeEnabled();
+    await expect(signUp).not.toHaveAttribute('aria-disabled');
+    await signUp.click();
+    await expect(page).toHaveURL(/\/web\/signup/);
   });
 });
 

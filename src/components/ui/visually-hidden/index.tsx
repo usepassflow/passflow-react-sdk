@@ -3,9 +3,15 @@ import './visually-hidden.css';
 
 export type VisuallyHiddenProps = {
   /** Referenced by a control's `aria-labelledby` or `aria-describedby`. */
-  id: string;
+  id?: string;
   /** The text read by assistive technology. Plain text only. */
   children: string;
+  /**
+   * A polite status message: screen readers announce each change of the text.
+   * Keep it rendered and change its text, because a status that appears with
+   * its text already in place is often not announced.
+   */
+  live?: boolean;
 };
 
 /**
@@ -16,8 +22,8 @@ export type VisuallyHiddenProps = {
  * has an accessible name. Prefer pointing the control at visible text when
  * the screen has some.
  */
-export const VisuallyHidden: FC<VisuallyHiddenProps> = ({ id, children }) => (
-  <span id={id} className='passflow-visually-hidden'>
+export const VisuallyHidden: FC<VisuallyHiddenProps> = ({ id, children, live = false }) => (
+  <span id={id} className='passflow-visually-hidden' role={live ? 'status' : undefined}>
     {children}
   </span>
 );
