@@ -9,7 +9,7 @@ import { waitForStoryRendered } from './storybook.helpers';
 test.use({ locale: 'en-US', timezoneId: 'UTC', viewport: { width: 715, height: 900 } });
 
 const storybookUrl = process.env.STORYBOOK_URL ?? 'http://localhost:6107';
-const trust = (page: Page) => page.getByRole('checkbox', { name: 'Trust this device' });
+const trust = (page: Page) => page.getByRole('switch', { name: 'Trust this device' });
 
 const cases = [
   { name: 'false hides it', field: { device_trust_available: false }, shown: false },

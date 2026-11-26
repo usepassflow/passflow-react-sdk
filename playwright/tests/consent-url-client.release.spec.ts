@@ -68,7 +68,10 @@ test('an unverified client under every warning: literal text, a prominent host, 
         app_name: html('app'),
         app_logo_url: '',
         requested_scopes: ['openid', 'profile'],
-        scope_metadata: [{ scope: 'profile', label: 'View your profile', description: '' }],
+        scope_metadata: [
+          { scope: 'openid', label: 'openid', description: '' },
+          { scope: 'profile', label: 'View your profile', description: '' },
+        ],
         redirect_uri: 'https://acme.test/callback',
         state: 'state-1',
         response_mode: 'query',
@@ -100,9 +103,9 @@ test('an unverified client under every warning: literal text, a prominent host, 
   await expectStacked([
     title(page),
     host,
+    ...warnings,
     page.getByTestId('consent-redirect-host'),
     page.getByText(html('uri'), { exact: true }),
-    ...warnings,
     page.getByTestId('consent-scope-openid'),
   ]);
   await expect(page.locator('[data-injected]')).toHaveCount(0);
@@ -163,7 +166,9 @@ test('a device approval lists its resources and scopes before the approval', asy
   await expect(resources.getByText('http://localhost:8090/mcp', { exact: true })).toBeVisible();
   await expect(page.getByTestId('access-scope-offline_access')).toHaveText(/^Offline accessStay signed in/);
   await expect(page.getByTestId('access-scope-mcp')).toHaveText('mcp');
-  await expect(page.getByTestId('access-scopes').getByRole('switch')).toHaveCount(0);
+  // Nothing on a device approval can be switched off: the Switch control has role `switch`, so one anywhere fails this.
+  await expect(page.getByRole('switch')).toHaveCount(0);
+  await expect(page.getByTestId('access-scopes').locator('input')).toHaveCount(0);
   await expectStacked([page.getByTestId('access-scopes'), page.getByRole('button', { name: 'Approve', exact: true })]);
   await expectAccessible(page);
 

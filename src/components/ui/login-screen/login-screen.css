@@ -230,6 +230,21 @@
   gap: var(--passflow-spacing-1);
 }
 
+/* The consent badge wraps on a phone: the check flows with the text so it stays beside the first line. */
+.passflow-consent-client .passflow-login-screen-success {
+  display: block;
+  text-align: center;
+}
+
+.passflow-consent-client .passflow-login-screen-success > * {
+  display: inline;
+  vertical-align: middle;
+}
+
+.passflow-consent-client .passflow-login-screen-success > :first-child {
+  margin-inline-end: var(--passflow-spacing-1);
+}
+
 .passflow-login-screen-success-text {
   color: var(--passflow-success);
   font-size: var(--passflow-caption);
@@ -363,6 +378,46 @@
   flex-direction: column;
   gap: var(--passflow-spacing-1);
   text-align: left;
+}
+
+.passflow-consent-scope-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--passflow-spacing-1);
+}
+
+.passflow-consent-scope-label {
+  color: var(--passflow-text-color);
+  font-size: var(--passflow-caption);
+  font-weight: var(--passflow-medium);
+}
+
+.passflow-consent-resource-scopes {
+  margin: var(--passflow-spacing-2) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.passflow-consent-resource-scope {
+  padding: var(--passflow-spacing-3) 0 0;
+  border-top: 1px solid var(--passflow-divider-color);
+}
+
+.passflow-consent-resource-scope + .passflow-consent-resource-scope {
+  margin-top: var(--passflow-spacing-3);
+}
+
+.passflow-consent-scope-rows {
+  margin: 0;
+  list-style: none;
+  gap: 0;
+}
+
+.passflow-consent-scope-rows > .passflow-consent-resource-scope:first-child {
+  padding-top: 0;
+  border-top: 0;
 }
 
 .passflow-consent-scope-description {

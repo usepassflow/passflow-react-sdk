@@ -7,7 +7,11 @@ const info: ConsentInfo = {
   app_name: 'Acme Notes',
   app_logo_url: 'https://acme.test/logo.png',
   requested_scopes: ['openid', 'profile', 'offline_access'],
-  scope_metadata: [{ scope: 'profile', label: 'View your profile', description: 'Your name and picture.' }],
+  scope_metadata: [
+    { scope: 'openid', label: 'openid', description: '' },
+    { scope: 'profile', label: 'View your profile', description: 'Your name and picture.' },
+    { scope: 'offline_access', label: '', description: '' },
+  ],
   redirect_uri: 'https://acme.test/callback',
   state: 'state-1',
   response_mode: 'query',
@@ -112,14 +116,91 @@ describe('getConsentLoginScreenProps', () => {
     expect(state.appName).toBe('acme-notes-client');
   });
 
-  it('maps each requested scope with its label, description and granted flag', () => {
+  it('maps each listed scope with its label, description and granted flag, as switches when nothing is required', () => {
     const { state } = consentState(consent({ grantedScopes: ['openid', 'offline_access'] }));
 
     expect(state.scopes).toEqual([
-      { scope: 'openid', label: 'openid', description: undefined, granted: true },
-      { scope: 'profile', label: 'View your profile', description: 'Your name and picture.', granted: false },
-      { scope: 'offline_access', label: 'offline_access', description: undefined, granted: true },
+      { scope: 'openid', label: 'openid', description: undefined, required: undefined, granted: true },
+      {
+        scope: 'profile',
+        label: 'View your profile',
+        description: 'Your name and picture.',
+        required: undefined,
+        granted: false,
+      },
+      { scope: 'offline_access', label: 'offline_access', description: undefined, required: undefined, granted: true },
     ]);
+  });
+
+  it('lists the scopes in the order the server lists them, and marks the required ones', () => {
+    const mcp: ConsentInfo = {
+      ...info,
+      requested_scopes: ['mcp', 'notes:read', 'email', 'openid', 'offline_access'],
+      scope_metadata: [
+        { scope: 'openid', label: 'Confirm who you are', description: "Lets the app know it's you", required: true },
+        { scope: 'offline_access', label: 'Stay connected', description: '', required: true },
+        { scope: 'email', label: 'See your email address', description: '', required: false },
+      ],
+      resources: [
+        {
+          uri: 'https://notes.example/mcp',
+          name: 'Sample notes',
+          scopes: [{ scope: 'notes:read', label: 'Read your notes', required: true, default_on: true }],
+        },
+      ],
+    };
+    const { state } = consentState(consent({ info: mcp, grantedScopes: mcp.requested_scopes }));
+
+    expect(state.scopes.map(({ scope, required }) => [scope, required])).toEqual([
+      ['openid', true],
+      ['offline_access', true],
+      ['email', undefined],
+    ]);
+    expect(state.scopes[1]?.description).toBeUndefined();
+  });
+
+  it("lists each resource's scopes inside its card, with the switch states the hook holds", () => {
+    const resources: ConsentInfo['resources'] = [
+      {
+        uri: 'https://notes.example/mcp',
+        name: 'Sample notes',
+        scopes: [
+          { scope: 'notes:read', label: 'Read your notes', required: true, default_on: true },
+          { scope: 'notes:write', label: '', description: 'Change notes', required: false, default_on: false },
+          { scope: 7, label: 'junk' } as never,
+        ],
+      },
+      { uri: 'https://other.example/mcp', scopes: null },
+    ];
+    const { state } = consentState(consent({ info: { ...info, resources }, grantedScopes: ['notes:read', 'notes:write'] }));
+
+    expect(state.resources).toEqual([
+      {
+        uri: 'https://notes.example/mcp',
+        name: 'Sample notes',
+        scopes: [
+          { scope: 'notes:read', label: 'Read your notes', description: undefined, required: true, granted: true },
+          { scope: 'notes:write', label: 'notes:write', description: 'Change notes', required: undefined, granted: true },
+        ],
+      },
+      { uri: 'https://other.example/mcp', name: undefined, scopes: undefined },
+    ]);
+  });
+
+  it('draws a scope required in one card as required in every card it appears in', () => {
+    const resources: ConsentInfo['resources'] = [
+      { uri: 'https://a.example/mcp', scopes: [{ scope: 'notes:read', label: 'Read', required: false, default_on: false }] },
+      { uri: 'https://b.example/mcp', scopes: [{ scope: 'notes:read', label: 'Read', required: true }] },
+    ];
+    const { state } = consentState(consent({ info: { ...info, resources }, grantedScopes: ['notes:read'] }));
+
+    expect(state.resources?.map((resource) => resource.scopes?.[0]?.required)).toEqual([true, true]);
+  });
+
+  it('shows no scope list when the server sent no usable metadata', () => {
+    const { state } = consentState(consent({ info: { ...info, scope_metadata: null as never } }));
+
+    expect(state.scopes).toEqual([]);
   });
 
   it('is busy only while a decision is in flight', () => {

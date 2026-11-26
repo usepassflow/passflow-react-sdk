@@ -2,16 +2,70 @@ import type { FC } from 'react';
 import { Button } from '../button';
 import { Icon } from '../icon';
 import { Switch } from '../switch';
-import { LoginAlert, LoginProgress, LoginResources, LoginScreenNotice } from './shared';
-import type { LoginConsentState } from './types';
+import { LoginAlert, LoginProgress, LoginScreenNotice } from './shared';
+import type { LoginConsentResource, LoginConsentScope, LoginConsentState } from './types';
+
+type ScopeControl = {
+  busy: boolean;
+  onToggleScope: (scope: string) => void;
+};
+
+/**
+ * One scope: a plain line when it is required, otherwise a switch whose track
+ * sits on the row's far edge, so every track on the screen shares one column.
+ */
+const ConsentScopeLine: FC<ScopeControl & { item: LoginConsentScope }> = ({ item, busy, onToggleScope }) =>
+  item.required ? (
+    <span className='passflow-consent-scope-text'>
+      <span className='passflow-consent-scope-label'>{item.label}</span>
+      {item.description ? <span className='passflow-consent-scope-description'>{item.description}</span> : null}
+    </span>
+  ) : (
+    <Switch
+      layout='row'
+      label={item.label}
+      description={item.description}
+      checked={item.granted}
+      disabled={busy}
+      onChange={() => onToggleScope(item.scope)}
+    />
+  );
+
+/** Each resource with its name, its address, and the scopes the application asks for on it. */
+const ConsentResources: FC<ScopeControl & { resources: LoginConsentResource[] }> = ({ resources, ...control }) => (
+  <div className='passflow-consent-resources' data-testid='access-resources'>
+    <p id='passflow-consent-resources-label' className='passflow-login-screen-text'>
+      Resources it will access
+    </p>
+    <ul className='passflow-consent-scopes' aria-labelledby='passflow-consent-resources-label'>
+      {resources.map(({ uri, name, scopes }) => (
+        <li key={uri} className='passflow-consent-scope' data-testid={`consent-resource-${uri}`}>
+          {name ? <p className='passflow-login-screen-text'>{name}</p> : null}
+          <p className='passflow-consent-scope-description passflow-consent-resource-uri'>{uri}</p>
+          {scopes?.length ? (
+            <ul className='passflow-consent-resource-scopes' aria-label={name ? `${name} access` : `${uri} access`}>
+              {scopes.map((item) => (
+                <li key={item.scope} className='passflow-consent-resource-scope' data-testid={`consent-scope-${item.scope}`}>
+                  <ConsentScopeLine item={item} {...control} />
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  </div>
+);
 
 /**
  * The OIDC consent screen: which scopes an application is asking for, and the
  * two decisions a user can make about them.
  *
- * Every scope starts granted and can be switched off individually — the Allow
- * button submits the subset that is still on, so "Allow" never grants more than
- * what is visible on screen. Deny is a peer of Allow, not a hidden link: a
+ * A required scope is a plain line: it is always granted. Every other scope is
+ * a switch, starting in the state the server gives it, and the Allow button
+ * submits the required scopes plus the switches that are still on. Resources
+ * carry their own scopes inside their cards; one card below them holds the rest.
+ * Warnings come first, so they are read before anything they warn about. Deny is a peer of Allow, not a hidden link: a
  * consent screen where refusing is harder than accepting is a dark pattern.
  * For the same reason neither button takes initial focus: a bare Enter on a
  * freshly loaded screen must not grant every requested scope.
@@ -68,20 +122,6 @@ export const LoginConsent: FC<LoginConsentState> = ({
     <LoginScreenNotice appName={appName} message={prompt} appNameTestId={appNameTestId} />
 
     <div className='passflow-form-container'>
-      {redirectHost ? (
-        <p className='passflow-login-screen-text passflow-consent-redirect'>
-          You'll be sent to{' '}
-          <span
-            className={prominentHost === 'redirect' ? 'passflow-consent-prominent-host' : 'passflow-login-screen-app-name'}
-            data-testid='consent-redirect-host'
-          >
-            {redirectHost}
-          </span>
-        </p>
-      ) : null}
-
-      {resources?.length ? <LoginResources resources={resources} /> : null}
-
       {warnings?.length ? (
         <div className='passflow-consent-warnings'>
           {warnings.map(({ code, severity, message }) => (
@@ -95,18 +135,33 @@ export const LoginConsent: FC<LoginConsentState> = ({
         </div>
       ) : null}
 
+      {redirectHost ? (
+        <p className='passflow-login-screen-text passflow-consent-redirect'>
+          You'll be sent to{' '}
+          <span
+            className={prominentHost === 'redirect' ? 'passflow-consent-prominent-host' : 'passflow-login-screen-app-name'}
+            data-testid='consent-redirect-host'
+          >
+            {redirectHost}
+          </span>
+        </p>
+      ) : null}
+
+      {resources?.length ? <ConsentResources resources={resources} busy={busy} onToggleScope={onToggleScope} /> : null}
+
       <LoginAlert message={error} />
 
       {scopes.length ? (
-        <ul className='passflow-consent-scopes'>
-          {scopes.map((item) => (
-            <li key={item.scope} className='passflow-consent-scope' data-testid={`consent-scope-${item.scope}`}>
-              <Switch label={item.label} checked={item.granted} disabled={busy} onChange={() => onToggleScope(item.scope)} />
-              {item.description ? <p className='passflow-consent-scope-description'>{item.description}</p> : null}
-            </li>
-          ))}
-        </ul>
-      ) : (
+        <div className='passflow-consent-scopes'>
+          <ul className='passflow-consent-scope passflow-consent-scope-rows'>
+            {scopes.map((item) => (
+              <li key={item.scope} className='passflow-consent-resource-scope' data-testid={`consent-scope-${item.scope}`}>
+                <ConsentScopeLine item={item} busy={busy} onToggleScope={onToggleScope} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : resources?.some((resource) => resource.scopes?.length) ? null : (
         <p className='passflow-login-screen-hint'>This application is not requesting access to any of your data.</p>
       )}
     </div>
