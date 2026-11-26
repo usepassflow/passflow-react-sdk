@@ -127,7 +127,7 @@ for (const { id, name } of [
 
 test('REQ-8 LoginScreen · CredentialsHumanOnlyCheckingBrowser · shows both credentials and solve status', async ({ page }) => {
   const root = await openStory(page, 'components-loginscreen--credentials-human-only-checking-browser');
-  await expect(root.getByRole('button', { name: 'Signing in…' })).toBeDisabled();
+  await expect(root.getByRole('button', { name: 'Signing in…' })).toHaveAttribute('aria-busy', 'true');
   await expect(root.getByRole('status').filter({ hasText: 'Checking your browser…' })).toBeVisible();
   await audit(page);
 });

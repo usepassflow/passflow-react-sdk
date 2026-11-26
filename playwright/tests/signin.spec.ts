@@ -184,13 +184,15 @@ test.describe('passkey sign-in with a prompt that never settles', () => {
 
   test('cancel returns to the form, and the hook ignores the late passkey result', async ({ page }) => {
     const passkey = page.getByRole('button', { name: 'Sign In with a Passkey' });
-    const progress = page.getByRole('status').filter({ hasText: 'Signing in…' });
     const start = page.waitForResponse('**/auth/passkey/authenticate/start');
     await passkey.click();
     await start;
 
-    await expect(progress).toBeVisible();
-    await expect(passkey).toBeDisabled();
+    await expect(passkey).toHaveAttribute('aria-busy', 'true');
+    await expect(passkey.locator('.passflow-button__spinner')).toBeVisible();
+    await expect(passkey).toBeFocused();
+    await expect(page.getByRole('status')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Sign In', exact: true })).toBeDisabled();
 
     const cancel = page.getByRole('button', { name: 'Cancel' });
     await expect(cancel).toBeVisible();
@@ -199,6 +201,7 @@ test.describe('passkey sign-in with a prompt that never settles', () => {
     await expect(page.getByRole('alert')).toHaveText('Passkey sign-in was cancelled.');
     await expect(page.getByText('Signing in…')).toHaveCount(0);
     await expect(passkey).toBeEnabled();
+    await expect(passkey).not.toHaveAttribute('aria-busy');
 
     await page.evaluate(() => {
       (window as StuckPasskeyWindow).__settlePasskey?.((_resolve, reject) =>

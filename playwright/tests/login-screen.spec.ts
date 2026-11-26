@@ -211,7 +211,11 @@ test.describe('LoginScreen Storybook catalog', () => {
     const bounds = await reveal.boundingBox();
 
     await expect(form).toHaveAttribute('aria-busy', 'true');
-    await expect(page.getByRole('status').filter({ hasText: 'Signing in…' })).toBeVisible();
+    const signIn = page.getByRole('button', { name: 'Signing in…' });
+    await expect(signIn).toHaveAttribute('aria-busy', 'true');
+    await expect(signIn.locator('.passflow-button__spinner')).toBeVisible();
+    await expect(page.getByRole('status')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Sign In with a Passkey' })).toBeDisabled();
     await expect(reveal).toBeDisabled();
     expect(bounds).not.toBeNull();
     if (!bounds) throw new Error('expected password reveal bounds');
@@ -219,11 +223,15 @@ test.describe('LoginScreen Storybook catalog', () => {
     expect(bounds.height).toBeGreaterThanOrEqual(28);
   });
 
-  test('offers an enabled Cancel while a passkey prompt is open', async ({ page }) => {
+  test('shows the spinner in the passkey button and an enabled Cancel while a passkey prompt is open', async ({ page }) => {
     await openStory(page, 'components-loginscreen--submitting-passkey');
 
     await expect(page.locator('form.passflow-form')).toHaveAttribute('aria-busy', 'true');
-    await expect(page.getByRole('status').filter({ hasText: 'Signing in…' })).toBeVisible();
+    const passkey = page.getByRole('button', { name: 'Sign In with a Passkey' });
+    await expect(passkey).toHaveAttribute('aria-busy', 'true');
+    await expect(passkey).toBeEnabled();
+    await expect(passkey.locator('.passflow-button__spinner')).toBeVisible();
+    await expect(page.getByRole('status')).toHaveCount(0);
     const cancel = page.getByRole('button', { name: 'Cancel' });
     await expect(cancel).toBeVisible();
     await expect(cancel).toBeEnabled();

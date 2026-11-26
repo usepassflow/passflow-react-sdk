@@ -398,7 +398,7 @@ const SignInFormScreen: FC<TSignIn> = ({
         allowPasskeyToggle: true,
         busy: isLoading,
         onCancel: isLoading && pendingOperation === 'passkey' ? cancelPasskey : undefined,
-        primaryLabel: isLoading ? 'Signing in…' : 'Sign In',
+        primaryLabel: isLoading && pendingOperation === 'password' ? 'Signing in…' : 'Sign In',
         error: isError ? error : null,
         forgotPassword: {
           to: forgotPasswordPath ?? routes.forgot_password.path,
