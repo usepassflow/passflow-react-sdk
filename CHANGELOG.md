@@ -10,11 +10,13 @@ All notable changes to `@passflow/react` are documented in this file.
 - While a sign-in is in flight, the whole form is inert and looks it: fields, the "Passwordless experience" switch, the other buttons, "Use phone", "Forgot Password?", Sign Up and the social buttons. The typed values are kept.
 - While a passkey sign-in waits, Cancel is a link under the passkey button and the only control that works. It abandons a prompt that never answers, as before.
 - The password button says "Signing in…" only during a password sign-in.
+- Screen readers hear "Signing in…" ("Creating account…" on sign-up) from a hidden status line while the form is busy.
 
 ### Added
 
 - `Button` takes `loading`: a spinner before the label, `aria-busy` and `aria-disabled`, and presses are ignored.
 - `Link` and `ProvidersBox` take `disabled`. A disabled `Link` has no address, is `aria-disabled` and is grey.
+- `VisuallyHidden` takes `live`, a polite status line, and its `id` is optional. The credentials state takes `busyLabel`.
 
 ### Changed
 

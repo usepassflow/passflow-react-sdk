@@ -374,6 +374,7 @@ const SignUpFormScreen: FC<TSignUp> = ({
         allowPasskeyToggle: true,
         busy: isLoading,
         primaryLabel: isLoading ? 'Creating account…' : 'Sign Up',
+        busyLabel: 'Creating account…',
         passwordlessLabelPrefix: 'Sign Up with',
         passkeyLabel: 'Sign Up with a Passkey',
         error: isError ? error : null,

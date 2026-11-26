@@ -12,6 +12,7 @@ import { Icon } from '../icon';
 import { Link } from '../link';
 import { ProvidersBox } from '../providers-box';
 import { Switch } from '../switch';
+import { VisuallyHidden } from '../visually-hidden';
 import { LoginActionStack, LoginAlert, LoginDivider, LoginScreenNotice } from './shared';
 import type { LoginCredentialsState, LoginCredentialsValues } from './types';
 
@@ -63,6 +64,12 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
     setDefaultMethod(computedDefaultMethod);
     reset(initialValues);
   }, [computedDefaultMethod, reset]);
+
+  // A press only names the request it starts. Once that request ends, a later one this form did not start (an agent
+  // tool) shows the spinner on the first action.
+  useEffect(() => {
+    if (!state.busy) setPressedAction(null);
+  }, [state.busy]);
 
   useEffect(() => {
     const nextForcePasskey = Boolean(state.forcePasskey);
@@ -208,6 +215,7 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
         aria-busy={controlsDisabled && Boolean(state.busy)}
         onSubmit={submitCurrentMethod}
       >
+        <VisuallyHidden live>{state.busy ? (state.busyLabel ?? 'Signing in…') : ''}</VisuallyHidden>
         {showCredentialFields ? (
           <>
             <div className='passflow-form-container'>

@@ -37,6 +37,7 @@ import {
   twoFactorWrongRecoveryCodeMessage,
 } from '@/utils/auth-error';
 import { installFakeAntiBotVendors } from '../anti-bot/fake-vendors';
+import { Button } from '../button';
 import { LoginScreen } from './login-screen';
 import type {
   LoginConsentState,
@@ -354,6 +355,35 @@ export const SubmittingWithProviders: Story = {
       primaryLabel: 'Signing in…',
     }),
   ),
+};
+
+/**
+ * The passkey button starts a request and Cancel ends it. "Start a request without a press" stands in for a sign-in
+ * the form did not start, such as an agent tool's: its spinner goes on the form's first action.
+ */
+const CredentialsBusyPlayground: FC = () => {
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <>
+      <LoginScreen
+        chrome={chrome}
+        state={credentials(methods({ emailPassword: true, passkey: true }), {
+          busy,
+          onPasskey: () => setBusy(true),
+          onCancel: () => setBusy(false),
+        })}
+      />
+      <Button size='small' variant='link' type='button' disabled={busy} onClick={() => setBusy(true)}>
+        Start a request without a press
+      </Button>
+    </>
+  );
+};
+
+export const CredentialsBusyInteractive: Story = {
+  args: story(credentials(methods({ emailPassword: true, passkey: true }))),
+  render: () => <CredentialsBusyPlayground />,
 };
 
 export const SubmittingPasskey: Story = {

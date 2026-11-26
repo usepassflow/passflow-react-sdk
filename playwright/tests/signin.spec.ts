@@ -200,7 +200,10 @@ test.describe('passkey sign-in with a prompt that never settles', () => {
     expect(starts).toBe(1);
     await expect(passkey.locator('.passflow-button__spinner')).toBeVisible();
     await expect(passkey).toBeFocused();
-    await expect(page.getByRole('status')).toHaveCount(0);
+    // Screen readers hear the hidden status; no visible progress block is drawn.
+    await expect(page.getByRole('status')).toHaveText('Signing in…');
+    await expect(page.getByRole('status')).toHaveClass('passflow-visually-hidden');
+    await expect(page.locator('.passflow-login-screen-status')).toHaveCount(0);
     await expect(page.getByRole('switch', { name: 'Passwordless experience' })).toBeDisabled();
 
     const cancel = page.getByRole('button', { name: 'Cancel' });
@@ -211,6 +214,7 @@ test.describe('passkey sign-in with a prompt that never settles', () => {
     await expect(page.getByText('Signing in…')).toHaveCount(0);
     await expect(passkey).toBeEnabled();
     await expect(passkey).not.toHaveAttribute('aria-busy');
+    await expect(page.getByRole('status')).toHaveText('');
 
     await page.evaluate(() => {
       (window as StuckPasskeyWindow).__settlePasskey?.((_resolve, reject) =>

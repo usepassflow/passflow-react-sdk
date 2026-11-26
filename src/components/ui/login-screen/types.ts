@@ -74,6 +74,8 @@ export type LoginCredentialsState = {
   allowPasskeyToggle?: boolean;
   disabled?: boolean;
   busy?: boolean;
+  /** What screen readers hear while busy. Default `Signing in…`. */
+  busyLabel?: string;
   /** While a passkey sign-in is busy, a Cancel link under its button abandons the wait. */
   onCancel?: () => void;
   error?: AuthUiError | null;

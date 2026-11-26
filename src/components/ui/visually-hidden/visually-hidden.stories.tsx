@@ -19,3 +19,8 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: { id: 'visually-hidden-story', children: 'Verification code' },
 };
+
+/** A status line for screen readers, such as "Signing in…" while a sign-in button spins. */
+export const Live: Story = {
+  args: { live: true, children: 'Signing in…' },
+};
