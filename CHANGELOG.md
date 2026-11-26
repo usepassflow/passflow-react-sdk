@@ -7,7 +7,8 @@ All notable changes to `@passflow/react` are documented in this file.
 ### Changed
 
 - The consent screen shows a scope the server marks `required` as a plain line with no switch. It is always granted. Every other scope is a switch, and all switches line up in one column on the right edge.
-- Each resource card lists that resource's scopes from `resources[].scopes`: required ones as plain lines, the others as switches that start in the server's `default_on` state.
+- Each resource card lists that resource's scopes from `resources[].scopes`: required ones as plain lines, the others as switches that start in the server's `default_on` state (on when it is missing). A scope that any card marks required is required in every card it appears in.
+- `Switch` has `role="switch"` with `aria-checked`, so screen readers announce a switch. Tests that find it by role should use `switch`, not `checkbox`.
 - The scopes below the resources share one card, in the order the server lists them in `scope_metadata`. A requested scope the server lists nowhere is not shown and stays granted. A description line shows only when the server sends one.
 - The server's warnings open the card, above "You'll be sent to".
 - Allow sends the requested scopes except the switches that are off.
