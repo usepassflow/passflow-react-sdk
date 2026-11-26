@@ -55,8 +55,9 @@ type TButton = PropsWithChildren &
      */
     pressed?: boolean;
     /**
-     * The action this button started is in flight: a spinner leads the label, the
-     * button keeps its colour and its focus, and further presses are ignored.
+     * The action this button started is in flight: a spinner leads the label, and
+     * the button looks disabled and ignores presses. It is `aria-disabled`, not
+     * natively disabled, so it keeps focus.
      */
     loading?: boolean;
   };
@@ -134,6 +135,7 @@ export const Button: FC<TButton> = ({
       type={type}
       aria-pressed={pressed}
       aria-busy={loading || undefined}
+      aria-disabled={loading || undefined}
       onClick={handleClick}
       {...rest}
     >

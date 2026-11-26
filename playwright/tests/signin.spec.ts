@@ -184,15 +184,24 @@ test.describe('passkey sign-in with a prompt that never settles', () => {
 
   test('cancel returns to the form, and the hook ignores the late passkey result', async ({ page }) => {
     const passkey = page.getByRole('button', { name: 'Sign In with a Passkey' });
+    let starts = 0;
+    page.on('request', (request) => {
+      if (request.url().includes('/auth/passkey/authenticate/start')) starts += 1;
+    });
     const start = page.waitForResponse('**/auth/passkey/authenticate/start');
     await passkey.click();
     await start;
 
     await expect(passkey).toHaveAttribute('aria-busy', 'true');
+    await expect(passkey).toHaveAttribute('aria-disabled', 'true');
+    // A press on the spinning button starts no second passkey request.
+    await passkey.click({ force: true });
+    await page.evaluate(() => new Promise((done) => setTimeout(done, 300)));
+    expect(starts).toBe(1);
     await expect(passkey.locator('.passflow-button__spinner')).toBeVisible();
     await expect(passkey).toBeFocused();
     await expect(page.getByRole('status')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Sign In', exact: true })).toBeDisabled();
+    await expect(page.getByRole('switch', { name: 'Passwordless experience' })).toBeDisabled();
 
     const cancel = page.getByRole('button', { name: 'Cancel' });
     await expect(cancel).toBeVisible();

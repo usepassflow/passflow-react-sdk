@@ -229,7 +229,8 @@ test.describe('LoginScreen Storybook catalog', () => {
     await expect(page.locator('form.passflow-form')).toHaveAttribute('aria-busy', 'true');
     const passkey = page.getByRole('button', { name: 'Sign In with a Passkey' });
     await expect(passkey).toHaveAttribute('aria-busy', 'true');
-    await expect(passkey).toBeEnabled();
+    await expect(passkey).toHaveAttribute('aria-disabled', 'true');
+    await expect(passkey).not.toHaveAttribute('disabled');
     await expect(passkey.locator('.passflow-button__spinner')).toBeVisible();
     await expect(page.getByRole('status')).toHaveCount(0);
     const cancel = page.getByRole('button', { name: 'Cancel' });

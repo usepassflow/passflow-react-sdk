@@ -13,8 +13,8 @@ const states = [
   ['LinkDisabled', 'link-disabled', 'Use recovery code', true],
   ['Dark', 'dark', 'Continue', false],
   ['Provider', 'provider', 'Continue with Google', false],
-  ['PrimaryLoading', 'primary-loading', 'Signing in…', false],
-  ['DarkLoading', 'dark-loading', 'Sign In with a Passkey', false],
+  ['PrimaryLoading', 'primary-loading', 'Signing in…', true],
+  ['DarkLoading', 'dark-loading', 'Sign In with a Passkey', true],
   ['Small', 'small', '+', false],
   ['Medium', 'medium', 'Save', false],
   ['Option', 'option', 'Authenticator app', false],
@@ -45,6 +45,8 @@ for (const [name, id, label, disabled] of states) {
     }
     if (id === 'primary-loading' || id === 'dark-loading') {
       await expect(button).toHaveAttribute('aria-busy', 'true');
+      await expect(button).toHaveAttribute('aria-disabled', 'true');
+      await expect(button).not.toHaveAttribute('disabled');
       await expect(button.locator('.passflow-button__spinner')).toBeVisible();
       await button.focus();
       await expect(button).toBeFocused();

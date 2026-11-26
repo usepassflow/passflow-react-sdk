@@ -263,7 +263,11 @@ body {
 
 .passflow-button--loading {
   gap: var(--passflow-spacing-2);
-  cursor: progress;
+}
+
+.passflow-button--loading:hover,
+.passflow-button--loading:focus-visible {
+  opacity: 1;
 }
 
 .passflow-button__spinner {
