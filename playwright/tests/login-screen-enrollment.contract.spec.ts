@@ -64,7 +64,7 @@ for (const story of codeStories) {
     await openStory(page, story);
     const recovery = story.includes('Recovery');
     const code = page.getByRole('textbox', { name: recovery ? 'Recovery Code' : 'Verification code', exact: true });
-    const trust = page.getByRole('checkbox', { name: 'Trust this device' });
+    const trust = page.getByRole('switch', { name: 'Trust this device' });
     const locked = story.includes('Locked') || story.endsWith('RateLimited');
     const busy = story.endsWith('Busy');
     const alternate = page.getByRole('button', { name: recovery ? 'Use authenticator code' : 'Use recovery code', exact: true });
@@ -120,7 +120,7 @@ for (const story of codeStories) {
 test('TEST-S1 REQ-1 REQ-19 LoginScreen · TwoFactorCodeInteractive · controls code readiness and trust independently', async ({ page }) => {
   await openStory(page, 'TwoFactorCodeInteractive');
   const code = page.getByRole('textbox', { name: 'Verification code', exact: true });
-  const trust = page.getByRole('checkbox', { name: 'Trust this device' });
+  const trust = page.getByRole('switch', { name: 'Trust this device' });
   const verify = page.getByRole('button', { name: 'Verify', exact: true });
   await expect(verify).toBeDisabled();
   await code.fill('12345');

@@ -121,12 +121,22 @@ export type UseConsentProps = {
 };
 
 /** A resource scope that is optional and that the server says starts switched off. */
-const startsOff = (info: ConsentInfo, scope: string): boolean =>
-  (Array.isArray(info.resources) ? info.resources : []).some(
-    (resource) =>
-      Array.isArray(resource?.scopes) &&
-      resource.scopes.some((item) => item?.scope === scope && item.required !== true && item.default_on === false),
+const resourceScopes = (info: Pick<ConsentInfo, 'resources'>): Partial<ConsentResourceScope>[] =>
+  (Array.isArray(info.resources) ? info.resources : []).flatMap((resource) =>
+    Array.isArray(resource?.scopes) ? resource.scopes.map((item) => item ?? {}) : [],
   );
+
+/** The resource scopes that some card marks required. Such a scope is required in every card it appears in. */
+export const requiredResourceScopes = (info: Pick<ConsentInfo, 'resources'>): Set<string> =>
+  new Set(
+    resourceScopes(info)
+      .filter((item) => item.required === true && typeof item.scope === 'string')
+      .map((item) => item.scope as string),
+  );
+
+const startsOff = (info: ConsentInfo, scope: string): boolean =>
+  !requiredResourceScopes(info).has(scope) &&
+  resourceScopes(info).some((item) => item.scope === scope && item.default_on === false);
 
 const readConsentChallengeId = (): string => new URLSearchParams(window.location.search).get('consent_challenge_id') ?? '';
 

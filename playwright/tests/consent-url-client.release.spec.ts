@@ -166,7 +166,9 @@ test('a device approval lists its resources and scopes before the approval', asy
   await expect(resources.getByText('http://localhost:8090/mcp', { exact: true })).toBeVisible();
   await expect(page.getByTestId('access-scope-offline_access')).toHaveText(/^Offline accessStay signed in/);
   await expect(page.getByTestId('access-scope-mcp')).toHaveText('mcp');
-  await expect(page.getByTestId('access-scopes').getByRole('switch')).toHaveCount(0);
+  // Nothing on a device approval can be switched off: the Switch control has role `switch`, so one anywhere fails this.
+  await expect(page.getByRole('switch')).toHaveCount(0);
+  await expect(page.getByTestId('access-scopes').locator('input')).toHaveCount(0);
   await expectStacked([page.getByTestId('access-scopes'), page.getByRole('button', { name: 'Approve', exact: true })]);
   await expectAccessible(page);
 

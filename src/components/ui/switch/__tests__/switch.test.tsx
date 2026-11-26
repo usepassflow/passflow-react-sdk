@@ -15,7 +15,7 @@ describe('Switch', () => {
     const handleChange = vi.fn();
     render(<Switch label='Test Switch' checked={false} onChange={handleChange} />);
 
-    const checkbox = screen.getByRole('checkbox');
+    const checkbox = screen.getByRole('switch');
     expect(checkbox).toBeInTheDocument();
     expect(checkbox).toHaveAttribute('type', 'checkbox');
   });
@@ -24,7 +24,7 @@ describe('Switch', () => {
     const handleChange = vi.fn();
     render(<Switch label='Test Switch' checked={false} onChange={handleChange} />);
 
-    const checkbox = screen.getByRole('checkbox');
+    const checkbox = screen.getByRole('switch');
     expect(checkbox.getAttribute('id')).toBeTruthy();
   });
 
@@ -32,7 +32,7 @@ describe('Switch', () => {
     const handleChange = vi.fn();
     render(<Switch label='Test Switch' checked={false} id='scope-profile' onChange={handleChange} />);
 
-    expect(screen.getByRole('checkbox')).toHaveAttribute('id', 'scope-profile');
+    expect(screen.getByRole('switch')).toHaveAttribute('id', 'scope-profile');
   });
 
   it('gives each switch a unique id so labels do not collide', () => {
@@ -44,7 +44,7 @@ describe('Switch', () => {
       </>,
     );
 
-    const [first, second] = screen.getAllByRole('checkbox');
+    const [first, second] = screen.getAllByRole('switch');
     expect(first.getAttribute('id')).toBeTruthy();
     expect(first.getAttribute('id')).not.toBe(second.getAttribute('id'));
   });
@@ -53,7 +53,7 @@ describe('Switch', () => {
     const handleChange = vi.fn();
     render(<Switch label='Test Switch' checked={false} onChange={handleChange} />);
 
-    const checkbox = screen.getByRole('checkbox');
+    const checkbox = screen.getByRole('switch');
     expect(checkbox).not.toBeChecked();
   });
 
@@ -61,7 +61,7 @@ describe('Switch', () => {
     const handleChange = vi.fn();
     render(<Switch label='Test Switch' checked={true} onChange={handleChange} />);
 
-    const checkbox = screen.getByRole('checkbox');
+    const checkbox = screen.getByRole('switch');
     expect(checkbox).toBeChecked();
   });
 
@@ -71,7 +71,7 @@ describe('Switch', () => {
 
     render(<Switch label='Test Switch' checked={false} onChange={handleChange} />);
 
-    const checkbox = screen.getByRole('checkbox');
+    const checkbox = screen.getByRole('switch');
     await user.click(checkbox);
 
     expect(handleChange).toHaveBeenCalledTimes(1);
@@ -83,7 +83,7 @@ describe('Switch', () => {
 
     render(<Switch label='Test Switch' checked={false} onChange={handleChange} />);
 
-    const checkbox = screen.getByRole('checkbox');
+    const checkbox = screen.getByRole('switch');
     await user.click(checkbox);
 
     expect(handleChange).toHaveBeenCalledWith(
@@ -103,7 +103,7 @@ describe('Switch', () => {
 
     render(<Switch label='Test Switch' checked={false} onChange={handleChange} />);
 
-    const checkbox = screen.getByRole('checkbox');
+    const checkbox = screen.getByRole('switch');
     expect(checkbox).not.toBeChecked();
 
     await user.click(checkbox);
@@ -117,7 +117,7 @@ describe('Switch', () => {
 
     render(<Switch label='Test Switch' checked={true} onChange={handleChange} />);
 
-    const checkbox = screen.getByRole('checkbox');
+    const checkbox = screen.getByRole('switch');
     expect(checkbox).toBeChecked();
 
     await user.click(checkbox);
@@ -163,7 +163,7 @@ describe('Switch', () => {
     const { container } = render(<Switch label='Test Switch' checked={false} onChange={handleChange} />);
 
     const label = container.querySelector('label');
-    const checkbox = screen.getByRole('checkbox');
+    const checkbox = screen.getByRole('switch');
     expect(label).toHaveAttribute('for', checkbox.getAttribute('id'));
   });
 
@@ -185,7 +185,7 @@ describe('Switch', () => {
 
     render(<Switch label='Test Switch' checked={false} onChange={handleChange} />);
 
-    const checkbox = screen.getByRole('checkbox');
+    const checkbox = screen.getByRole('switch');
     await user.click(checkbox);
     await user.click(checkbox);
     await user.click(checkbox);

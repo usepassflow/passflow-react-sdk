@@ -422,7 +422,7 @@ test.describe('Consent screen', () => {
     await expect(page.getByRole('heading', { name: 'Allow Acme Notes to access your account?' })).toBeVisible();
     await expect(page.getByTestId('consent-app-name')).toHaveText('Acme Notes');
     for (const label of scopeLabels) {
-      await expect(page.getByRole('checkbox', { name: label })).toBeChecked();
+      await expect(page.getByRole('switch', { name: label })).toBeChecked();
     }
     await expect(page.getByText('Your name and profile picture.')).toBeVisible();
     for (const testId of ['consent-client-host', 'consent-redirect-host', 'consent-verified', /^consent-warning-/]) {
@@ -463,19 +463,19 @@ test.describe('Consent screen', () => {
 
     // The third row: with a shared input id every label resolved to the FIRST input.
     await page.getByText('View your email address').click();
-    await expect(page.getByRole('checkbox', { name: 'View your email address' })).not.toBeChecked();
+    await expect(page.getByRole('switch', { name: 'View your email address' })).not.toBeChecked();
     for (const label of ['Verify your identity', 'View your profile', 'Stay signed in']) {
-      await expect(page.getByRole('checkbox', { name: label })).toBeChecked();
+      await expect(page.getByRole('switch', { name: label })).toBeChecked();
     }
 
     await page.getByText('View your email address').click();
-    await expect(page.getByRole('checkbox', { name: 'View your email address' })).toBeChecked();
+    await expect(page.getByRole('switch', { name: 'View your email address' })).toBeChecked();
   });
 
   test('every scope switch has a distinct id', async ({ page }) => {
     await openStory(page, 'components-loginscreen--consent-default');
 
-    const ids = await page.getByRole('checkbox').evaluateAll((inputs) => inputs.map((input) => input.id));
+    const ids = await page.getByRole('switch').evaluateAll((inputs) => inputs.map((input) => input.id));
     expect(ids).toHaveLength(scopeLabels.length);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids.every(Boolean)).toBe(true);
@@ -484,15 +484,15 @@ test.describe('Consent screen', () => {
   test('a scope that is switched off renders unchecked', async ({ page }) => {
     await openStory(page, 'components-loginscreen--consent-scope-switched-off');
 
-    await expect(page.getByRole('checkbox', { name: 'View your profile' })).not.toBeChecked();
-    await expect(page.getByRole('checkbox', { name: 'Verify your identity' })).toBeChecked();
+    await expect(page.getByRole('switch', { name: 'View your profile' })).not.toBeChecked();
+    await expect(page.getByRole('switch', { name: 'Verify your identity' })).toBeChecked();
   });
 
   test('a request for no scopes says so and can still be decided', async ({ page }) => {
     await openStory(page, 'components-loginscreen--consent-no-scopes');
 
     await expect(page.getByText('This application is not requesting access to any of your data.')).toBeVisible();
-    await expect(page.getByRole('checkbox')).toHaveCount(0);
+    await expect(page.getByRole('switch')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Allow' })).toBeEnabled();
     await expect(page.getByRole('button', { name: 'Deny' })).toBeEnabled();
   });
@@ -505,7 +505,7 @@ test.describe('Consent screen', () => {
     await expect(page.getByRole('button', { name: 'Allow' })).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Deny' })).toBeDisabled();
     for (const label of scopeLabels) {
-      await expect(page.getByRole('checkbox', { name: label })).toBeDisabled();
+      await expect(page.getByRole('switch', { name: label })).toBeDisabled();
     }
   });
 

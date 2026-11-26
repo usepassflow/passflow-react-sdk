@@ -209,6 +209,34 @@ describe('useConsent', () => {
       expect(lastPost().body).toEqual({ granted_scopes: ['mcp', 'notes:read', 'notes:share', 'openid'] });
     });
 
+    it('starts a resource scope with no default_on switched on', async () => {
+      const { result } = await mountReady({
+        ...info,
+        requested_scopes: ['openid', 'notes:write'],
+        resources: [{ uri: 'https://notes.example/mcp', scopes: [{ scope: 'notes:write', label: 'Write your notes' }] }],
+      });
+
+      expect(result.current.grantedScopes).toEqual(['openid', 'notes:write']);
+    });
+
+    it('keeps a scope granted when one card marks it required and another starts it off', async () => {
+      const { result } = await mountReady({
+        ...info,
+        requested_scopes: ['openid', 'notes:read'],
+        resources: [
+          {
+            uri: 'https://a.example/mcp',
+            scopes: [{ scope: 'notes:read', label: 'Read', required: false, default_on: false }],
+          },
+          { uri: 'https://b.example/mcp', scopes: [{ scope: 'notes:read', label: 'Read', required: true }] },
+        ],
+      });
+      fetchMock.mockResolvedValueOnce(reply({ kind: 'redirect', url: 'https://acme.test/callback?code=1' }));
+      await act(async () => result.current.allow());
+
+      expect(lastPost().body).toEqual({ granted_scopes: ['openid', 'notes:read'] });
+    });
+
     it('falls back to the bare scope when the server sent no metadata for it', async () => {
       const { result } = await mountReady();
 

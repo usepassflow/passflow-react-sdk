@@ -54,7 +54,7 @@ describe('"Trust this device" on the 2FA forms', () => {
     describe(form.name, () => {
       it('offers the option unticked', () => {
         form.run();
-        expect(screen.getByRole('checkbox', { name: 'Trust this device' })).not.toBeChecked();
+        expect(screen.getByRole('switch', { name: 'Trust this device' })).not.toBeChecked();
       });
 
       it('sends no trust option while unticked', async () => {
@@ -67,7 +67,7 @@ describe('"Trust this device" on the 2FA forms', () => {
 
       it('sends trustDevice: true once ticked', async () => {
         const enterCode = form.run();
-        await userEvent.click(screen.getByRole('checkbox', { name: 'Trust this device' }));
+        await userEvent.click(screen.getByRole('switch', { name: 'Trust this device' }));
         await enterCode();
 
         await waitFor(() => expect(form.complete).toHaveBeenCalledTimes(1));
@@ -76,7 +76,7 @@ describe('"Trust this device" on the 2FA forms', () => {
 
       it('sends no trust option when ticked and then unticked', async () => {
         const enterCode = form.run();
-        const option = screen.getByRole('checkbox', { name: 'Trust this device' });
+        const option = screen.getByRole('switch', { name: 'Trust this device' });
         await userEvent.click(option);
         await userEvent.click(option);
         await enterCode();

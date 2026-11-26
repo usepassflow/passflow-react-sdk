@@ -31,14 +31,14 @@ for (const viewport of [
     await openStory(page, 'components-loginscreen-consent-client--mcp-verified-local-client');
 
     for (const scope of ['openid', 'offline_access', 'notes:read']) {
-      await expect(page.getByTestId(`consent-scope-${scope}`).getByRole('checkbox')).toHaveCount(0);
+      await expect(page.getByTestId(`consent-scope-${scope}`).getByRole('switch')).toHaveCount(0);
     }
     await expect(page.getByTestId('consent-scope-openid')).toHaveText("Confirm who you areLets the app know it's you");
     await expect(page.getByTestId('consent-scope-notes:read')).toHaveText('Read your notes');
 
-    await expect(page.getByRole('checkbox', { name: 'See your email address', exact: true })).toBeChecked();
-    await expect(page.getByRole('checkbox', { name: 'Write and change your notes', exact: true })).toBeChecked();
-    await expect(page.getByRole('checkbox', { name: 'Share your notes with other people', exact: true })).not.toBeChecked();
+    await expect(page.getByRole('switch', { name: 'See your email address', exact: true })).toBeChecked();
+    await expect(page.getByRole('switch', { name: 'Write and change your notes', exact: true })).toBeChecked();
+    await expect(page.getByRole('switch', { name: 'Share your notes with other people', exact: true })).not.toBeChecked();
     await expect(page.getByTestId('consent-scope-email')).toHaveText('See your email address');
 
     const card = page.getByTestId('consent-resource-https://notes.example/mcp');
@@ -73,8 +73,8 @@ test('a switch inside a resource card toggles its own scope', async ({ page }) =
   await openStory(page, 'components-loginscreen-consent-client--mcp-verified-local-client');
 
   await page.getByText('Share your notes with other people').click();
-  await expect(page.getByRole('checkbox', { name: 'Share your notes with other people' })).toBeChecked();
-  await expect(page.getByRole('checkbox', { name: 'Write and change your notes' })).toBeChecked();
+  await expect(page.getByRole('switch', { name: 'Share your notes with other people' })).toBeChecked();
+  await expect(page.getByRole('switch', { name: 'Write and change your notes' })).toBeChecked();
 });
 
 test('Allow grants the required scopes and the switches that are on, hidden mcp included', async ({ page }) => {
@@ -94,7 +94,7 @@ test('an old server payload keeps every scope a switch and its resource card bar
   await openStory(page, 'flows-consentflow--old-server');
 
   for (const label of ['Sign in', 'Email', 'Offline access', 'mcp']) {
-    await expect(page.getByRole('checkbox', { name: label, exact: true })).toBeChecked();
+    await expect(page.getByRole('switch', { name: label, exact: true })).toBeChecked();
   }
   await expect(page.getByTestId('consent-resource-https://notes.example/mcp').getByRole('listitem')).toHaveCount(0);
   expect(new Set(await trackRightEdges(page)).size).toBe(1);

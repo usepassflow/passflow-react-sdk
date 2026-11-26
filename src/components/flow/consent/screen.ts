@@ -1,11 +1,12 @@
 import type { LoginConsentResource, LoginConsentScope, LoginScreenProps } from '@/components/ui';
-import type {
-  ConsentInfo,
-  ConsentResource,
-  ConsentResourceScope,
-  ConsentScopeMetadata,
-  ConsentWarning,
-  UseConsentProps,
+import {
+  type ConsentInfo,
+  type ConsentResource,
+  type ConsentResourceScope,
+  type ConsentScopeMetadata,
+  type ConsentWarning,
+  requiredResourceScopes,
+  type UseConsentProps,
 } from '@/hooks/use-consent';
 import { isText, readResource, usable } from '../access-lists';
 
@@ -31,7 +32,7 @@ const readWarning = ({ code, severity, message }: Partial<ConsentWarning>): Cons
 
 /** A scope as the server labels it; a scope with no label shows its own name. */
 const readScope =
-  (granted: string[]) =>
+  (granted: string[], requiredScopes: ReadonlySet<string> = new Set()) =>
   ({
     scope,
     label,
@@ -43,16 +44,16 @@ const readScope =
           scope,
           label: isText(label) ? label : scope,
           description: isText(description) ? description : undefined,
-          required: required === true || undefined,
+          required: required === true || requiredScopes.has(scope) || undefined,
           granted: granted.includes(scope),
         }
       : undefined;
 
 const readConsentResource =
-  (granted: string[]) =>
+  (granted: string[], requiredScopes: ReadonlySet<string>) =>
   (item: Partial<ConsentResource>): LoginConsentResource | undefined => {
     const resource = readResource(item);
-    return resource ? { ...resource, scopes: usable(item.scopes, readScope(granted)) } : undefined;
+    return resource ? { ...resource, scopes: usable(item.scopes, readScope(granted, requiredScopes)) } : undefined;
   };
 
 /**
@@ -120,7 +121,7 @@ export const getConsentLoginScreenProps = (consent: UseConsentProps): LoginScree
       prominentHost: prominentHost(info),
       verified: info.verified === true || undefined,
       redirectLoopback: info.redirect_host ? LOOPBACK_HOST.test(info.redirect_host) : undefined,
-      resources: usable(info.resources, readConsentResource(consent.grantedScopes)),
+      resources: usable(info.resources, readConsentResource(consent.grantedScopes, requiredResourceScopes(info))),
       warnings: usable(info.warnings, readWarning),
       // The server lists these in display order and leaves out what it shows
       // inside a resource card or not at all; a scope it leaves out stays granted.

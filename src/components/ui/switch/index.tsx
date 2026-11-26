@@ -55,6 +55,8 @@ export const Switch: FC<TSwitch> = ({ label, description, checked, disabled = fa
       <input
         id={inputId}
         type='checkbox'
+        role='switch'
+        aria-checked={checked}
         className='passflow-switch-input'
         checked={checked}
         disabled={disabled}

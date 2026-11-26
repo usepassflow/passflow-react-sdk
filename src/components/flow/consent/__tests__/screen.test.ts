@@ -187,6 +187,16 @@ describe('getConsentLoginScreenProps', () => {
     ]);
   });
 
+  it('draws a scope required in one card as required in every card it appears in', () => {
+    const resources: ConsentInfo['resources'] = [
+      { uri: 'https://a.example/mcp', scopes: [{ scope: 'notes:read', label: 'Read', required: false, default_on: false }] },
+      { uri: 'https://b.example/mcp', scopes: [{ scope: 'notes:read', label: 'Read', required: true }] },
+    ];
+    const { state } = consentState(consent({ info: { ...info, resources }, grantedScopes: ['notes:read'] }));
+
+    expect(state.resources?.map((resource) => resource.scopes?.[0]?.required)).toEqual([true, true]);
+  });
+
   it('shows no scope list when the server sent no usable metadata', () => {
     const { state } = consentState(consent({ info: { ...info, scope_metadata: null as never } }));
 
