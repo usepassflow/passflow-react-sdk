@@ -120,7 +120,7 @@ export type UseConsentProps = {
   deny: () => Promise<void>;
 };
 
-/** A resource scope that is optional and that the server says starts switched off. */
+/** Every scope listed in any resource card. */
 const resourceScopes = (info: Pick<ConsentInfo, 'resources'>): Partial<ConsentResourceScope>[] =>
   (Array.isArray(info.resources) ? info.resources : []).flatMap((resource) =>
     Array.isArray(resource?.scopes) ? resource.scopes.map((item) => item ?? {}) : [],
@@ -134,6 +134,7 @@ export const requiredResourceScopes = (info: Pick<ConsentInfo, 'resources'>): Se
       .map((item) => item.scope as string),
   );
 
+/** A resource scope that is optional and that the server says starts switched off. */
 const startsOff = (info: ConsentInfo, scope: string): boolean =>
   !requiredResourceScopes(info).has(scope) &&
   resourceScopes(info).some((item) => item.scope === scope && item.default_on === false);
