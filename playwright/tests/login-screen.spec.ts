@@ -223,6 +223,20 @@ test.describe('LoginScreen Storybook catalog', () => {
     expect(bounds.height).toBeGreaterThanOrEqual(28);
   });
 
+  test('disables the links and social buttons while a sign-in is in flight', async ({ page }) => {
+    await openStory(page, 'components-loginscreen--submitting-with-providers');
+
+    await expect(page.getByRole('button', { name: 'Signing in…' })).toHaveAttribute('aria-busy', 'true');
+    for (const name of ['Sign Up', 'Forgot Password?']) {
+      const link = page.getByRole('link', { name });
+      await expect(link).toHaveAttribute('aria-disabled', 'true');
+      await expect(link).not.toHaveAttribute('href');
+    }
+    const social = page.locator('.passflow-provider-item');
+    await expect(social).toHaveCount(2);
+    for (const button of await social.all()) await expect(button).toBeDisabled();
+  });
+
   test('shows the spinner in the passkey button and an enabled Cancel while a passkey prompt is open', async ({ page }) => {
     await openStory(page, 'components-loginscreen--submitting-passkey');
 

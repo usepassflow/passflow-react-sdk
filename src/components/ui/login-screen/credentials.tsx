@@ -324,6 +324,7 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
                         to={state.forgotPassword.to}
                         search={state.forgotPassword.getSearch?.(defaultMethod)}
                         className='passflow-field-label-button'
+                        disabled={controlsDisabled}
                       >
                         Forgot Password?
                       </Link>
@@ -405,7 +406,7 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
           <div className={cn('passflow-form-actions', { 'passflow-form-actions--top-space': hasCredentialActions })}>
             <p className='passflow-dont-have-account'>
               {state.footer.prompt}{' '}
-              <Link to={state.footer.to} search={state.footer.search} className='passflow-link'>
+              <Link to={state.footer.to} search={state.footer.search} className='passflow-link' disabled={controlsDisabled}>
                 {state.footer.label}
               </Link>
             </p>
@@ -415,7 +416,7 @@ export const LoginCredentials: FC<LoginCredentialsState> = (state) => {
         {methods.providers.length > 0 && state.onProvider ? (
           <div className='passflow-form-providers'>
             {hasCredentialActions ? <LoginDivider label='Or continue with' /> : null}
-            <ProvidersBox providers={methods.providers} onClick={state.onProvider} />
+            <ProvidersBox providers={methods.providers} onClick={state.onProvider} disabled={controlsDisabled} />
           </div>
         ) : null}
       </form>

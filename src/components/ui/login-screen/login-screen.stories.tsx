@@ -346,6 +346,16 @@ export const CredentialsHumanOnlyTurnstile: Story = {
   ],
 };
 
+/** While a sign-in is in flight, every control but the spinning button is disabled: fields, links and social buttons. */
+export const SubmittingWithProviders: Story = {
+  args: story(
+    credentials(methods({ emailPassword: true, passkey: true, providers: [Providers.google, Providers.facebook] }), {
+      busy: true,
+      primaryLabel: 'Signing in…',
+    }),
+  ),
+};
+
 export const SubmittingPasskey: Story = {
   args: story(
     credentials(methods({ emailPassword: true, emailMagicLink: true, passkey: true }), {
